@@ -34,10 +34,25 @@ RUN \
 # Copy root filesystem
 COPY rootfs /
 
-# Asegura permisos ejecutables para scripts de s6 (por si se pierden en git/copias)
-RUN chmod +x /etc/s6-overlay/scripts/stage2_hook.sh || true \
-  && find /etc/cont-init.d -type f -exec chmod +x {} \; 2>/dev/null || true \
-  && find /etc/services.d -type f -name run -exec chmod +x {} \; 2>/dev/null || true
+# ✅ FIX: Asegura permisos ejecutables para scripts de s6 (s6-rc, cont-init, services)
+# Esto evita los "Permission denied" (exit 126) si se pierden permisos en git/copias.
+RUN set -euo pipefail; \
+    chmod +x /etc/s6-overlay/scripts/stage2_hook.sh 2>/dev/null || true; \
+    \
+    # s6-rc (lo que te falla: /etc/s6-overlay/s6-rc.d/*/run)
+    if [ -d /etc/s6-overlay/s6-rc.d ]; then \
+      find /etc/s6-overlay/s6-rc.d -type f \( -name run -o -name finish -o -name check \) -exec chmod +x {} \; 2>/dev/null || true; \
+    fi; \
+    \
+    # cont-init.d
+    if [ -d /etc/cont-init.d ]; then \
+      find /etc/cont-init.d -type f -exec chmod +x {} \; 2>/dev/null || true; \
+    fi; \
+    \
+    # services.d (algunos add-ons siguen usándolo)
+    if [ -d /etc/services.d ]; then \
+      find /etc/services.d -type f \( -name run -o -name finish \) -exec chmod +x {} \; 2>/dev/null || true; \
+    fi
 
 HEALTHCHECK \
     CMD healthcheck
