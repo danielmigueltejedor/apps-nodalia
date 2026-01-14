@@ -43,7 +43,6 @@ options:
   advertise_exit_node: false
   advertise_connector: false
   advertise_routes: []
-  exit_node: ""
   login_server: ""
   share_homeassistant: disabled
   share_on_port: 443
