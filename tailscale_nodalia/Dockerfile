@@ -34,6 +34,11 @@ RUN \
 # Copy root filesystem
 COPY rootfs /
 
+# Asegura permisos ejecutables para scripts de s6 (por si se pierden en git/copias)
+RUN chmod +x /etc/s6-overlay/scripts/stage2_hook.sh || true \
+  && find /etc/cont-init.d -type f -exec chmod +x {} \; 2>/dev/null || true \
+  && find /etc/services.d -type f -name run -exec chmod +x {} \; 2>/dev/null || true
+
 HEALTHCHECK \
     CMD healthcheck
 
