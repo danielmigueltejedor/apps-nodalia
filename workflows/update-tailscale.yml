@@ -2,7 +2,7 @@ name: Auto-update Tailscale (stable)
 
 on:
   schedule:
-    - cron: "15 2 * * *" # diario 02:15 UTC
+    - cron: "15 2 * * *" # Diario 02:15 UTC
   workflow_dispatch:
 
 permissions:
@@ -19,14 +19,14 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Detect addon directory (supports repo root or subfolder)
+      - name: Detect addon directory (root or subfolder)
         id: paths
         run: |
           set -e
-          # Si tu add-on está en la raíz, esto funciona.
-          # Si está en una carpeta (p.ej. tailscale_nodalia/), lo detecta.
+          # Si tu add-on está en la raíz:
           if [ -f "Dockerfile" ] && [ -f "config.yaml" ]; then
             echo "dir=." >> $GITHUB_OUTPUT
+          # Si está en una carpeta típica:
           elif [ -f "tailscale_nodalia/Dockerfile" ] && [ -f "tailscale_nodalia/config.yaml" ]; then
             echo "dir=tailscale_nodalia" >> $GITHUB_OUTPUT
           elif [ -f "tailscale/Dockerfile" ] && [ -f "tailscale/config.yaml" ]; then
@@ -40,8 +40,12 @@ jobs:
         id: ts
         run: |
           set -e
-          # /releases/latest -> última release NO prerelease/NO draft :contentReference[oaicite:1]{index=1}
+          # /releases/latest -> última release estable (no prerelease / no draft)
           LATEST_TAG=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r .tag_name)
+          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
+            echo "No pude obtener tag_name de Tailscale."
+            exit 1
+          fi
           echo "latest=${LATEST_TAG}" >> $GITHUB_OUTPUT
 
       - name: Read current TAILSCALE_VERSION from Dockerfile
@@ -49,6 +53,10 @@ jobs:
         run: |
           set -e
           DIR="${{ steps.paths.outputs.dir }}"
+          if ! grep -qE '^ARG TAILSCALE_VERSION=' "${DIR}/Dockerfile"; then
+            echo "No existe 'ARG TAILSCALE_VERSION=' en ${DIR}/Dockerfile"
+            exit 1
+          fi
           CURRENT=$(grep -E '^ARG TAILSCALE_VERSION=' "${DIR}/Dockerfile" | sed -E 's/ARG TAILSCALE_VERSION="([^"]+)"/\1/')
           echo "current=${CURRENT}" >> $GITHUB_OUTPUT
 
@@ -70,26 +78,29 @@ jobs:
           sed -i -E "s/^ARG TAILSCALE_VERSION=\"[^\"]+\"/ARG TAILSCALE_VERSION=\"${LATEST}\"/" "${DIR}/Dockerfile"
           echo "Dockerfile actualizado a ${LATEST}"
 
-      - name: Bump addon version (patch)
+      - name: Bump addon version (minor, reset patch)
         if: steps.check.outputs.needs_update == 'true'
+        id: bump
         run: |
           set -e
           DIR="${{ steps.paths.outputs.dir }}"
           CURRENT_VER=$(grep -E '^version:' "${DIR}/config.yaml" | awk '{print $2}')
-          # bump patch: X.Y.Z -> X.Y.(Z+1)
+
+          # bump minor: X.Y.Z -> X.(Y+1).0
           NEW_VER=$(python3 - << 'PY'
 import re, sys
 v = sys.argv[1].strip()
 m = re.match(r'^(\d+)\.(\d+)\.(\d+)$', v)
 if not m:
-    print("0.0.1")
-else:
-    a,b,c = map(int, m.groups())
-    print(f"{a}.{b}.{c+1}")
+    raise SystemExit(f"Version no valida en config.yaml: {v}")
+x, y, z = map(int, m.groups())
+print(f"{x}.{y+1}.0")
 PY
 "${CURRENT_VER}")
+
           sed -i -E "s/^version: .*/version: ${NEW_VER}/" "${DIR}/config.yaml"
           echo "Bump version: ${CURRENT_VER} -> ${NEW_VER}"
+          echo "new_ver=${NEW_VER}" >> $GITHUB_OUTPUT
 
       - name: Commit & push
         if: steps.check.outputs.needs_update == 'true'
@@ -97,10 +108,11 @@ PY
           set -e
           DIR="${{ steps.paths.outputs.dir }}"
           LATEST="${{ steps.ts.outputs.latest }}"
+          NEW_VER="${{ steps.bump.outputs.new_ver }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add "${DIR}/Dockerfile" "${DIR}/config.yaml"
-          git commit -m "chore: bump Tailscale to ${LATEST}"
+          git commit -m "chore: bump Tailscale to ${LATEST} (addon ${NEW_VER})"
           git push
 
       - name: No update needed
