@@ -50,6 +50,8 @@ options:
   tags: []
   taildrop: true
   userspace_networking: false
+  exit_node: ""
+  login_server: "https://controlplane.tailscale.com"
 
 schema:
   accept_dns: bool?
