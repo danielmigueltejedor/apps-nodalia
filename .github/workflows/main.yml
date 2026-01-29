@@ -1,4 +1,4 @@
-name: Auto-update Tailscale (stable)
+name: Auto-update Tailscale (stable) + Release
 
 on:
   schedule:
@@ -17,7 +17,6 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install jq
-        shell: bash
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Detect addon directory (root or subfolder)
@@ -46,10 +45,9 @@ jobs:
             echo "No pude obtener tag_name de Tailscale."
             exit 1
           fi
-          # Normaliza: quita la "v" inicial si viene como v1.2.3
           LATEST="${LATEST_TAG#v}"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
-          echo "Latest stable tag: ${LATEST_TAG} -> using: ${LATEST}"
+          echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Read current TAILSCALE_VERSION from Dockerfile
         id: cur
@@ -75,7 +73,6 @@ jobs:
 
           CURRENT="${CURRENT#v}"
           echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
-          echo "Current Dockerfile version: ${CURRENT}"
 
       - name: Check if update needed
         id: check
@@ -87,10 +84,8 @@ jobs:
 
           if [ "$LATEST" != "$CURRENT" ]; then
             echo "needs_update=true" >> "$GITHUB_OUTPUT"
-            echo "Update needed: current=${CURRENT} latest=${LATEST}"
           else
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
-            echo "No update needed: ${CURRENT}"
           fi
 
       - name: Update Dockerfile TAILSCALE_VERSION
@@ -101,7 +96,6 @@ jobs:
           DIR="${{ steps.paths.outputs.dir }}"
           LATEST="${{ steps.ts.outputs.latest }}"
           sed -i -E "s/^ARG[[:space:]]+TAILSCALE_VERSION=.*/ARG TAILSCALE_VERSION=\"${LATEST}\"/" "${DIR}/Dockerfile"
-          echo "Dockerfile actualizado a ${LATEST}"
 
       - name: Bump addon version (minor, reset patch)
         if: ${{ steps.check.outputs.needs_update == 'true' }}
@@ -127,26 +121,27 @@ jobs:
           NEW_VER="${X}.$((Y+1)).0"
           sed -i -E "s/^version: .*/version: ${NEW_VER}/" "${DIR}/config.yaml"
 
-          echo "Bump version: ${CURRENT_VER} -> ${NEW_VER}"
           echo "new_ver=${NEW_VER}" >> "$GITHUB_OUTPUT"
           echo "old_ver=${CURRENT_VER}" >> "$GITHUB_OUTPUT"
 
-      - name: Update CHANGELOG.md
+      - name: Update CHANGELOG.md and prepare release notes
         if: ${{ steps.check.outputs.needs_update == 'true' }}
+        id: notes
         shell: bash
         run: |
           set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
 
           CHANGELOG="${DIR}/CHANGELOG.md"
+          NOTES_FILE="${RUNNER_TEMP}/release_notes.md"
           DATE=$(date -u +"%Y-%m-%d")
 
           CURRENT_TS="${{ steps.cur.outputs.current }}"
-          LATEST="${{ steps.ts.outputs.latest }}"
+          LATEST_TS="${{ steps.ts.outputs.latest }}"
           OLD_ADDON="${{ steps.bump.outputs.old_ver }}"
           NEW_ADDON="${{ steps.bump.outputs.new_ver }}"
 
-          # Crear cabecera si no existe (sin here-doc)
+          # Cabecera si no existe
           if [ ! -f "$CHANGELOG" ]; then
             {
               echo "# Changelog"
@@ -158,18 +153,22 @@ jobs:
             } > "$CHANGELOG"
           fi
 
-          # Construye la nueva entrada
+          # Entrada nueva
           ENTRY=$(printf "## %s - %s\n### Changed\n- Bump Tailscale: %s → %s\n- Add-on version: %s → %s\n\n" \
-            "$NEW_ADDON" "$DATE" "$CURRENT_TS" "$LATEST" "$OLD_ADDON" "$NEW_ADDON")
+            "$NEW_ADDON" "$DATE" "$CURRENT_TS" "$LATEST_TS" "$OLD_ADDON" "$NEW_ADDON")
 
           # Inserta la entrada justo después de la primera línea
           awk -v entry="$ENTRY" 'NR==1 {print; print ""; printf "%s", entry; next} {print}' "$CHANGELOG" > "${CHANGELOG}.tmp"
           mv "${CHANGELOG}.tmp" "$CHANGELOG"
 
-          echo "CHANGELOG actualizado: $CHANGELOG"
+          # Release notes (lo mismo que la entrada, sin la cabecera global)
+          printf "%s" "$ENTRY" > "$NOTES_FILE"
 
-      - name: Commit & push
+          echo "notes_file=${NOTES_FILE}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit & push changes
         if: ${{ steps.check.outputs.needs_update == 'true' }}
+        id: commit
         shell: bash
         run: |
           set -euo pipefail
@@ -184,8 +183,42 @@ jobs:
           git commit -m "chore: bump Tailscale to ${LATEST} (addon ${NEW_VER})"
           git push
 
-      - name: No update needed
-        if: ${{ steps.check.outputs.needs_update != 'true' }}
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag
+        if: ${{ steps.check.outputs.needs_update == 'true' }}
         shell: bash
         run: |
-          echo "Tailscale ya está en la última estable: ${{ steps.cur.outputs.current }}"
+          set -euo pipefail
+          NEW_VER="${{ steps.bump.outputs.new_ver }}"
+          TAG="v${NEW_VER}"
+
+          # Evita fallar si ya existe por lo que sea
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG ya existe localmente."
+          else
+            git tag -a "$TAG" -m "$TAG"
+          fi
+
+          git push origin "$TAG"
+
+      - name: Create GitHub Release (notes from CHANGELOG)
+        if: ${{ steps.check.outputs.needs_update == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          NEW_VER="${{ steps.bump.outputs.new_ver }}"
+          TAG="v${NEW_VER}"
+          NOTES_FILE="${{ steps.notes.outputs.notes_file }}"
+
+          # Crea la release. Si ya existe, no revienta el workflow.
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file "$NOTES_FILE" \
+            || echo "Release $TAG ya existe o no se pudo crear (revisar permisos)."
+
+      - name: No update needed
+        if: ${{ steps.check.outputs.needs_update != 'true' }}
+        run: echo "Tailscale ya está en la última estable: ${{ steps.cur.outputs.current }}"
