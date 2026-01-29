@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install jq
+        shell: bash
         run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Detect addon directory (root or subfolder)
@@ -136,44 +137,36 @@ jobs:
         run: |
           set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
-          LATEST="${{ steps.ts.outputs.latest }}"
-          CURRENT_TS="${{ steps.cur.outputs.current }}"
-          OLD_ADDON="${{ steps.bump.outputs.old_ver }}"
-          NEW_ADDON="${{ steps.bump.outputs.new_ver }}"
-          DATE=$(date -u +"%Y-%m-%d")
 
           CHANGELOG="${DIR}/CHANGELOG.md"
+          DATE=$(date -u +"%Y-%m-%d")
 
-          # Cabecera estándar si no existe
+          CURRENT_TS="${{ steps.cur.outputs.current }}"
+          LATEST="${{ steps.ts.outputs.latest }}"
+          OLD_ADDON="${{ steps.bump.outputs.old_ver }}"
+          NEW_ADDON="${{ steps.bump.outputs.new_ver }}"
+
+          # Crear cabecera si no existe (sin here-doc)
           if [ ! -f "$CHANGELOG" ]; then
-            cat > "$CHANGELOG" << 'EOF'
-# Changelog
-
-All notable changes to this add-on will be documented in this file.
-
-The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
-EOF
-            echo "" >> "$CHANGELOG"
+            {
+              echo "# Changelog"
+              echo
+              echo "All notable changes to this add-on will be documented in this file."
+              echo
+              echo "The format is based on Keep a Changelog, and this project adheres to Semantic Versioning."
+              echo
+            } > "$CHANGELOG"
           fi
 
-          # Entrada nueva (se inserta arriba, después de la cabecera)
-          ENTRY=$(cat <<EOF
-## ${NEW_ADDON} - ${DATE}
-### Changed
-- Bump Tailscale: ${CURRENT_TS} → ${LATEST}
-- Add-on version: ${OLD_ADDON} → ${NEW_ADDON}
+          # Construye la nueva entrada
+          ENTRY=$(printf "## %s - %s\n### Changed\n- Bump Tailscale: %s → %s\n- Add-on version: %s → %s\n\n" \
+            "$NEW_ADDON" "$DATE" "$CURRENT_TS" "$LATEST" "$OLD_ADDON" "$NEW_ADDON")
 
-EOF
-)
-
-          # Inserta la entrada después de la primera línea "# Changelog"
-          awk -v entry="$ENTRY" '
-            NR==1 {print; print ""; print entry; next}
-            {print}
-          ' "$CHANGELOG" > "${CHANGELOG}.tmp"
-
+          # Inserta la entrada justo después de la primera línea
+          awk -v entry="$ENTRY" 'NR==1 {print; print ""; printf "%s", entry; next} {print}' "$CHANGELOG" > "${CHANGELOG}.tmp"
           mv "${CHANGELOG}.tmp" "$CHANGELOG"
-          echo "CHANGELOG actualizado en ${CHANGELOG}"
+
+          echo "CHANGELOG actualizado: $CHANGELOG"
 
       - name: Commit & push
         if: ${{ steps.check.outputs.needs_update == 'true' }}
