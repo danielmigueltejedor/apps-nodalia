@@ -45,7 +45,6 @@ jobs:
             echo "No pude obtener tag_name de Tailscale."
             exit 1
           fi
-          # Normaliza: "v1.2.3" -> "1.2.3"
           LATEST="${LATEST_TAG#v}"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
@@ -197,10 +196,12 @@ jobs:
           TAG="v${NEW_VER}"
           NOTES_FILE="${{ steps.notes.outputs.notes_file }}"
 
-          # En una sola línea para evitar que YAML "vea" un '||' al inicio
-          gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" || \
-            echo "Release $TAG ya existe o no se pudo crear (revisar permisos)."
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG ya existe, no creo otra."
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
+          fi
 
       - name: No update needed
         if: ${{ steps.check.outputs.needs_update != 'true' }}
-        run: echo 'Tailscale ya está en la última estable: ${{ steps.cur.outputs.current }}'
+        run: echo "Tailscale ya está en la última estable: ${{ steps.cur.outputs.current }}"
