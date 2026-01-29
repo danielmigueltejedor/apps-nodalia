@@ -201,7 +201,3 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
           fi
-
-      - name: No update needed
-        if: ${{ steps.check.outputs.needs_update != 'true' }}
-        run: echo "Tailscale ya está en la última estable: ${{ steps.cur.outputs.current }}"
