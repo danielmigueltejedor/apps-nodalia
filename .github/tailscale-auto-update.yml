@@ -21,16 +21,15 @@ jobs:
 
       - name: Detect addon directory (root or subfolder)
         id: paths
+        shell: bash
         run: |
-          set -e
-          # Si tu add-on está en la raíz:
+          set -euo pipefail
           if [ -f "Dockerfile" ] && [ -f "config.yaml" ]; then
-            echo "dir=." >> $GITHUB_OUTPUT
-          # Si está en una carpeta típica:
+            echo "dir=." >> "$GITHUB_OUTPUT"
           elif [ -f "tailscale_nodalia/Dockerfile" ] && [ -f "tailscale_nodalia/config.yaml" ]; then
-            echo "dir=tailscale_nodalia" >> $GITHUB_OUTPUT
+            echo "dir=tailscale_nodalia" >> "$GITHUB_OUTPUT"
           elif [ -f "tailscale/Dockerfile" ] && [ -f "tailscale/config.yaml" ]; then
-            echo "dir=tailscale" >> $GITHUB_OUTPUT
+            echo "dir=tailscale" >> "$GITHUB_OUTPUT"
           else
             echo "No encuentro Dockerfile+config.yaml (ni en root, ni tailscale_nodalia/, ni tailscale/)"
             exit 1
@@ -38,25 +37,24 @@ jobs:
 
       - name: Get latest stable Tailscale version (GitHub Releases)
         id: ts
+        shell: bash
         run: |
-          set -e
-          # /releases/latest -> última release estable (no prerelease / no draft)
-          LATEST_TAG=$(curl -s https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r .tag_name)
+          set -euo pipefail
+          LATEST_TAG=$(curl -fsSL https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r .tag_name)
           if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
             echo "No pude obtener tag_name de Tailscale."
             exit 1
           fi
-
           # Normaliza: quita la "v" inicial si viene como v1.2.3
           LATEST="${LATEST_TAG#v}"
-
-          echo "latest=${LATEST}" >> $GITHUB_OUTPUT
+          echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
           echo "Latest stable tag: ${LATEST_TAG} -> using: ${LATEST}"
 
       - name: Read current TAILSCALE_VERSION from Dockerfile
         id: cur
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
 
           if ! grep -qE '^ARG[[:space:]]+TAILSCALE_VERSION=' "${DIR}/Dockerfile"; then
@@ -70,55 +68,54 @@ jobs:
           CURRENT=$(grep -E '^ARG[[:space:]]+TAILSCALE_VERSION=' "${DIR}/Dockerfile" \
             | head -n 1 \
             | sed -E 's/^ARG[[:space:]]+TAILSCALE_VERSION="?([^"]+)"?/\1/' \
-            | tr -d "\r")
+            | tr -d '\r')
 
           if [ -z "$CURRENT" ]; then
             echo "No pude extraer TAILSCALE_VERSION desde ${DIR}/Dockerfile"
             exit 1
           fi
 
-          # Normaliza por si alguien metió "v1.2.3" en Dockerfile
           CURRENT="${CURRENT#v}"
-
-          echo "current=${CURRENT}" >> $GITHUB_OUTPUT
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
           echo "Current Dockerfile version: ${CURRENT}"
 
       - name: Check if update needed
         id: check
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           LATEST="${{ steps.ts.outputs.latest }}"
           CURRENT="${{ steps.cur.outputs.current }}"
 
           if [ "$LATEST" != "$CURRENT" ]; then
-            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
             echo "Update needed: current=${CURRENT} latest=${LATEST}"
           else
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
             echo "No update needed: ${CURRENT}"
           fi
 
       - name: Update Dockerfile TAILSCALE_VERSION
         if: steps.check.outputs.needs_update == 'true'
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
           LATEST="${{ steps.ts.outputs.latest }}"
 
-          # Mantiene el estilo que ya tengas (con o sin comillas) de forma simple:
-          # Reemplaza cualquier variante de la línea por comillas (estándar).
+          # Fuerza formato estándar con comillas
           sed -i -E "s/^ARG[[:space:]]+TAILSCALE_VERSION=.*/ARG TAILSCALE_VERSION=\"${LATEST}\"/" "${DIR}/Dockerfile"
-
           echo "Dockerfile actualizado a ${LATEST}"
 
       - name: Bump addon version (minor, reset patch)
         if: steps.check.outputs.needs_update == 'true'
         id: bump
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
 
-          # Soporta version: 1.2.3 y version: "1.2.3"
+          # Lee "version: 1.2.3" o "version: "1.2.3""
           CURRENT_VER=$(grep -E '^version:' "${DIR}/config.yaml" | head -n 1 | awk '{print $2}' | tr -d '"')
 
           if [ -z "$CURRENT_VER" ]; then
@@ -126,19 +123,25 @@ jobs:
             exit 1
           fi
 
-          # bump minor: X.Y.Z -> X.(Y+1).0  (todo en 1 línea, sin saltos)
-          NEW_VER=$(python3 -c 'import re,sys; v=sys.argv[1].strip(); m=re.match(r"^(\d+)\.(\d+)\.(\d+)$", v); 
-if not m: raise SystemExit(f"Version no valida en config.yaml: {v}"); 
-x,y,z=map(int,m.groups()); print(f"{x}.{y+1}.0")' "${CURRENT_VER}")
+          # Parse X.Y.Z
+          IFS='.' read -r X Y Z <<< "$CURRENT_VER" || true
+          if [[ -z "${X:-}" || -z "${Y:-}" || -z "${Z:-}" ]] || \
+             ! [[ "$X" =~ ^[0-9]+$ && "$Y" =~ ^[0-9]+$ && "$Z" =~ ^[0-9]+$ ]]; then
+            echo "Version no valida en config.yaml: ${CURRENT_VER}"
+            exit 1
+          fi
+
+          NEW_VER="${X}.$((Y+1)).0"
 
           sed -i -E "s/^version: .*/version: ${NEW_VER}/" "${DIR}/config.yaml"
           echo "Bump version: ${CURRENT_VER} -> ${NEW_VER}"
-          echo "new_ver=${NEW_VER}" >> $GITHUB_OUTPUT
+          echo "new_ver=${NEW_VER}" >> "$GITHUB_OUTPUT"
 
       - name: Commit & push
         if: steps.check.outputs.needs_update == 'true'
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           DIR="${{ steps.paths.outputs.dir }}"
           LATEST="${{ steps.ts.outputs.latest }}"
           NEW_VER="${{ steps.bump.outputs.new_ver }}"
