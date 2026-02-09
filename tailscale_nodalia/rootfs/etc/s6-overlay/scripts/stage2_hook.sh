@@ -37,7 +37,7 @@ if bashio::var.true "${proxy}"; then
 fi
 # Upgrade to share_on_port
 if bashio::var.has_value "${proxy_and_funnel_port}"; then
-    try bashio::addon.option 'share_on_port' "^${proxy_and_funnel_port}"
+    try bashio::addon.option 'share_on_port' "${proxy_and_funnel_port}"
     if ((TRY_ERROR)); then
         bashio::log.warning "The proxy_and_funnel_port option value '${proxy_and_funnel_port}' is invalid, proxy_and_funnel_port option is dropped, using default port."
     else
@@ -63,37 +63,37 @@ if ! bashio::config.has_value "userspace_networking" || \
     bashio::config.true "userspace_networking" || \
     bashio::config.false "accept_routes";
 then
-    rm /etc/s6-overlay/s6-rc.d/post-tailscaled/dependencies.d/protect-subnets
+    rm -f /etc/s6-overlay/s6-rc.d/post-tailscaled/dependencies.d/protect-subnets
 fi
 
 # If advertise_routes is configured, do not wait for the local network to be ready to collect subnet information
 if bashio::config.exists "advertise_routes";
 then
-    rm /etc/s6-overlay/s6-rc.d/post-tailscaled/dependencies.d/local-network
+    rm -f /etc/s6-overlay/s6-rc.d/post-tailscaled/dependencies.d/local-network
 fi
 
 # Disable forwarding service when userspace-networking is enabled
 if ! bashio::config.has_value "userspace_networking" || \
     bashio::config.true "userspace_networking";
 then
-    rm /etc/s6-overlay/s6-rc.d/user/contents.d/forwarding
+    rm -f /etc/s6-overlay/s6-rc.d/user/contents.d/forwarding
 fi
 
 # Disable mss-clamping service when userspace-networking is enabled
 if ! bashio::config.has_value "userspace_networking" || \
     bashio::config.true "userspace_networking";
 then
-    rm /etc/s6-overlay/s6-rc.d/user/contents.d/mss-clamping
+    rm -f /etc/s6-overlay/s6-rc.d/user/contents.d/mss-clamping
 fi
 
 # Disable taildrop service when it has been explicitly disabled
 if bashio::config.false 'taildrop'; then
-    rm /etc/s6-overlay/s6-rc.d/user/contents.d/taildrop
+    rm -f /etc/s6-overlay/s6-rc.d/user/contents.d/taildrop
 fi
 
 # Disable share-homeassistant service when share_homeassistant has not been explicitly enabled
 if ! bashio::config.has_value 'share_homeassistant' || \
     bashio::config.equals 'share_homeassistant' 'disabled'
 then
-    rm /etc/s6-overlay/s6-rc.d/user/contents.d/share-homeassistant
+    rm -f /etc/s6-overlay/s6-rc.d/user/contents.d/share-homeassistant
 fi

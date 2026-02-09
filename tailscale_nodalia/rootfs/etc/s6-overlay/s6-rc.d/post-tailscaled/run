@@ -12,6 +12,11 @@ declare -a colliding_routes=()
 declare login_server
 declare tags
 declare keyexpiry
+declare wait_counter=0
+declare backend_state
+
+readonly WAIT_DELAY=2
+readonly WAIT_RUNNING_COUNT=150  # 150*2s = 300s = 5m
 
 # Default options
 options+=(--hostname "$(bashio::info.hostname)")
@@ -122,7 +127,14 @@ fi
 while ! /opt/tailscale status --json --peers=false --self=false \
   | jq --exit-status '.BackendState == "Running"' > /dev/null
 do
-  sleep 2
+  if (( wait_counter++ == WAIT_RUNNING_COUNT )); then
+    backend_state=$(/opt/tailscale status --json --peers=false --self=false \
+      | jq -r '.BackendState // "Unknown"' 2>/dev/null || echo "Unknown")
+    bashio::exit.nok \
+      "Timed out waiting for Tailscale to enter Running state (last state: ${backend_state})." \
+      "Check whether this node requires login or machine authorization."
+  fi
+  sleep ${WAIT_DELAY}
 done
 
 bashio::log.info "Tailscale is running"
