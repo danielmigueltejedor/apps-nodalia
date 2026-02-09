@@ -7,6 +7,17 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ---
 
+## Versión actual
+
+`1.2.7`
+
+Cambios destacados:
+- Mejoras de estabilidad en arranque y diagnóstico de estado.
+- Comprobación de integridad (SHA256) del binario de Tailscale en build.
+- Mejora de CI para validar scripts y build multi-arquitectura.
+
+---
+
 ## Prerrequisitos
 
 Necesitas una cuenta de Tailscale.
