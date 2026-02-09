@@ -4,6 +4,12 @@ All notable changes to this add-on will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 1.2.8 - 2026-02-09
+### Fixed
+- Improve ingress compatibility for Web UI:
+  - Allow Supervisor internal subnet in NGINX ingress template instead of a single fixed IP.
+  - This prevents Web UI hanging/loading issues on installations where ingress source IP differs.
+
 ## 1.2.7 - 2026-02-09
 ### Changed
 - Improve startup robustness and diagnostics:

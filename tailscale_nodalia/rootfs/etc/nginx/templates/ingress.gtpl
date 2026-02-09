@@ -5,7 +5,10 @@ server {
     include /etc/nginx/includes/proxy_params.conf;
 
     location / {
-        allow   172.30.32.2;
+        # Home Assistant Supervisor ingress source can vary by setup/version.
+        # Allow the Supervisor/docker internal subnet instead of a single host.
+        allow   172.30.32.0/23;
+        allow   127.0.0.1;
         deny    all;
 
         proxy_pass http://backend;

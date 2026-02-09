@@ -9,9 +9,10 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`1.2.7`
+`1.2.8`
 
 Cambios destacados:
+- Fix de compatibilidad de Ingress para evitar Web UI en carga infinita en algunos entornos.
 - Mejoras de estabilidad en arranque y diagnóstico de estado.
 - Comprobación de integridad (SHA256) del binario de Tailscale en build.
 - Mejora de CI para validar scripts y build multi-arquitectura.
