@@ -1,4 +1,7 @@
-import { VacuumDeviceFeature } from "@home-assistant-matter-hub/common";
+import {
+  type VacuumDeviceAttributes,
+  VacuumDeviceFeature,
+} from "@home-assistant-matter-hub/common";
 import type { EndpointType } from "@matter/main";
 import { RoboticVacuumCleanerDevice } from "@matter/main/devices";
 import { testBit } from "../../../../utils/test-bit.js";
@@ -8,6 +11,8 @@ import { IdentifyServer } from "../../../behaviors/identify-server.js";
 import { VacuumOnOffServer } from "./behaviors/vacuum-on-off-server.js";
 import { VacuumRvcOperationalStateServer } from "./behaviors/vacuum-rvc-operational-state-server.js";
 import { VacuumRvcRunModeServer } from "./behaviors/vacuum-rvc-run-mode-server.js";
+import { createVacuumServiceAreaServer } from "./behaviors/vacuum-service-area-server.js";
+import { parseVacuumServiceAreaData } from "./service-area-data.js";
 
 const VacuumEndpointType = RoboticVacuumCleanerDevice.with(
   BasicInformationServer,
@@ -27,6 +32,15 @@ export function VacuumDevice(
   const attributes = homeAssistantEntity.entity.state.attributes;
   const supportedFeatures = attributes.supported_features ?? 0;
   let device = VacuumEndpointType.set({ homeAssistantEntity });
+
+  const serviceAreaData = parseVacuumServiceAreaData(
+    attributes as VacuumDeviceAttributes & Record<string, unknown>,
+  );
+  const VacuumServiceAreaServer = createVacuumServiceAreaServer();
+  if (serviceAreaData != null && VacuumServiceAreaServer != null) {
+    device = device.with(VacuumServiceAreaServer as never);
+  }
+
   if (testBit(supportedFeatures, VacuumDeviceFeature.START)) {
     device = device.with(VacuumOnOffServer);
   }

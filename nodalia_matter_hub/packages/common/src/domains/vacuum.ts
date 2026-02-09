@@ -49,4 +49,24 @@ export interface VacuumDeviceAttributes {
   fan_speed?: VacuumFanSpeed | string | null | undefined;
   fan_speed_list?: string[];
   status?: string | null | undefined;
+  // Optional room/segment metadata used for Matter Service Area mapping.
+  rooms?: unknown;
+  room_ids?: unknown;
+  room_names?: unknown;
+  segments?: unknown;
+  segment_ids?: unknown;
+  segment_names?: unknown;
+  selected_map?: unknown;
+  map_id?: unknown;
+  selected_segments?: unknown;
+  cleaning_segments?: unknown;
+  active_segments?: unknown;
+  current_segments?: unknown;
+  selected_rooms?: unknown;
+  current_rooms?: unknown;
+  current_segment?: unknown;
+  room_clean_command?: unknown;
+  segment_clean_command?: unknown;
+  matter_service_area_command?: unknown;
+  matter_service_area_params_nested?: unknown;
 }

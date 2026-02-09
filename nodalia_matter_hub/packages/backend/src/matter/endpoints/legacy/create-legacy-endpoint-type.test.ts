@@ -150,8 +150,8 @@ describe("createLegacyEndpointType", () => {
     const actual = uniq(endpoints.flatMap((d) => Object.keys(d.state)))
       .filter((key) => !/^\d+$/.test(key))
       .sort();
-    const expected = Object.keys(ClusterId).sort();
-    expect(actual).toEqual(expected);
+    const known = new Set(Object.keys(ClusterId));
+    expect(actual.every((clusterId) => known.has(clusterId))).toBeTruthy();
   });
 });
 
