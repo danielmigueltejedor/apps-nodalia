@@ -4,6 +4,23 @@ All notable changes to this add-on will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.1.0 - 2026-02-10
+### Added
+- Login onboarding page in the app Web UI at `/onboarding`:
+  - Shows backend state.
+  - Exposes login URL when authentication is required.
+  - Includes actions to copy/open login URL without checking logs.
+- Runtime-generated onboarding JSON endpoint at `/onboarding.json`.
+- Home Assistant persistent notification when Tailscale requires interactive login
+  (`NeedsLogin` / `NeedsMachineAuth`), including onboarding guidance and direct URL when available.
+
+### Changed
+- `post-tailscaled` now supports onboarding mode:
+  - Detects login-required states and keeps startup usable for user action instead of failing early.
+  - Writes onboarding state to `/data/tailscale-onboarding.json`.
+  - Dismisses login notification automatically when backend returns to `Running`.
+- Healthcheck treats login-required states as healthy to avoid restart loops during first-time login.
+
 ## 2.0.2 - 2026-02-09
 ### Changed
 - Align ingress fallback server config with ingress template to avoid drift in Web UI behavior.

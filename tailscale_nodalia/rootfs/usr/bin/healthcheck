@@ -45,6 +45,11 @@ if [[ "${backend_state-}" == "Stopped" ]]; then
   bashio::exit.nok
 fi
 
+# Keep onboarding usable without restart loops while waiting for interactive login.
+if [[ "${backend_state-}" == "NeedsLogin" || "${backend_state-}" == "NeedsMachineAuth" ]]; then
+  exit 0
+fi
+
 if bashio::var.has_value "${LAST_ONLINE_TIMESTAMP-}" && \
   (( now - LAST_ONLINE_TIMESTAMP > HEALTHCHECK_OFFLINE_TIMEOUT ))
 then

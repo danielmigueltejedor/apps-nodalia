@@ -36,6 +36,12 @@ También puedes crear la cuenta durante el proceso de autenticación de la aplic
 
 > **Nota:** algunos navegadores dan problemas en el paso de login; suele ir mejor desde escritorio con Chrome.
 
+Si no aparece directamente el flujo de login, abre:
+
+`/onboarding`
+
+en la Web UI del app. Ahí puedes copiar la URL de login sin revisar logs.
+
 ---
 
 ## Configuración

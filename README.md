@@ -9,9 +9,11 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.0.2`
+`2.1.0`
 
 Cambios destacados:
+- Nuevo onboarding sin logs: página `/onboarding` con URL de login, botón copiar y abrir enlace.
+- Notificación persistente en Home Assistant cuando el estado es `NeedsLogin`/`NeedsMachineAuth`.
 - Ajuste del proxy de Ingress para la Web UI con redirección segura fuera del iframe de Home Assistant.
 - Mejoras de estabilidad en arranque y diagnóstico de estado.
 - Comprobación de integridad (SHA256) del binario de Tailscale en build.
@@ -52,6 +54,12 @@ También puedes crear la cuenta durante el proceso de autenticación de la aplic
 7. Abre el **Web UI** de la aplicación para completar la autenticación.
 
 > **Nota:** algunos navegadores dan problemas en el paso de login; suele ir mejor desde escritorio con Chrome.
+
+Si no aparece directamente el flujo de login, abre:
+
+`/onboarding`
+
+en la Web UI del app. Ahí puedes copiar la URL de login sin revisar logs.
 
 ---
 

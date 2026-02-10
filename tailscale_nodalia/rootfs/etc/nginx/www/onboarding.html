@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tailscale Onboarding</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #10213a;
+      --muted: #5a6a80;
+      --accent: #0b63ce;
+      --accent-2: #084a9b;
+      --ok: #157347;
+      --warn: #9a3412;
+      --border: #dce5f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Noto Sans", sans-serif;
+      color: var(--text);
+      background: radial-gradient(circle at top right, #d8e9ff, var(--bg) 45%);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+    .card {
+      width: min(760px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(16, 33, 58, 0.08);
+    }
+    h1 { margin: 0 0 10px; font-size: 1.4rem; }
+    p { margin: 0 0 14px; color: var(--muted); }
+    .state { font-weight: 700; margin-bottom: 12px; }
+    .state.running { color: var(--ok); }
+    .state.login { color: var(--warn); }
+    .url-wrap {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button, a.btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover, a.btn:hover { background: var(--accent-2); }
+    .ghost {
+      background: #e9eff7;
+      color: #123;
+    }
+    .small { font-size: 0.86rem; color: var(--muted); margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Asistente de inicio de sesion</h1>
+    <p>Completa el login inicial sin revisar los logs de la aplicacion.</p>
+    <div id="state" class="state">Cargando estado...</div>
+    <div id="login-box" hidden>
+      <div class="url-wrap">
+        <input id="login-url" type="text" readonly value="">
+        <div class="actions">
+          <button id="copy-btn" type="button">Copiar URL</button>
+          <a id="open-btn" class="btn" href="#" target="_blank" rel="noopener noreferrer">Abrir URL</a>
+          <button id="refresh-btn" type="button" class="ghost">Actualizar estado</button>
+        </div>
+      </div>
+    </div>
+    <div id="ok-box" hidden>
+      <div class="actions">
+        <button id="refresh-ok-btn" type="button" class="ghost">Actualizar estado</button>
+      </div>
+    </div>
+    <p class="small">Nota: esta pagina lee <code>/onboarding.json</code> generado por la aplicacion.</p>
+  </main>
+  <script>
+    const stateEl = document.getElementById("state");
+    const loginBox = document.getElementById("login-box");
+    const okBox = document.getElementById("ok-box");
+    const loginUrlInput = document.getElementById("login-url");
+    const copyBtn = document.getElementById("copy-btn");
+    const openBtn = document.getElementById("open-btn");
+    const refreshBtn = document.getElementById("refresh-btn");
+    const refreshOkBtn = document.getElementById("refresh-ok-btn");
+
+    async function loadState() {
+      stateEl.className = "state";
+      stateEl.textContent = "Cargando estado...";
+      loginBox.hidden = true;
+      okBox.hidden = true;
+      try {
+        const response = await fetch("/onboarding.json?_ts=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("onboarding state not available");
+        }
+        const data = await response.json();
+        const backendState = String(data.backend_state || "Unknown");
+        const needsLogin = Boolean(data.needs_login);
+        const authUrl = String(data.auth_url || "");
+
+        if (needsLogin) {
+          stateEl.classList.add("login");
+          stateEl.textContent = "Estado: login requerido (" + backendState + ")";
+          if (authUrl) {
+            loginUrlInput.value = authUrl;
+            openBtn.href = authUrl;
+            loginBox.hidden = false;
+          } else {
+            okBox.hidden = false;
+          }
+          return;
+        }
+
+        stateEl.classList.add("running");
+        stateEl.textContent = "Estado: conectado (" + backendState + ")";
+        okBox.hidden = false;
+      } catch (error) {
+        stateEl.classList.add("login");
+        stateEl.textContent = "Estado no disponible. La aplicacion puede seguir arrancando.";
+        okBox.hidden = false;
+      }
+    }
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(loginUrlInput.value);
+        copyBtn.textContent = "Copiado";
+        setTimeout(() => { copyBtn.textContent = "Copiar URL"; }, 1200);
+      } catch (error) {
+        loginUrlInput.select();
+        document.execCommand("copy");
+      }
+    });
+
+    refreshBtn.addEventListener("click", loadState);
+    refreshOkBtn.addEventListener("click", loadState);
+    loadState();
+  </script>
+</body>
+</html>

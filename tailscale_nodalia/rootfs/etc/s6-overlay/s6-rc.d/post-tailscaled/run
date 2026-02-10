@@ -25,9 +25,65 @@ declare stateful_filtering_enabled
 declare snat_subnet_routes_enabled
 declare userspace_networking_enabled
 declare advertise_routes_count
+declare status_json
+declare auth_url
+declare notification_payload
+declare onboarding_payload
 
 readonly WAIT_DELAY=2
 readonly WAIT_RUNNING_COUNT=150  # 150*2s = 300s = 5m
+readonly LOGIN_NOTIFICATION_ID="tailscale_nodalia_login_required"
+readonly ONBOARDING_STATE_FILE="/data/tailscale-onboarding.json"
+
+write_onboarding_state() {
+  local state needs_login url now
+  state="${1:-Unknown}"
+  needs_login="${2:-false}"
+  url="${3:-}"
+  now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+  onboarding_payload=$(jq -nc \
+    --arg backend_state "${state}" \
+    --arg auth_url "${url}" \
+    --arg updated_at "${now}" \
+    --argjson needs_login "${needs_login}" \
+    '{backend_state:$backend_state, needs_login:$needs_login, auth_url:$auth_url, updated_at:$updated_at}')
+
+  printf '%s\n' "${onboarding_payload}" > "${ONBOARDING_STATE_FILE}"
+}
+
+notify_login_required() {
+  local url message
+  url="${1:-}"
+  message="Tailscale necesita inicio de sesion en esta aplicacion.\n\nAbre la pagina de onboarding en la Web UI: /onboarding"
+  if bashio::var.has_value "${url}"; then
+    message="${message}\n\nURL directa de login:\n${url}"
+  fi
+
+  notification_payload=$(jq -nc \
+    --arg title "Tailscale (Nodalia): login requerido" \
+    --arg message "${message}" \
+    --arg notification_id "${LOGIN_NOTIFICATION_ID}" \
+    '{title:$title, message:$message, notification_id:$notification_id}')
+
+  if ! bashio::api.supervisor POST "/core/api/services/persistent_notification/create" "${notification_payload}" \
+    > /dev/null 2>&1
+  then
+    bashio::log.warning "Unable to create Home Assistant persistent notification for login onboarding"
+  fi
+}
+
+dismiss_login_notification() {
+  notification_payload=$(jq -nc \
+    --arg notification_id "${LOGIN_NOTIFICATION_ID}" \
+    '{notification_id:$notification_id}')
+
+  if ! bashio::api.supervisor POST "/core/api/services/persistent_notification/dismiss" "${notification_payload}" \
+    > /dev/null 2>&1
+  then
+    bashio::log.debug "Persistent login notification not dismissed (it may not exist yet)"
+  fi
+}
 
 # Default options
 options+=(--hostname "$(bashio::info.hostname)")
@@ -195,7 +251,7 @@ unset IFS
 # Wait for the network to be available and logged in
 while ! bashio::fs.socket_exists "/var/run/tailscale/tailscaled.sock" || \
   ! /opt/tailscale status --json --peers=false --self=false \
-    | jq --exit-status '.BackendState == "Running" or .BackendState == "NeedsLogin" or .BackendState == "Stopped"' > /dev/null;
+    | jq --exit-status '.BackendState == "Running" or .BackendState == "NeedsLogin" or .BackendState == "NeedsMachineAuth" or .BackendState == "Stopped"' > /dev/null;
 do
   sleep 2
 done
@@ -205,21 +261,40 @@ if ! /opt/tailscale up "${options[@]}"; then
   bashio::exit.nok "Unable to start up Tailscale"
 fi
 
-# Wait for the network to be available and logged in
-while ! /opt/tailscale status --json --peers=false --self=false \
-  | jq --exit-status '.BackendState == "Running"' > /dev/null
+# Wait for the network to become operational (Running) or explicitly require login.
+while true
 do
+  status_json=$(/opt/tailscale status --json --peers=false --self=false 2>/dev/null || true)
+  backend_state=$(jq -r '.BackendState // "Unknown"' <<< "${status_json}" 2>/dev/null || echo "Unknown")
+
+  if bashio::var.equals "${backend_state}" "Running"; then
+    auth_url=""
+    write_onboarding_state "${backend_state}" false "${auth_url}"
+    dismiss_login_notification
+    bashio::log.info "Tailscale is running"
+    break
+  fi
+
+  if bashio::var.equals "${backend_state}" "NeedsLogin" || \
+    bashio::var.equals "${backend_state}" "NeedsMachineAuth";
+  then
+    auth_url=$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/dev/null || true)
+    write_onboarding_state "${backend_state}" true "${auth_url}"
+    notify_login_required "${auth_url}"
+    bashio::log.notice \
+      "Tailscale requires interactive login (${backend_state})." \
+      "Open the app Web UI onboarding page at /onboarding to copy the login URL."
+    break
+  fi
+
   if (( wait_counter++ == WAIT_RUNNING_COUNT )); then
-    backend_state=$(/opt/tailscale status --json --peers=false --self=false \
-      | jq -r '.BackendState // "Unknown"' 2>/dev/null || echo "Unknown")
+    write_onboarding_state "${backend_state}" false ""
     bashio::exit.nok \
-      "Timed out waiting for Tailscale to enter Running state (last state: ${backend_state})." \
-      "Check whether this node requires login or machine authorization."
+      "Timed out waiting for Tailscale to become ready (last state: ${backend_state})." \
+      "Open the app Web UI and check /onboarding, or review Supervisor logs."
   fi
   sleep ${WAIT_DELAY}
 done
-
-bashio::log.info "Tailscale is running"
 
 # Emit an operational summary for troubleshooting.
 if bashio::var.true "${userspace_networking_enabled}"; then
@@ -238,59 +313,65 @@ bashio::log.info \
   "share_homeassistant=$(bashio::config "share_homeassistant" "disabled")," \
   "addresses=${self_addresses}"
 
-# Linux optimizations for subnet routers and exit nodes
-# Based on: https://tailscale.com/kb/1320/performance-best-practices#linux-optimizations-for-subnet-routers-and-exit-nodes
-# Note: Changes made via ethtool are not persistent and will be lost after the machine shuts down
-if interface=$( \
-  curl -sf --unix-socket /var/run/tailscale/tailscaled.sock http://local-tailscaled.sock/localapi/v0/check-udp-gro-forwarding \
-  | jq -rc '.Warning' \
-  | sed -nr 's/^UDP GRO forwarding is suboptimally configured on (\S+),.*$/\1/p') \
-  && bashio::var.has_value "${interface}";
-then
-  bashio::log.info "Enabling UDP GRO for forwarding on ${interface}"
-  if ! ethtool -K "${interface}" rx-udp-gro-forwarding on rx-gro-list off; then
-    bashio::log.warning "Enabling UDP GRO failed"
+if bashio::var.equals "${backend_state}" "Running"; then
+  # Linux optimizations for subnet routers and exit nodes
+  # Based on: https://tailscale.com/kb/1320/performance-best-practices#linux-optimizations-for-subnet-routers-and-exit-nodes
+  # Note: Changes made via ethtool are not persistent and will be lost after the machine shuts down
+  if interface=$( \
+    curl -sf --unix-socket /var/run/tailscale/tailscaled.sock http://local-tailscaled.sock/localapi/v0/check-udp-gro-forwarding \
+    | jq -rc '.Warning' \
+    | sed -nr 's/^UDP GRO forwarding is suboptimally configured on (\S+),.*$/\1/p') \
+    && bashio::var.has_value "${interface}";
+  then
+    bashio::log.info "Enabling UDP GRO for forwarding on ${interface}"
+    if ! ethtool -K "${interface}" rx-udp-gro-forwarding on rx-gro-list off; then
+      bashio::log.warning "Enabling UDP GRO failed"
+    fi
   fi
-fi
 
-# Delete previously created persistent tailscale serve configuration ONCE
-# After the add-on's share-homeassistant (serve and funnel) service is a longrun service, we do not modify the serve state permanently
-# This step can be removed in a later version with the file in the data folder also
-if ! bashio::fs.file_exists "/data/final_serve_reset_is_done"; then
-  if ! /opt/tailscale serve reset; then
-    bashio::exit.nok "Unable to remove previous Tailscale Serve and Funnel settings"
+  # Delete previously created persistent tailscale serve configuration ONCE
+  # After the add-on's share-homeassistant (serve and funnel) service is a longrun service, we do not modify the serve state permanently
+  # This step can be removed in a later version with the file in the data folder also
+  if ! bashio::fs.file_exists "/data/final_serve_reset_is_done"; then
+    if ! /opt/tailscale serve reset; then
+      bashio::exit.nok "Unable to remove previous Tailscale Serve and Funnel settings"
+    fi
+    touch "/data/final_serve_reset_is_done"
   fi
-  touch "/data/final_serve_reset_is_done"
-fi
 
-# Warn about key expiration
-if keyexpiry=$(/opt/tailscale status --self=true --peers=false --json | jq -rce '.Self.KeyExpiry'); then
-  bashio::log.warning "The connection's key will expire on: ${keyexpiry}"
-  bashio::log.warning "Consider disabling key expiry to avoid losing connection to your Home Assistant device."
-  bashio::log.warning "Please check your configuration based on the add-on's documentation under \"Configuration\""
-fi
-
-# Warn about colliding subnet routes if non-userspace networking and accepting routes are enabled
-if bashio::var.false "${userspace_networking_enabled}" && \
-  bashio::var.true "${accept_routes_enabled}";
-then
-  readarray -t colliding_routes < <( \
-    comm -1 -2 \
-      <(subnet-routes local) \
-      <(/opt/tailscale status --json --peers=true --self=false \
-        | jq -rc '.Peer[] | select(has("PrimaryRoutes")) | .PrimaryRoutes[]' \
-        | sort -u))
-  if (( 0 < ${#colliding_routes[@]} )); then
-    bashio::log.warning \
-      "Currently the following subnets are both present as local subnets" \
-      "and are also routed within your tailnet to other nodes!"
-    bashio::log.warning \
-      "Please reconfigure your subnet routing within your tailnet" \
-      "to prevent current or future collisions."
+  # Warn about key expiration
+  if keyexpiry=$(/opt/tailscale status --self=true --peers=false --json | jq -rce '.Self.KeyExpiry'); then
+    bashio::log.warning "The connection's key will expire on: ${keyexpiry}"
+    bashio::log.warning "Consider disabling key expiry to avoid losing connection to your Home Assistant device."
+    bashio::log.warning "Please check your configuration based on the add-on's documentation under \"Configuration\""
   fi
-  for route in "${colliding_routes[@]}"; do
-    bashio::log.warning "  ${route}"
-  done
+
+  # Warn about colliding subnet routes if non-userspace networking and accepting routes are enabled
+  if bashio::var.false "${userspace_networking_enabled}" && \
+    bashio::var.true "${accept_routes_enabled}";
+  then
+    readarray -t colliding_routes < <( \
+      comm -1 -2 \
+        <(subnet-routes local) \
+        <(/opt/tailscale status --json --peers=true --self=false \
+          | jq -rc '.Peer[] | select(has("PrimaryRoutes")) | .PrimaryRoutes[]' \
+          | sort -u))
+    if (( 0 < ${#colliding_routes[@]} )); then
+      bashio::log.warning \
+        "Currently the following subnets are both present as local subnets" \
+        "and are also routed within your tailnet to other nodes!"
+      bashio::log.warning \
+        "Please reconfigure your subnet routing within your tailnet" \
+        "to prevent current or future collisions."
+    fi
+    for route in "${colliding_routes[@]}"; do
+      bashio::log.warning "  ${route}"
+    done
+  fi
+else
+  bashio::log.notice \
+    "Startup completed in onboarding mode (${backend_state})." \
+    "Complete login from /onboarding or from the persistent notification in Home Assistant."
 fi
 
 # Notify about userspace networking
