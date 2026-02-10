@@ -1,0 +1,32 @@
+server {
+    listen {{ .interface }}:{{ .port }} default_server;
+
+    include /etc/nginx/includes/server_params.conf;
+    include /etc/nginx/includes/proxy_params.conf;
+
+    location = /onboarding {
+        root /etc/nginx/www;
+        add_header Cache-Control "no-store";
+        try_files /onboarding.html =404;
+    }
+
+    location = /onboarding.json {
+        alias /data/tailscale-onboarding.json;
+        default_type application/json;
+        add_header Cache-Control "no-store";
+    }
+
+    location / {
+        proxy_connect_timeout 2s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
+        proxy_intercept_errors on;
+        error_page 502 503 504 = /onboarding;
+        proxy_pass http://backend;
+
+        # Tailscale web UI is not designed to run inside HA's iframe.
+        # Replace the internal redirect to break out to the top window.
+        sub_filter_once off;
+        sub_filter 'document.location.href = url' 'window.top.location.href = url';
+    }
+}

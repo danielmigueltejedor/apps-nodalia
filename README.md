@@ -1,4 +1,4 @@
-# Nodalia Addons for Home Assistant
+# Nodalia Apps for Home Assistant
 
 Repositorio general de aplicaciones para Home Assistant mantenidas por Nodalia.
 
@@ -8,16 +8,21 @@ Añade este repositorio en la tienda de Apps de Home Assistant:
 
 `https://github.com/danielmigueltejedor/addons-nodalia`
 
-## Apps incluidas
+## Apps incluidas (estable)
 
 - `tailscale_nodalia`
   App de Tailscale para acceso remoto seguro, onboarding integrado y Web UI.
   Documentación: `tailscale_nodalia/README.md`
+- `matter_hub_nodalia`
+  App de Matter Hub para exponer dispositivos de Home Assistant en ecosistemas Matter.
+  Documentación: `matter_hub_nodalia/README.md`
 
-## Apps en preparación
+## Apps beta
 
-- `nodalia_matter_hub`
-  Código base presente en el repositorio. Pendiente de empaquetado final como app/add-on de Home Assistant para que aparezca en la tienda.
+- `tailscale_nodalia_beta`
+  Canal beta de Tailscale (Nodalia) para validar cambios antes de estable.
+- `matter_hub_nodalia_beta`
+  Canal beta de Matter Hub (Nodalia) para validar cambios antes de estable.
 
 ## Soporte
 

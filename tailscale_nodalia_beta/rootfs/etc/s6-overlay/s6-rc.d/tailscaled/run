@@ -1,0 +1,61 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant Community Add-on: Tailscale
+# Runs tailscale
+# ==============================================================================
+declare -a options
+declare udp_port
+declare setup_profile
+declare userspace_networking_enabled
+
+bashio::log.info 'Starting Tailscale...'
+
+options+=(--state=/data/tailscaled.state)
+options+=(--statedir=/data/state)
+
+# Opt out of client log upload to log.tailscale.io
+if ! bashio::debug ; then
+  options+=(--no-logs-no-support)
+fi
+
+# Use configured UDP port
+udp_port=$(bashio::addon.port "41641/udp")
+if bashio::var.has_value "${udp_port}"; then
+  options+=("--port=${udp_port}")
+fi
+
+# Effective userspace mode (aligned with setup_profile behavior)
+setup_profile="$(bashio::config "setup_profile" "custom")"
+userspace_networking_enabled=false
+if ! bashio::config.has_value "userspace_networking" || \
+  bashio::config.true "userspace_networking";
+then
+  userspace_networking_enabled=true
+fi
+
+case "${setup_profile}" in
+  home_access|subnet_router|exit_node)
+    userspace_networking_enabled=false
+    ;;
+  *)
+    ;;
+esac
+
+if bashio::var.true "${userspace_networking_enabled}"; then
+  options+=(--tun=userspace-networking)
+fi
+
+# Run Tailscale
+if bashio::debug ; then
+  exec /opt/tailscaled "${options[@]}"
+else
+  bashio::log.notice \
+    "Tailscale logs will be suppressed after 200 lines, set add-on's" \
+    "configuration option 'log_level' to 'debug' to see further logs"
+
+  /opt/tailscaled "${options[@]}" 2>&1 \
+    | stdbuf -i0 -oL -eL \
+      sed -n -e '1,200p' \
+        -e "201c[further tailscaled logs suppressed, set add-on's configuration option 'log_level' to 'debug' to see further tailscaled logs]"
+fi

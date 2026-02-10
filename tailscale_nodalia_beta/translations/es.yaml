@@ -1,0 +1,122 @@
+---
+configuration:
+  setup_profile:
+    name: Perfil de configuracion
+    description: >-
+      Perfil de alto nivel para simplificar la configuracion.
+      `custom` mantiene control manual (comportamiento actual).
+      `home_access` aplica valores seguros para acceso remoto a Home Assistant.
+      `subnet_router` habilita aceptar rutas y (si advertise_routes esta vacio)
+      anuncia automaticamente subredes locales.
+      `exit_node` habilita anunciar este nodo como exit node.
+  accept_dns:
+    name: Aceptar DNS
+    description: >-
+      Si tienes problemas con MagicDNS en este dispositivo y quieres
+      desactivarlo, puedes hacerlo con esta opcion.
+      Si no se configura, esta opcion esta activada por defecto.
+  accept_routes:
+    name: Aceptar rutas
+    description: >-
+      Esta opcion permite aceptar rutas de subred anunciadas por otros nodos
+      de tu tailnet.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  advertise_exit_node:
+    name: Anunciar como exit node
+    description: >-
+      Esta opcion permite anunciar esta instancia de Tailscale como exit node.
+      Al definir un dispositivo de tu red como exit node, puedes usarlo para
+      enrutar todo tu trafico publico de Internet, como una VPN de consumo.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  advertise_connector:
+    name: Anunciar como app connector
+    description: >-
+      Al usar un app connector, especificas que aplicaciones quieres hacer
+      accesibles desde tu tailnet y los dominios de esas aplicaciones.
+      El trafico de esa aplicacion se fuerza por la tailnet hacia un nodo con
+      app connector antes de salir hacia los dominios de destino.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  advertise_routes:
+    name: Anunciar rutas de subred
+    description: >-
+      Esta opcion permite anunciar rutas hacia subredes (accesibles en la red
+      a la que esta conectado tu dispositivo) al resto de clientes de tu tailnet.
+      Si no se configura, por defecto no se anuncian rutas de subred.
+      Con `setup_profile: subnet_router`, `advertise_routes` vacio habilita
+      auto-deteccion y anuncio de subredes locales.
+  exit_node:
+    name: Usar exit node
+    description: >-
+      Esta opcion permite especificar otra instancia de Tailscale como exit node
+      para este dispositivo.
+      Al definir un dispositivo de tu red como exit node, puedes usarlo para
+      enrutar todo tu trafico publico de Internet, como una VPN de consumo.
+      Esta opcion no se usa por defecto.
+  log_level:
+    name: Nivel de log
+    description: >-
+      Controla el nivel de detalle de los logs que ofrece la aplicacion.
+      Esto solo aplica a la aplicacion, no al cliente Tailscale.
+  login_server:
+    name: Servidor de login
+    description: >-
+      Esta opcion permite especificar un servidor de control personalizado para
+      esta instancia de Tailscale, por ejemplo una instancia propia de Headscale.
+      Por defecto se usa el servidor de control oficial de Tailscale.
+  share_homeassistant:
+    name: Compartir Home Assistant con Serve o Funnel
+    description: >-
+      Esta opcion permite habilitar Tailscale Serve o Funnel para presentar tu
+      instancia de Home Assistant con certificado valido en tu tailnet o en Internet.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  share_on_port:
+    name: Compartir en puerto
+    description: >-
+      Esta opcion permite especificar el puerto que usaran Tailscale Serve y
+      Funnel para publicar tu instancia de Home Assistant en la tailnet o Internet.
+      Tailscale solo permite los puertos 443, 8443 y 10000.
+      Si no se configura, se usa el puerto 443 por defecto.
+  snat_subnet_routes:
+    name: NAT de origen para rutas de subred
+    description: >-
+      Esta opcion permite que los dispositivos de la subred vean el trafico como
+      originado en el subnet router, simplificando la configuracion de routing.
+      Para escenarios avanzados site-to-site (por ejemplo, cruzar varias redes),
+      puedes desactivar esta funcionalidad.
+      Si no se configura, esta opcion esta activada por defecto.
+  stateful_filtering:
+    name: Filtrado stateful de paquetes
+    description: >-
+      Esta opcion habilita filtrado stateful en nodos que reenvian paquetes
+      (exit nodes, subnet routers y app connectors), permitiendo solo paquetes
+      de retorno para conexiones salientes existentes.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  tags:
+    name: Tags
+    description: >-
+      Esta opcion permite especificar tags ACL para esta instancia de Tailscale.
+      Deben empezar por `tag:`.
+  taildrop:
+    name: Taildrop
+    description: >-
+      Esta opcion permite habilitar Taildrop, el servicio de intercambio de
+      archivos entre nodos Tailscale.
+      Si no se configura, esta opcion esta activada por defecto.
+  userspace_networking:
+    name: Modo de red en userspace
+    description: >-
+      Esta opcion permite habilitar el modo de red en userspace.
+      Si necesitas acceder desde Home Assistant a otros clientes de tu tailnet,
+      desactiva este modo para crear la interfaz `tailscale0` en el host.
+      Si no se configura, esta opcion esta desactivada por defecto.
+  webui_readonly:
+    name: Web UI en modo solo lectura
+    description: >-
+      Activa el modo solo lectura para la Web UI embebida de Tailscale.
+      Mantenlo activado para un uso mas seguro.
+      Desactivalo solo si necesitas acciones completas en la UI, como cerrar sesion.
+      Si no se configura, esta opcion esta activada por defecto.
+network:
+  41641/udp: >-
+    Puerto UDP para WireGuard y trafico peer-to-peer.
+    Si no se configura, se usa un puerto seleccionado automaticamente.

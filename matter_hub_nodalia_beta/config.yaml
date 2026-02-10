@@ -1,0 +1,33 @@
+name: Matter Hub (Nodalia Beta)
+version: 0.1.0-beta.1
+slug: matter_hub_nodalia_beta
+description: Bridge Home Assistant devices to Matter ecosystems (Nodalia beta build)
+url: https://github.com/danielmigueltejedor/addons-nodalia
+
+ingress: true
+ingress_port: 0
+ingress_stream: true
+
+startup: services
+panel_icon: mdi:hubspot
+
+arch:
+  - aarch64
+  - amd64
+
+init: false
+hassio_api: true
+homeassistant_api: true
+
+map:
+  - config:rw
+
+options:
+  app_log_level: info
+  disable_log_colors: false
+  mdns_network_interface: ""
+
+schema:
+  app_log_level: list(trace|debug|info|warn|error)?
+  disable_log_colors: bool?
+  mdns_network_interface: str?
