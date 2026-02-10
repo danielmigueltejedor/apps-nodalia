@@ -17,6 +17,9 @@ server {
     }
 
     location / {
+        proxy_connect_timeout 2s;
+        proxy_send_timeout 10s;
+        proxy_read_timeout 10s;
         proxy_intercept_errors on;
         error_page 502 503 504 = /onboarding;
         proxy_pass http://backend;

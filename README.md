@@ -9,9 +9,10 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.4`
+`2.1.5`
 
 Cambios destacados:
+- Web UI más reactiva en primer acceso: timeout corto de proxy y fallback rápido a `/onboarding` si el backend web tarda en responder.
 - Arranque inicial más rápido en instalaciones/actualizaciones nuevas:
   - menor espera de `local-network` en startup.
   - timeout de espera de `post-tailscaled` reducido y paso a modo degradado (sin bloquear la Web UI).
