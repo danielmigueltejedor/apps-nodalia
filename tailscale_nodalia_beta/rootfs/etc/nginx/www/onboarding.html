@@ -73,6 +73,32 @@
       color: #123;
     }
     .small { font-size: 0.86rem; color: var(--muted); margin-top: 12px; }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-top: 14px;
+      background: #f8fbff;
+    }
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .kv {
+      display: grid;
+      grid-template-columns: 180px 1fr;
+      gap: 6px 10px;
+      font-size: 0.9rem;
+    }
+    .kv code { word-break: break-all; }
+    .diag-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .diag-ok { color: var(--ok); }
+    .diag-ko { color: var(--warn); }
   </style>
 </head>
 <body>
@@ -96,6 +122,24 @@
         <button id="refresh-ok-btn" type="button" class="ghost">Actualizar estado</button>
       </div>
     </div>
+    <section class="panel">
+      <h2>Estado en vivo</h2>
+      <div class="kv">
+        <div>Backend:</div><div><code id="rt-backend">-</code></div>
+        <div>Web UI lista:</div><div><code id="rt-webui">-</code></div>
+        <div>Self online:</div><div><code id="rt-online">-</code></div>
+        <div>DNSName:</div><div><code id="rt-dnsname">-</code></div>
+        <div>HostName:</div><div><code id="rt-hostname">-</code></div>
+        <div>IPv4:</div><div><code id="rt-ipv4">-</code></div>
+        <div>IPv6:</div><div><code id="rt-ipv6">-</code></div>
+        <div>Actualizado:</div><div><code id="rt-updated">-</code></div>
+      </div>
+      <div class="actions" style="margin-top:10px;">
+        <button id="diag-btn" type="button" class="ghost">Ejecutar diagnóstico</button>
+        <button id="copy-report-btn" type="button" class="ghost">Copiar reporte</button>
+      </div>
+      <ul id="diag-list" class="diag-list"></ul>
+    </section>
     <p class="small">Nota: esta pagina lee <code>onboarding.json</code> generado por la aplicacion.</p>
   </main>
   <script>
@@ -108,7 +152,20 @@
     const openWebuiBtn = document.getElementById("open-webui-btn");
     const refreshBtn = document.getElementById("refresh-btn");
     const refreshOkBtn = document.getElementById("refresh-ok-btn");
+    const diagBtn = document.getElementById("diag-btn");
+    const copyReportBtn = document.getElementById("copy-report-btn");
+    const diagList = document.getElementById("diag-list");
+    const rtBackend = document.getElementById("rt-backend");
+    const rtWebUi = document.getElementById("rt-webui");
+    const rtOnline = document.getElementById("rt-online");
+    const rtDnsName = document.getElementById("rt-dnsname");
+    const rtHostName = document.getElementById("rt-hostname");
+    const rtIpv4 = document.getElementById("rt-ipv4");
+    const rtIpv6 = document.getElementById("rt-ipv6");
+    const rtUpdated = document.getElementById("rt-updated");
     let pollHandle = null;
+    let lastOnboarding = null;
+    let lastRuntime = null;
 
     function schedulePoll() {
       if (pollHandle) {
@@ -128,9 +185,11 @@
           throw new Error("onboarding state not available");
         }
         const data = await response.json();
+        lastOnboarding = data;
         const backendState = String(data.backend_state || "Unknown");
         const needsLogin = Boolean(data.needs_login);
         const authUrl = String(data.auth_url || "");
+        await refreshRuntime();
 
         if (needsLogin) {
           stateEl.classList.add("login");
@@ -176,6 +235,30 @@
       }
     }
 
+    async function refreshRuntime() {
+      try {
+        const response = await fetch("runtime.json?_ts=" + Date.now(), { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("runtime state not available");
+        }
+        const data = await response.json();
+        lastRuntime = data;
+        rtBackend.textContent = String(data.backend_state || "-");
+        rtWebUi.textContent = data.webui_ready ? "true" : "false";
+        rtOnline.textContent = data.self_online ? "true" : "false";
+        rtDnsName.textContent = String(data.self_dns_name || "-");
+        rtHostName.textContent = String(data.self_host_name || "-");
+        rtIpv4.textContent = Array.isArray(data.ipv4) && data.ipv4.length ? data.ipv4.join(", ") : "-";
+        rtIpv6.textContent = Array.isArray(data.ipv6) && data.ipv6.length ? data.ipv6.join(", ") : "-";
+        rtUpdated.textContent = String(data.updated_at || "-");
+      } catch (_) {
+        rtBackend.textContent = "n/a";
+        rtWebUi.textContent = "n/a";
+        rtOnline.textContent = "n/a";
+        rtUpdated.textContent = "n/a";
+      }
+    }
+
     async function canReachWebUi() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 1500);
@@ -189,6 +272,36 @@
         return false;
       } finally {
         clearTimeout(timeout);
+      }
+    }
+
+    async function runDiagnostics() {
+      const checks = [];
+      checks.push({ label: "onboarding.json disponible", ok: !!lastOnboarding });
+      checks.push({ label: "runtime.json disponible", ok: !!lastRuntime });
+      checks.push({ label: "backend Running", ok: (lastRuntime?.backend_state || lastOnboarding?.backend_state) === "Running" });
+      checks.push({ label: "webui_ready=true", ok: !!lastRuntime?.webui_ready });
+      checks.push({ label: "self_online=true", ok: !!lastRuntime?.self_online });
+
+      diagList.innerHTML = checks.map((c) =>
+        `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+      ).join("");
+    }
+
+    async function copyReport() {
+      const report = {
+        generated_at: new Date().toISOString(),
+        onboarding: lastOnboarding,
+        runtime: lastRuntime,
+      };
+      const text = JSON.stringify(report, null, 2);
+      try {
+        await navigator.clipboard.writeText(text);
+        copyReportBtn.textContent = "Reporte copiado";
+        setTimeout(() => { copyReportBtn.textContent = "Copiar reporte"; }, 1200);
+      } catch (_) {
+        alert("No se pudo copiar automáticamente. Abre la consola para copiar el reporte.");
+        console.log("Tailscale onboarding report:", text);
       }
     }
 
@@ -219,6 +332,8 @@
       event.preventDefault();
       window.location.replace("webui");
     });
+    diagBtn.addEventListener("click", runDiagnostics);
+    copyReportBtn.addEventListener("click", copyReport);
     loadState();
   </script>
 </body>

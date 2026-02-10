@@ -9,9 +9,13 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.6-beta7`
+`2.2.0-beta1`
 
 Cambios destacados:
+- Nueva base "major" para el canal beta:
+  - panel de estado en vivo en onboarding (backend, webui_ready, online, DNS/host, IPs, timestamp).
+  - endpoint interno `/runtime.json` para telemetría runtime sin revisar logs.
+  - botón de diagnóstico rápido y copia de reporte técnico en JSON.
 - Fix crítico de arranque de Web UI:
   - se asegura el arranque del servicio `web` en el bundle `user` de s6.
   - evita bucles de `connection refused` a `127.0.0.1:25899` en ingress.

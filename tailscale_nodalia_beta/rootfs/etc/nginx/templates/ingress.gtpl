@@ -16,6 +16,12 @@ server {
         add_header Cache-Control "no-store";
     }
 
+    location = /runtime.json {
+        alias /data/tailscale-runtime.json;
+        default_type application/json;
+        add_header Cache-Control "no-store";
+    }
+
     location = /webui {
         proxy_connect_timeout 2s;
         proxy_send_timeout 8s;

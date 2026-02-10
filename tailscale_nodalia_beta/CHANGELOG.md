@@ -4,6 +4,25 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.2.0-beta1 - 2026-02-10
+### Added
+- New runtime status service (`runtime-status`) that continuously writes `/data/tailscale-runtime.json` with:
+  - backend state,
+  - web UI readiness,
+  - self online state,
+  - DNS/host names,
+  - IPv4/IPv6 addresses,
+  - auth URL and update timestamp.
+- New ingress endpoint `/runtime.json` for live diagnostics data in the onboarding UI.
+- Expanded onboarding UI with a live technical panel:
+  - runtime fields shown in real time,
+  - quick diagnostics button,
+  - "copy report" action with structured JSON diagnostics payload.
+- Updated beta app branding assets (`icon.png` and `logo.png`) with the new Nodalia visual style.
+
+### Changed
+- Onboarding UX now combines startup guidance with operational telemetry, reducing dependence on logs for troubleshooting.
+
 ## 2.1.6-beta7 - 2026-02-10
 ### Fixed
 - Fix critical Web UI startup regression:
