@@ -17,6 +17,7 @@ arch:
 
 init: false
 hassio_api: true
+homeassistant_api: true
 host_network: true
 
 # host_dbus no es necesario para Tailscale -> mejor fuera

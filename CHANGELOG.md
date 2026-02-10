@@ -20,6 +20,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - Writes onboarding state to `/data/tailscale-onboarding.json`.
   - Dismisses login notification automatically when backend returns to `Running`.
 - Healthcheck treats login-required states as healthy to avoid restart loops during first-time login.
+- Enable `homeassistant_api` permission for this app so onboarding can create/dismiss persistent notifications without API permission errors.
 
 ## 2.0.2 - 2026-02-09
 ### Changed
