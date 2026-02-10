@@ -9,9 +9,12 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.6-beta2`
+`2.1.6-beta3`
 
 Cambios destacados:
+- Fix de redirección final a Web UI:
+  - nuevo endpoint `/webui` para proxy directo al backend Tailscale.
+  - onboarding redirige a `/webui` al detectar `Running`.
 - Fix para Home Assistant Ingress:
   - onboarding usa rutas relativas para evitar errores de carga en iframe (`Estado no disponible`).
 - Arranque de Web UI más rápido en Home Assistant:

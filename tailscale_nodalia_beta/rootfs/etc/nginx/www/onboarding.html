@@ -153,7 +153,7 @@
         stateEl.classList.add("running");
         stateEl.textContent = "Estado: conectado (" + backendState + "). Redirigiendo a la Web UI...";
         okBox.hidden = false;
-        setTimeout(() => window.location.replace("./"), 600);
+        setTimeout(() => window.location.replace("webui"), 600);
         return;
       } catch (error) {
         stateEl.classList.add("login");

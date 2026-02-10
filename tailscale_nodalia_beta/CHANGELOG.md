@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.1.6-beta3 - 2026-02-10
+### Fixed
+- Fix onboarding redirect when backend is `Running`:
+  - add dedicated ingress route `/webui` that proxies directly to Tailscale web backend.
+  - redirect onboarding success flow to `/webui` instead of `/`.
+  - avoids fallback loop where root ingress could keep returning onboarding page.
+
 ## 2.1.6-beta2 - 2026-02-10
 ### Fixed
 - Fix onboarding inside Home Assistant ingress iframe:
