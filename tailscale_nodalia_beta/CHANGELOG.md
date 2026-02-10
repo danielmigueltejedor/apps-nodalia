@@ -4,6 +4,22 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.1.6-beta1 - 2026-02-10
+### Changed
+- Reduce Web UI startup latency in Home Assistant ingress:
+  - start `nginx` without waiting for `web` dependency, so `/onboarding` is available immediately.
+  - tighten ingress upstream timeouts to fail fast and show onboarding quicker when backend web is not ready.
+- Improve onboarding UX:
+  - auto-refresh onboarding status every 3s.
+  - auto-redirect to `/` when backend state becomes `Running`.
+- Add startup timing telemetry in logs:
+  - `timings_sec={tailscale_up,ready_wait,total}` in startup summary.
+- Improve onboarding availability:
+  - initialize `/data/tailscale-onboarding.json` early with `Starting` state.
+- Reduce noisy Taildrop logs when storage is not ready:
+  - poll only while backend is `Running`.
+  - backoff retries on `Taildrop disabled; no storage directory`.
+
 ## 2.1.5-beta.1 - 2026-02-10
 ### Changed
 - Beta channel release that tracks stable `2.1.5` improvements for validation before promotion.

@@ -106,6 +106,14 @@
     const openBtn = document.getElementById("open-btn");
     const refreshBtn = document.getElementById("refresh-btn");
     const refreshOkBtn = document.getElementById("refresh-ok-btn");
+    let pollHandle = null;
+
+    function schedulePoll() {
+      if (pollHandle) {
+        clearTimeout(pollHandle);
+      }
+      pollHandle = setTimeout(loadState, 3000);
+    }
 
     async function loadState() {
       stateEl.className = "state";
@@ -143,12 +151,16 @@
         }
 
         stateEl.classList.add("running");
-        stateEl.textContent = "Estado: conectado (" + backendState + ")";
+        stateEl.textContent = "Estado: conectado (" + backendState + "). Redirigiendo a la Web UI...";
         okBox.hidden = false;
+        setTimeout(() => window.location.replace("/"), 600);
+        return;
       } catch (error) {
         stateEl.classList.add("login");
         stateEl.textContent = "Estado no disponible. La aplicacion puede seguir arrancando.";
         okBox.hidden = false;
+      } finally {
+        schedulePoll();
       }
     }
 
@@ -163,8 +175,18 @@
       }
     });
 
-    refreshBtn.addEventListener("click", loadState);
-    refreshOkBtn.addEventListener("click", loadState);
+    refreshBtn.addEventListener("click", () => {
+      if (pollHandle) {
+        clearTimeout(pollHandle);
+      }
+      loadState();
+    });
+    refreshOkBtn.addEventListener("click", () => {
+      if (pollHandle) {
+        clearTimeout(pollHandle);
+      }
+      loadState();
+    });
     loadState();
   </script>
 </body>

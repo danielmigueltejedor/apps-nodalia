@@ -124,6 +124,10 @@ if bashio::config.false 'taildrop'; then
     rm -f /etc/s6-overlay/s6-rc.d/user/contents.d/taildrop
 fi
 
+# Start nginx without waiting for tailscale web process readiness.
+# Ingress can immediately serve /onboarding while backend web is still booting.
+rm -f /etc/s6-overlay/s6-rc.d/nginx/dependencies.d/web
+
 # Disable share-homeassistant service when share_homeassistant has not been explicitly enabled
 if ! bashio::config.has_value 'share_homeassistant' || \
     bashio::config.equals 'share_homeassistant' 'disabled'

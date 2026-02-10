@@ -9,9 +9,17 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.5-beta.1`
+`2.1.6-beta1`
 
 Cambios destacados:
+- Arranque de Web UI más rápido en Home Assistant:
+  - NGINX ya no espera al servicio `web` para iniciar.
+  - fallback más agresivo a `/onboarding` con timeouts de proxy más cortos.
+- Onboarding más fluido:
+  - refresco automático del estado cada 3 segundos.
+  - redirección automática a la Web UI cuando Tailscale pasa a `Running`.
+- Menos ruido en logs de Taildrop cuando aún no hay almacenamiento disponible.
+- Nuevas métricas de tiempo de arranque en logs para diagnóstico fino.
 - Web UI más reactiva en primer acceso: timeout corto de proxy y fallback rápido a `/onboarding` si el backend web tarda en responder.
 - Arranque inicial más rápido en instalaciones/actualizaciones nuevas:
   - menor espera de `local-network` en startup.

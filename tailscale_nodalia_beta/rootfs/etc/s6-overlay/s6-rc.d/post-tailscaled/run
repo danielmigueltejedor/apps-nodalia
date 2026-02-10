@@ -31,6 +31,14 @@ declare notification_payload
 declare onboarding_payload
 declare up_output
 declare up_rc
+declare startup_started_at
+declare tailscale_up_started_at
+declare tailscale_up_finished_at
+declare ready_wait_started_at
+declare ready_wait_finished_at
+declare tailscale_up_seconds
+declare ready_wait_seconds
+declare startup_total_seconds
 
 readonly WAIT_DELAY=2
 readonly WAIT_RUNNING_COUNT=45   # 45*2s = 90s
@@ -88,6 +96,9 @@ dismiss_login_notification() {
     bashio::log.debug "Persistent login notification not dismissed (it may not exist yet)"
   fi
 }
+
+startup_started_at=$(date +%s)
+write_onboarding_state "Starting" false ""
 
 # Default options
 options+=(--hostname "$(bashio::info.hostname)")
@@ -261,10 +272,12 @@ do
 done
 
 # Start Tailscale (bounded timeout to avoid hanging forever when login is required)
+tailscale_up_started_at=$(date +%s)
 set +e
 up_output="$(timeout "${TAILSCALE_UP_TIMEOUT}" /opt/tailscale up "${options[@]}" 2>&1)"
 up_rc=$?
 set -e
+tailscale_up_finished_at=$(date +%s)
 
 if (( up_rc != 0 )); then
   status_json=$(/opt/tailscale status --json --peers=false --self=false 2>/dev/null || true)
@@ -289,6 +302,7 @@ if (( up_rc != 0 )); then
 fi
 
 # Wait for the network to become operational (Running) or explicitly require login.
+ready_wait_started_at=$(date +%s)
 while true
 do
   status_json=$(/opt/tailscale status --json --peers=false --self=false 2>/dev/null || true)
@@ -323,6 +337,10 @@ do
   fi
   sleep ${WAIT_DELAY}
 done
+ready_wait_finished_at=$(date +%s)
+tailscale_up_seconds=$((tailscale_up_finished_at - tailscale_up_started_at))
+ready_wait_seconds=$((ready_wait_finished_at - ready_wait_started_at))
+startup_total_seconds=$((ready_wait_finished_at - startup_started_at))
 
 # Emit an operational summary for troubleshooting.
 if bashio::var.true "${userspace_networking_enabled}"; then
@@ -339,7 +357,8 @@ bashio::log.info \
   "userspace_networking=${userspace_mode}," \
   "accept_routes=${accept_routes_enabled}," \
   "share_homeassistant=$(bashio::config "share_homeassistant" "disabled")," \
-  "addresses=${self_addresses}"
+  "addresses=${self_addresses}," \
+  "timings_sec={tailscale_up:${tailscale_up_seconds},ready_wait:${ready_wait_seconds},total:${startup_total_seconds}}"
 
 if bashio::var.equals "${backend_state}" "Running"; then
   # Linux optimizations for subnet routers and exit nodes
