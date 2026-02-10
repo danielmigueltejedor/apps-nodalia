@@ -112,6 +112,13 @@ configuration:
       Assistant instance, disable userspace networking mode, which will create a
       `tailscale0` network interface on your host.
       When not set, this option is disabled by default.
+  webui_readonly:
+    name: Web UI readonly mode
+    description: >-
+      Enables readonly mode for the embedded Tailscale Web UI.
+      Keep this enabled for safer operation.
+      Disable it only if you need full UI actions such as logout.
+      When not set, this option is enabled by default.
 network:
   41641/udp: >-
     UDP port to listen on for WireGuard and peer-to-peer traffic.

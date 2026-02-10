@@ -269,6 +269,17 @@ Más info: https://tailscale.com/kb/1112/userspace-networking
 
 ---
 
+### `webui_readonly`
+
+Controla si la Web UI embebida se ejecuta en modo solo lectura.
+
+- `true` (por defecto): modo seguro, sin acciones destructivas.
+- `false`: habilita control completo en la Web UI (por ejemplo, `logout`).
+
+Recomendación: mantener `true` salvo que necesites gestionar sesión directamente desde la Web UI.
+
+---
+
 ## Network
 
 ### Puerto: `41641/udp`

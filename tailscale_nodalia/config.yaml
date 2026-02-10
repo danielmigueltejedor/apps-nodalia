@@ -1,5 +1,5 @@
 name: Tailscale (Nodalia)
-version: 2.1.1
+version: 2.1.2
 slug: tailscale_nodalia
 description: Zero config VPN for building secure networks (Nodalia build)
 url: https://github.com/danielmigueltejedor/addon-tailscale-nodalia
@@ -52,6 +52,7 @@ options:
   tags: []
   taildrop: true
   userspace_networking: false
+  webui_readonly: true
   exit_node: ""
   login_server: "https://controlplane.tailscale.com"
 
@@ -74,3 +75,4 @@ schema:
     - "match(^tag:[a-zA-Z][a-zA-Z0-9-]*$)?"
   taildrop: bool?
   userspace_networking: bool?
+  webui_readonly: bool?

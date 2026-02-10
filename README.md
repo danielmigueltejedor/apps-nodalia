@@ -9,9 +9,10 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.1`
+`2.1.2`
 
 Cambios destacados:
+- Nueva opción `webui_readonly` para elegir entre Web UI en solo lectura (seguro) o modo con control completo (incluye logout).
 - Nuevo onboarding sin logs: página `/onboarding` con URL de login, botón copiar y abrir enlace.
 - Notificación persistente en Home Assistant cuando el estado es `NeedsLogin`/`NeedsMachineAuth`.
 - Ajuste del proxy de Ingress para la Web UI con redirección segura fuera del iframe de Home Assistant.
@@ -296,6 +297,17 @@ Si necesitas acceder desde Home Assistant a otros clientes de tu tailnet (y reso
 puede interesarte desactivar este modo para crear interfaz `tailscale0` en el host y ajustar DNS.
 
 Más info: https://tailscale.com/kb/1112/userspace-networking
+
+---
+
+### `webui_readonly`
+
+Controla si la Web UI embebida se ejecuta en modo solo lectura.
+
+- `true` (por defecto): modo seguro, sin acciones destructivas.
+- `false`: habilita control completo en la Web UI (por ejemplo, `logout`).
+
+Recomendación: mantener `true` salvo que necesites gestionar sesión directamente desde la Web UI.
 
 ---
 

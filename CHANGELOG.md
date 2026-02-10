@@ -4,6 +4,16 @@ All notable changes to this add-on will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.1.2 - 2026-02-10
+### Added
+- Add `webui_readonly` option (default `true`) to choose Web UI mode:
+  - readonly mode (safer default),
+  - full-control mode for actions like logout.
+
+### Changed
+- `web/run` now applies `--readonly` only when `webui_readonly` is enabled.
+- Add logs indicating whether Web UI starts in readonly or full-control mode.
+
 ## 2.1.1 - 2026-02-10
 ### Fixed
 - Fix onboarding access when Tailscale needs interactive login:

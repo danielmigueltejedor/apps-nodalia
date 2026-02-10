@@ -11,9 +11,13 @@ bashio::log.info 'Starting Tailscale web...'
 # Get random port
 options+=(--listen 127.0.0.1:25899)
 
-# Use readonly webui mode
-# Note: can be removed later, after most of the add-on config options are available through the webui
-options+=(--readonly)
+# Use readonly webui mode by default; allow opting out for full control (e.g. logout)
+if ! bashio::config.has_value "webui_readonly" || bashio::config.true "webui_readonly"; then
+  options+=(--readonly)
+  bashio::log.info 'Tailscale web UI started in readonly mode'
+else
+  bashio::log.warning 'Tailscale web UI started in full-control mode (readonly disabled)'
+fi
 
 # Run Tailscale
 exec /opt/tailscale web "${options[@]}"

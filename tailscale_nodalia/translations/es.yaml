@@ -109,6 +109,13 @@ configuration:
       Si necesitas acceder desde Home Assistant a otros clientes de tu tailnet,
       desactiva este modo para crear la interfaz `tailscale0` en el host.
       Si no se configura, esta opcion esta desactivada por defecto.
+  webui_readonly:
+    name: Web UI en modo solo lectura
+    description: >-
+      Activa el modo solo lectura para la Web UI embebida de Tailscale.
+      Mantenlo activado para un uso mas seguro.
+      Desactivalo solo si necesitas acciones completas en la UI, como cerrar sesion.
+      Si no se configura, esta opcion esta activada por defecto.
 network:
   41641/udp: >-
     Puerto UDP para WireGuard y trafico peer-to-peer.
