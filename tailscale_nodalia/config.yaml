@@ -1,5 +1,5 @@
 name: Tailscale (Nodalia)
-version: 2.1.3
+version: 2.1.4
 slug: tailscale_nodalia
 description: Zero config VPN for building secure networks (Nodalia build)
 url: https://github.com/danielmigueltejedor/addon-tailscale-nodalia

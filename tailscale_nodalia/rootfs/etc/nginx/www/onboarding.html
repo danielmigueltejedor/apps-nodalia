@@ -135,6 +135,13 @@
           return;
         }
 
+        if (backendState !== "Running") {
+          stateEl.classList.add("login");
+          stateEl.textContent = "Estado: iniciando (" + backendState + ")";
+          okBox.hidden = false;
+          return;
+        }
+
         stateEl.classList.add("running");
         stateEl.textContent = "Estado: conectado (" + backendState + ")";
         okBox.hidden = false;

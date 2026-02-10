@@ -4,8 +4,8 @@
 # Wait for the local network (default HA interface) to be ready
 # ==============================================================================
 
-readonly WAIT_DELAY=5   # 5s
-readonly WAIT_COUNT=60  # 60*5s = 300s = 5m
+readonly WAIT_DELAY=3   # 3s
+readonly WAIT_COUNT=12  # 12*3s = 36s
 
 declare wait_counter=0
 

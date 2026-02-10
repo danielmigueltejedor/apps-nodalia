@@ -4,6 +4,13 @@ All notable changes to this add-on will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 2.1.4 - 2026-02-10
+### Changed
+- Reduce startup wait in `local-network` service from up to 5 minutes to ~36 seconds.
+- Reduce `post-tailscaled` readiness wait from up to 5 minutes to ~90 seconds.
+- On readiness timeout, keep app startup in degraded mode instead of failing hard,
+  so Home Assistant Web UI is available sooner during first install/update.
+
 ## 2.1.3 - 2026-02-10
 ### Changed
 - Improve Web UI startup responsiveness:

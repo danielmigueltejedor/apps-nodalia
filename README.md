@@ -9,9 +9,12 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`2.1.3`
+`2.1.4`
 
 Cambios destacados:
+- Arranque inicial más rápido en instalaciones/actualizaciones nuevas:
+  - menor espera de `local-network` en startup.
+  - timeout de espera de `post-tailscaled` reducido y paso a modo degradado (sin bloquear la Web UI).
 - Carga inicial de Web UI más rápida: NGINX ya no espera al backend y muestra onboarding como fallback si el web interno aún no está listo.
 - Nueva opción `webui_readonly` para elegir entre Web UI en solo lectura (seguro) o modo con control completo (incluye logout).
 - Nuevo onboarding sin logs: página `/onboarding` con URL de login, botón copiar y abrir enlace.

@@ -33,7 +33,7 @@ declare up_output
 declare up_rc
 
 readonly WAIT_DELAY=2
-readonly WAIT_RUNNING_COUNT=150  # 150*2s = 300s = 5m
+readonly WAIT_RUNNING_COUNT=45   # 45*2s = 90s
 readonly LOGIN_NOTIFICATION_ID="tailscale_nodalia_login_required"
 readonly ONBOARDING_STATE_FILE="/data/tailscale-onboarding.json"
 readonly TAILSCALE_UP_TIMEOUT=45
@@ -315,9 +315,10 @@ do
 
   if (( wait_counter++ == WAIT_RUNNING_COUNT )); then
     write_onboarding_state "${backend_state}" false ""
-    bashio::exit.nok \
+    bashio::log.warning \
       "Timed out waiting for Tailscale to become ready (last state: ${backend_state})." \
-      "Open the app Web UI and check /onboarding, or review Supervisor logs."
+      "Starting app in degraded mode so Web UI remains available."
+    break
   fi
   sleep ${WAIT_DELAY}
 done
