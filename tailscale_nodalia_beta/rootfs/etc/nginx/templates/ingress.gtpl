@@ -45,7 +45,17 @@ server {
     }
 
     location = /webui {
-        return 302 /;
+        proxy_connect_timeout 2s;
+        proxy_send_timeout 8s;
+        proxy_read_timeout 8s;
+        proxy_intercept_errors on;
+        error_page 500 502 503 504 = /onboarding;
+        proxy_pass http://backend;
+
+        # Keep Tailscale's internal top-window redirect behavior.
+        sub_filter_once off;
+        sub_filter 'document.location.href = url' 'window.top.location.href = url';
+        sub_filter '</body>' '<script>(function(){try{if(document.getElementById("nodalia-back-btn"))return;var a=document.createElement("a");a.id="nodalia-back-btn";a.href="./onboarding";a.textContent="Volver al panel Nodalia";a.style.cssText="position:fixed;left:16px;bottom:16px;z-index:2147483647;background:#0b63ce;color:#fff;padding:10px 12px;border-radius:10px;text-decoration:none;font:700 13px/1.1 Segoe UI,Noto Sans,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25)";document.body.appendChild(a);}catch(e){}})();</script></body>';
     }
 
     location = /webui-ready {

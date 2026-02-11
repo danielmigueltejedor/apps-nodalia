@@ -4,6 +4,23 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta49 - 2026-02-11
+### Fixed
+- Endurecido arranque de Web UI para atacar el estado atascado `upstream-unavailable-banner`:
+  - `web/run` ahora espera preflight de backend (sale de `NoState/Starting/Unknown`) antes de lanzar `tailscale web`.
+  - `tailscale web` se ejecuta con socket explícito `--socket=/var/run/tailscale/tailscaled.sock`.
+- Añadida autorrecuperación en `runtime-status`:
+  - si backend está `Running` y el banner `unavailable` persiste ~60s, se reinicia el proceso `tailscale web`.
+  - cooldown de seguridad para evitar bucles de reinicio agresivos.
+
+## 3.0.0-beta48 - 2026-02-11
+### Fixed
+- Ajustado el flujo Web UI para igualar el comportamiento del canal estable en el endpoint clave:
+  - `/webui` vuelve a proxificar directamente al backend (ya no redirige a `/`).
+  - botones del panel vuelven a abrir `./webui`.
+- Se mantiene `ingress_entry: /onboarding` para que el panel siga siendo la portada.
+- Objetivo: recuperar el camino de Web UI que en estable resultaba más robusto.
+
 ## 3.0.0-beta47 - 2026-02-11
 ### Fixed
 - Orden de arranque corregido para Web UI:

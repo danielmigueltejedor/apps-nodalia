@@ -5,6 +5,11 @@
 # Runs tailscale web interface
 # ==============================================================================
 declare -a options
+declare backend_state
+declare -i wait_counter=0
+
+readonly WAIT_DELAY=2
+readonly WAIT_MAX=60  # 60*2s = 120s
 
 bashio::log.info 'Starting Tailscale web...'
 
@@ -19,5 +24,25 @@ else
   bashio::log.warning 'Tailscale web UI started in full-control mode (readonly disabled)'
 fi
 
+# Avoid starting web too early while backend is still booting.
+# In that race, Tailscale can keep serving the "unavailable" banner indefinitely.
+while true
+do
+  backend_state=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null \
+    | jq -r '.BackendState // "Unknown"' 2>/dev/null || echo "Unknown")
+  if [[ "${backend_state}" != "NoState" ]] && [[ "${backend_state}" != "Starting" ]] && [[ "${backend_state}" != "Unknown" ]]; then
+    break
+  fi
+  if (( wait_counter >= WAIT_MAX )); then
+    bashio::log.warning \
+      "Tailscale web preflight timeout; backend still ${backend_state}." \
+      "Starting web anyway."
+    break
+  fi
+  wait_counter=$((wait_counter + 1))
+  sleep "${WAIT_DELAY}"
+done
+bashio::log.info "Tailscale web preflight state: ${backend_state}"
+
 # Run Tailscale
-exec /opt/tailscale web "${options[@]}"
+exec /opt/tailscale --socket=/var/run/tailscale/tailscaled.sock web "${options[@]}"

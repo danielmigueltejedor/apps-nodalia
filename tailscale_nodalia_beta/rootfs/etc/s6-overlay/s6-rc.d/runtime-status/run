@@ -8,6 +8,8 @@
 readonly RUNTIME_STATE_FILE="/data/tailscale-runtime.json"
 readonly POLL_INTERVAL=3
 readonly LOG_HEARTBEAT_EVERY_LOOPS=20
+readonly WEBUI_BANNER_RECOVERY_STREAK=20
+readonly WEBUI_RECOVERY_COOLDOWN_SEC=120
 
 declare status_json
 declare backend_state
@@ -50,6 +52,8 @@ declare -i start_epoch
 declare -i now_epoch
 declare -i uptime_sec
 declare -i loop_count=0
+declare -i banner_streak=0
+declare -i last_web_recovery_epoch=0
 declare prev_backend_state="__init__"
 declare prev_webui_ready="__init__"
 declare prev_webui_http_code="__init__"
@@ -209,6 +213,28 @@ do
 
   printf '%s\n' "${runtime_payload}" > "${RUNTIME_STATE_FILE}"
   loop_count=$((loop_count + 1))
+
+  if [[ "${backend_state}" == "Running" ]] && [[ "${webui_reason}" == "upstream-unavailable-banner" ]]; then
+    banner_streak=$((banner_streak + 1))
+  else
+    banner_streak=0
+  fi
+
+  now_epoch=$(date +%s)
+  if (( banner_streak >= WEBUI_BANNER_RECOVERY_STREAK )) && \
+    (( now_epoch - last_web_recovery_epoch >= WEBUI_RECOVERY_COOLDOWN_SEC ));
+  then
+    bashio::log.warning \
+      "runtime-status: webui unavailable banner persisted (${banner_streak} probes)." \
+      "Restarting tailscale web process for recovery."
+    if pkill -f '^/opt/tailscale .* web( |$)' > /dev/null 2>&1; then
+      bashio::log.info "runtime-status: tailscale web process restart requested"
+    else
+      bashio::log.warning "runtime-status: unable to find tailscale web process to restart"
+    fi
+    last_web_recovery_epoch=${now_epoch}
+    banner_streak=0
+  fi
 
   if [[ "${backend_state}" != "${prev_backend_state}" ]] || \
     [[ "${webui_ready}" != "${prev_webui_ready}" ]] || \
