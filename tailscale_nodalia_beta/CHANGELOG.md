@@ -4,6 +4,17 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta9 - 2026-02-11
+### Changed
+- App entrypoint now always opens onboarding (`/onboarding`) instead of embedding Tailscale Web UI directly at root.
+- This guarantees the initial setup overlay is visible in the Home Assistant app panel on every open.
+- Direct Web UI access remains available via the onboarding actions (`webui` / direct tailnet URL).
+
+## 3.0.0-beta8 - 2026-02-11
+### Fixed
+- Fix `support-api` startup crash (`httpd: applet not found`) on Home Assistant base image.
+- Install `busybox-extras` and run support API with `busybox-extras httpd`, restoring support tunnel UI backend.
+
 ## 3.0.0-beta7 - 2026-02-11
 ### Fixed
 - Fix image build failure caused by unavailable `cloudflared` apk package on base image.

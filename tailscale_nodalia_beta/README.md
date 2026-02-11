@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta7`
+`3.0.0-beta9`
 
 Cambios destacados:
 - Nuevo soporte remoto guiado en onboarding:
