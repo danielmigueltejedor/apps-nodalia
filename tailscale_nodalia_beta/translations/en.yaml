@@ -119,6 +119,23 @@ configuration:
       Keep this enabled for safer operation.
       Disable it only if you need full UI actions such as logout.
       When not set, this option is enabled by default.
+  support_tunnel_enabled:
+    name: Support tunnel button
+    description: >-
+      Enables the support tunnel controls in onboarding.
+      A temporary Cloudflare tunnel can be opened only when this node matches
+      the configured support tailnet identifier.
+  support_tailnet_id:
+    name: Support tailnet identifier
+    description: >-
+      Required tailnet identifier/name used to allow support tunnel activation.
+      If the current Tailscale status does not match this value, the support
+      tunnel button stays blocked.
+  support_target_url:
+    name: Support tunnel target URL
+    description: >-
+      Internal URL exposed through the temporary support tunnel.
+      Default points to Home Assistant on this host.
 network:
   41641/udp: >-
     UDP port to listen on for WireGuard and peer-to-peer traffic.

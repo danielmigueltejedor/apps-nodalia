@@ -22,6 +22,14 @@ server {
         add_header Cache-Control "no-store";
     }
 
+    location = /support-api {
+        proxy_connect_timeout 1s;
+        proxy_send_timeout 2s;
+        proxy_read_timeout 5s;
+        add_header Cache-Control "no-store";
+        proxy_pass http://127.0.0.1:25910/cgi-bin/support;
+    }
+
     location = /webui {
         proxy_connect_timeout 2s;
         proxy_send_timeout 8s;

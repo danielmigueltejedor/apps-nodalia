@@ -229,6 +229,25 @@
       </div>
     </section>
     <section class="panel">
+      <h2>Soporte remoto</h2>
+      <p class="small">Disponible solo si esta app esta en la tailnet de soporte configurada.</p>
+      <div class="kv">
+        <div>Soporte habilitado:</div><div><code id="sup-enabled">-</code></div>
+        <div>Tailnet objetivo:</div><div><code id="sup-tailnet">-</code></div>
+        <div>Tailnet coincide:</div><div><code id="sup-match">-</code></div>
+        <div>Elegible:</div><div><code id="sup-eligible">-</code></div>
+        <div>Tunel activo:</div><div><code id="sup-active">-</code></div>
+        <div>URL temporal:</div><div><code id="sup-url">-</code></div>
+        <div>Motivo:</div><div><code id="sup-reason">-</code></div>
+      </div>
+      <div class="actions" style="margin-top:10px;">
+        <button id="sup-enable-btn" type="button" class="ghost">Activar tunel soporte</button>
+        <button id="sup-disable-btn" type="button" class="ghost">Desactivar tunel soporte</button>
+        <button id="sup-copy-url-btn" type="button" class="ghost">Copiar URL soporte</button>
+      </div>
+      <p id="sup-message" class="small"></p>
+    </section>
+    <section class="panel">
       <h2>Perfiles recomendados</h2>
       <div class="grid-2">
         <article class="profile">
@@ -273,6 +292,17 @@
     const suggestionsList = document.getElementById("suggestions-list");
     const copyAclWebuiBtn = document.getElementById("copy-acl-webui-btn");
     const copyTagOwnersBtn = document.getElementById("copy-tagowners-btn");
+    const supportEnabled = document.getElementById("sup-enabled");
+    const supportTailnet = document.getElementById("sup-tailnet");
+    const supportMatch = document.getElementById("sup-match");
+    const supportEligible = document.getElementById("sup-eligible");
+    const supportActive = document.getElementById("sup-active");
+    const supportUrl = document.getElementById("sup-url");
+    const supportReason = document.getElementById("sup-reason");
+    const supportMessage = document.getElementById("sup-message");
+    const supportEnableBtn = document.getElementById("sup-enable-btn");
+    const supportDisableBtn = document.getElementById("sup-disable-btn");
+    const supportCopyUrlBtn = document.getElementById("sup-copy-url-btn");
     const rtBackend = document.getElementById("rt-backend");
     const rtWebUi = document.getElementById("rt-webui");
     const rtWebUiStreak = document.getElementById("rt-webui-streak");
@@ -297,6 +327,7 @@
     let redirectHandle = null;
     let lastOnboarding = null;
     let lastRuntime = null;
+    let lastSupportUrl = "";
     const aclWebUiSnippet = JSON.stringify({
       acls: [
         { action: "accept", src: ["autogroup:member"], dst: ["autogroup:self:5252"] }
@@ -318,6 +349,50 @@
       } catch (_) {
         window.prompt("Copia este texto:", text);
       }
+    }
+
+    function setSupportButtonState(busy) {
+      supportEnableBtn.disabled = busy;
+      supportDisableBtn.disabled = busy;
+      supportCopyUrlBtn.disabled = busy;
+    }
+
+    function renderSupportFromRuntime(runtime) {
+      const enabled = Boolean(runtime?.support_enabled);
+      const match = Boolean(runtime?.support_tailnet_match);
+      const eligible = Boolean(runtime?.support_eligible);
+      const active = Boolean(runtime?.support_active);
+      const url = String(runtime?.support_url || "");
+      const reason = String(runtime?.support_reason || "");
+      supportEnabled.textContent = enabled ? "true" : "false";
+      supportTailnet.textContent = String(runtime?.support_tailnet_id || "-");
+      supportMatch.textContent = match ? "true" : "false";
+      supportEligible.textContent = eligible ? "true" : "false";
+      supportActive.textContent = active ? "true" : "false";
+      supportUrl.textContent = url || "-";
+      supportReason.textContent = reason || "-";
+      lastSupportUrl = url;
+      supportEnableBtn.classList.toggle("disabled", !enabled || !eligible);
+      supportDisableBtn.classList.toggle("disabled", !active);
+      supportCopyUrlBtn.classList.toggle("disabled", !url);
+    }
+
+    async function callSupportApi(action, method = "GET") {
+      const response = await fetch("support-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now(), {
+        method,
+        cache: "no-store",
+      });
+      const payload = await response.text();
+      let data;
+      try {
+        data = JSON.parse(payload);
+      } catch (_) {
+        data = { ok: false, raw: payload };
+      }
+      if (!response.ok) {
+        throw new Error(data?.error || "support_api_failed");
+      }
+      return data;
     }
 
     function schedulePoll(delayMs = 1000) {
@@ -394,6 +469,12 @@
       }
       if (!hasTailnetIp) {
         suggestions.push("Sin IP tailnet detectada: revisa conectividad y estado de inicio de sesion.");
+      }
+      if (lastRuntime?.support_enabled && !lastRuntime?.support_tailnet_match) {
+        suggestions.push("Soporte remoto bloqueado: esta instancia no coincide con la tailnet de soporte.");
+      }
+      if (!lastRuntime?.support_enabled) {
+        suggestions.push("Soporte remoto desactivado en configuracion: activa support_tunnel_enabled si lo necesitas.");
       }
       if (suggestions.length === 0) {
         suggestions.push("Estado estable: sin acciones pendientes.");
@@ -502,6 +583,7 @@
         rtIpv6.textContent = Array.isArray(data.ipv6) && data.ipv6.length ? data.ipv6.join(", ") : "-";
         rtUptime.textContent = Number(data.uptime_sec || 0).toString();
         rtUpdated.textContent = String(data.updated_at || "-");
+        renderSupportFromRuntime(data);
 
         if (typeof data.direct_webui_url === "string" && data.direct_webui_url.length > 0) {
           openDirectBtn.href = data.direct_webui_url;
@@ -517,6 +599,16 @@
         rtOnline.textContent = "n/a";
         rtUptime.textContent = "n/a";
         rtUpdated.textContent = "n/a";
+        supportEnabled.textContent = "n/a";
+        supportTailnet.textContent = "n/a";
+        supportMatch.textContent = "n/a";
+        supportEligible.textContent = "n/a";
+        supportActive.textContent = "n/a";
+        supportUrl.textContent = "n/a";
+        supportReason.textContent = "runtime unavailable";
+        supportEnableBtn.classList.add("disabled");
+        supportDisableBtn.classList.add("disabled");
+        supportCopyUrlBtn.classList.add("disabled");
       }
     }
 
@@ -528,6 +620,7 @@
       checks.push({ label: "webui_ready=true", ok: !!lastRuntime?.webui_ready });
       checks.push({ label: "webui_ready_streak>=2", ok: Number(lastRuntime?.webui_ready_streak || 0) >= 2 });
       checks.push({ label: "self_online=true", ok: !!lastRuntime?.self_online });
+      checks.push({ label: "support elegible", ok: !!lastRuntime?.support_eligible });
 
       diagList.innerHTML = checks.map((c) =>
         `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
@@ -569,6 +662,46 @@
     });
     copyTagOwnersBtn.addEventListener("click", async () => {
       await copyText(tagOwnersSnippet, copyTagOwnersBtn, "tagOwners copiado", "Copiar bloque tagOwners");
+    });
+    supportEnableBtn.addEventListener("click", async () => {
+      if (supportEnableBtn.classList.contains("disabled")) {
+        return;
+      }
+      setSupportButtonState(true);
+      supportMessage.textContent = "Activando tunel de soporte...";
+      try {
+        const data = await callSupportApi("enable", "POST");
+        renderSupportFromRuntime(data);
+        supportMessage.textContent = data.url
+          ? "Tunel activo. URL temporal lista."
+          : "Tunel activado, esperando URL temporal...";
+      } catch (error) {
+        supportMessage.textContent = "No se pudo activar el tunel: " + error.message;
+      } finally {
+        setSupportButtonState(false);
+      }
+    });
+    supportDisableBtn.addEventListener("click", async () => {
+      if (supportDisableBtn.classList.contains("disabled")) {
+        return;
+      }
+      setSupportButtonState(true);
+      supportMessage.textContent = "Desactivando tunel de soporte...";
+      try {
+        const data = await callSupportApi("disable", "POST");
+        renderSupportFromRuntime(data);
+        supportMessage.textContent = "Tunel de soporte desactivado.";
+      } catch (error) {
+        supportMessage.textContent = "No se pudo desactivar el tunel: " + error.message;
+      } finally {
+        setSupportButtonState(false);
+      }
+    });
+    supportCopyUrlBtn.addEventListener("click", async () => {
+      if (supportCopyUrlBtn.classList.contains("disabled") || !lastSupportUrl) {
+        return;
+      }
+      await copyText(lastSupportUrl, supportCopyUrlBtn, "URL copiada", "Copiar URL soporte");
     });
 
     refreshBtn.addEventListener("click", () => {

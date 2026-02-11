@@ -116,6 +116,22 @@ configuration:
       Mantenlo activado para un uso mas seguro.
       Desactivalo solo si necesitas acciones completas en la UI, como cerrar sesion.
       Si no se configura, esta opcion esta activada por defecto.
+  support_tunnel_enabled:
+    name: Boton de tunel de soporte
+    description: >-
+      Habilita los controles de tunel de soporte en onboarding.
+      El tunel temporal de Cloudflare solo puede abrirse cuando este nodo
+      coincide con el identificador de tailnet de soporte configurado.
+  support_tailnet_id:
+    name: Identificador de tailnet de soporte
+    description: >-
+      Identificador/nombre de tailnet requerido para permitir activar el tunel
+      de soporte. Si el estado actual de Tailscale no coincide, el boton queda bloqueado.
+  support_target_url:
+    name: URL interna objetivo del tunel
+    description: >-
+      URL interna que se expone con el tunel temporal de soporte.
+      Por defecto apunta a Home Assistant en este host.
 network:
   41641/udp: >-
     Puerto UDP para WireGuard y trafico peer-to-peer.

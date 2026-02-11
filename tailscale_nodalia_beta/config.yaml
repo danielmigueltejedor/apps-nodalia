@@ -1,5 +1,5 @@
 name: Tailscale (Nodalia Beta)
-version: 3.0.0-beta4
+version: 3.0.0-beta6
 slug: tailscale_nodalia_beta
 description: Zero config VPN for building secure networks (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
@@ -53,6 +53,9 @@ options:
   taildrop: true
   userspace_networking: false
   webui_readonly: true
+  support_tunnel_enabled: false
+  support_tailnet_id: "T3mkMkmms321CNTRL"
+  support_target_url: "http://127.0.0.1:8123"
   exit_node: ""
   login_server: "https://controlplane.tailscale.com"
 
@@ -76,3 +79,6 @@ schema:
   taildrop: bool?
   userspace_networking: bool?
   webui_readonly: bool?
+  support_tunnel_enabled: bool?
+  support_tailnet_id: str?
+  support_target_url: match(^https?://.+$)?

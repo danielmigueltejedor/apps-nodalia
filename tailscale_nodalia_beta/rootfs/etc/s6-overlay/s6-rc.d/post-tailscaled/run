@@ -291,18 +291,28 @@ tailscale_up_finished_at=$(date +%s)
 if (( up_rc != 0 )); then
   status_json=$(/opt/tailscale status --json --peers=false --self=false 2>/dev/null || true)
   backend_state=$(jq -r '.BackendState // "Unknown"' <<< "${status_json}" 2>/dev/null || echo "Unknown")
+  auth_url=$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/dev/null || true)
+  if ! bashio::var.has_value "${auth_url}"; then
+    auth_url=$(grep -Eo 'https://login\.tailscale\.com/[[:alnum:]/._-]+' <<< "${up_output}" | head -n1 || true)
+  fi
+
   if bashio::var.equals "${backend_state}" "NeedsLogin" || \
-    bashio::var.equals "${backend_state}" "NeedsMachineAuth";
+    bashio::var.equals "${backend_state}" "NeedsMachineAuth" || \
+    bashio::var.has_value "${auth_url}";
   then
-    auth_url=$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/dev/null || true)
-    if ! bashio::var.has_value "${auth_url}"; then
-      auth_url=$(grep -Eo 'https://login\.tailscale\.com/[[:alnum:]/._-]+' <<< "${up_output}" | head -n1 || true)
+    if ! bashio::var.has_value "${backend_state}" || bashio::var.equals "${backend_state}" "Unknown"; then
+      backend_state="NeedsLogin"
     fi
     write_onboarding_state "${backend_state}" true "${auth_url}"
     notify_login_required "${auth_url}"
     bashio::log.notice \
       "Tailscale startup requires interactive login (${backend_state})." \
       "Open /onboarding in the app Web UI to continue."
+  elif (( up_rc == 124 )) && bashio::var.equals "${backend_state}" "Starting"; then
+    write_onboarding_state "${backend_state}" false ""
+    bashio::log.warning \
+      "tailscale up timed out while backend is still Starting." \
+      "Continuing startup in onboarding mode to avoid blocking the app."
   else
     bashio::exit.nok \
       "Unable to start up Tailscale (state: ${backend_state}, exit: ${up_rc})" \

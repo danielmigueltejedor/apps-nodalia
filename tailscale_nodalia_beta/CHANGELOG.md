@@ -4,6 +4,30 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta6 - 2026-02-11
+### Fixed
+- Startup robustness when login is pending:
+  - `post-tailscaled` no longer fails startup if `tailscale up` returns non-zero but login URL/state indicates interactive login is required.
+  - if `tailscale up` times out while backend is still `Starting`, app now continues in onboarding mode instead of failing hard.
+  - ensures first install without prior login still reaches onboarding + login notification path reliably.
+
+## 3.0.0-beta5 - 2026-02-11
+### Added
+- Remote support tunnel controls in onboarding:
+  - `Activar tunel soporte` and `Desactivar tunel soporte` actions.
+  - temporary URL display and one-click copy.
+- New internal support API endpoint: `/support-api`.
+- New support tunnel manager command: `support-tunnel` (`status|enable|disable`).
+- Cloudflare quick tunnel runtime support (via `cloudflared`) for temporary support access.
+
+### Changed
+- Support activation is now gated by runtime checks:
+  - `support_tunnel_enabled=true`,
+  - backend `Running`,
+  - current tailnet matching configured `support_tailnet_id`.
+- Runtime telemetry now includes support tunnel fields
+  (`support_enabled`, `support_tailnet_match`, `support_eligible`, `support_active`, `support_url`, `support_reason`).
+
 ## 3.0.0-beta4 - 2026-02-11
 ### Added
 - Smart suggestions panel in onboarding with dynamic guidance based on runtime/login state.

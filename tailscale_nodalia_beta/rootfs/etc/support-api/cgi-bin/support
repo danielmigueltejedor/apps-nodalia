@@ -1,0 +1,33 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+set -euo pipefail
+
+action="status"
+case "${QUERY_STRING:-}" in
+  *action=enable*) action="enable" ;;
+  *action=disable*) action="disable" ;;
+  *action=status*) action="status" ;;
+esac
+
+if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${action}" != "status" ]]; then
+  echo "Status: 405 Method Not Allowed"
+  echo "Content-Type: application/json"
+  echo
+  echo '{"ok":false,"error":"method_not_allowed"}'
+  exit 0
+fi
+
+set +e
+payload="$(support-tunnel "${action}" 2>&1)"
+rc=$?
+set -e
+
+if (( rc == 0 )); then
+  echo "Status: 200 OK"
+else
+  echo "Status: 400 Bad Request"
+fi
+echo "Content-Type: application/json"
+echo "Cache-Control: no-store"
+echo
+printf '%s\n' "${payload}"

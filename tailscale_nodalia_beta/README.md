@@ -9,9 +9,17 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta4`
+`3.0.0-beta6`
 
 Cambios destacados:
+- Nuevo soporte remoto guiado en onboarding:
+  - boton para activar/desactivar tunel temporal de soporte.
+  - URL temporal copiable para asistencia remota.
+  - controlado por validacion de tailnet y estado de Tailscale.
+- Nueva configuracion de seguridad para soporte:
+  - `support_tunnel_enabled` (default `false`),
+  - `support_tailnet_id`,
+  - `support_target_url`.
 - Onboarding reforzado para un flujo mas autonomo:
   - sugerencias inteligentes segun estado real (login, warmup, readonly, ACL).
   - snippets copiable de ACL (`autogroup:self:5252`) y `tagOwners`.

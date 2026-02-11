@@ -1,0 +1,219 @@
+#!/command/with-contenv bashio
+# shellcheck shell=bash
+# ==============================================================================
+# Home Assistant App: Tailscale (Nodalia Beta)
+# Support tunnel manager (temporary Cloudflare quick tunnel)
+# ==============================================================================
+set -euo pipefail
+
+readonly PID_FILE="/run/support-tunnel.pid"
+readonly STATE_FILE="/data/support-tunnel.json"
+readonly LOG_FILE="/data/support-tunnel.log"
+readonly URL_REGEX='https://[A-Za-z0-9.-]+\.trycloudflare\.com'
+readonly STARTUP_WAIT_LOOPS=50
+readonly STARTUP_WAIT_DELAY=0.2
+
+now_utc() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+json_bool() {
+  if [[ "${1:-false}" == "true" ]]; then
+    echo "true"
+  else
+    echo "false"
+  fi
+}
+
+cloudflared_pid() {
+  if [[ -f "${PID_FILE}" ]]; then
+    cat "${PID_FILE}"
+  fi
+}
+
+is_pid_running() {
+  local pid
+  pid="${1:-}"
+  [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null
+}
+
+extract_url() {
+  if [[ -f "${LOG_FILE}" ]]; then
+    grep -Eo "${URL_REGEX}" "${LOG_FILE}" | tail -n1 || true
+  fi
+}
+
+build_eligibility() {
+  local status_json support_enabled target_id target_url backend candidate_strings
+  support_enabled=false
+  if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
+    support_enabled=true
+  fi
+
+  target_id="$(bashio::config "support_tailnet_id" "")"
+  target_url="$(bashio::config "support_target_url" "http://127.0.0.1:8123")"
+  status_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
+  backend="$(jq -r '.BackendState // "Unknown"' <<< "${status_json}" 2>/dev/null || echo "Unknown")"
+  candidate_strings="$(jq -r '[.CurrentTailnet.Name,.CurrentTailnet.MagicDNSSuffix,.CurrentTailnet.Tailnet,.Self.DNSName,.Self.HostName,.Self.Tailnet] | map(select(type=="string" and length>0)) | .[]' <<< "${status_json}" 2>/dev/null || true)"
+
+  SUPPORT_ENABLED="${support_enabled}"
+  SUPPORT_TARGET_ID="${target_id}"
+  SUPPORT_TARGET_URL="${target_url}"
+  SUPPORT_BACKEND="${backend}"
+  SUPPORT_TAILNET_MATCH="false"
+  SUPPORT_REASON=""
+
+  if [[ "${support_enabled}" != "true" ]]; then
+    SUPPORT_REASON="support_tunnel_enabled=false"
+    return
+  fi
+  if [[ -z "${target_id}" ]]; then
+    SUPPORT_REASON="support_tailnet_id vacio"
+    return
+  fi
+  if [[ "${backend}" != "Running" ]]; then
+    SUPPORT_REASON="backend_state=${backend}"
+    return
+  fi
+
+  while IFS= read -r token; do
+    if [[ -n "${token}" && "${token}" == *"${target_id}"* ]]; then
+      SUPPORT_TAILNET_MATCH="true"
+      break
+    fi
+  done <<< "${candidate_strings}"
+  if [[ "${SUPPORT_TAILNET_MATCH}" != "true" ]] && grep -Fq "${target_id}" <<< "${status_json}"; then
+    SUPPORT_TAILNET_MATCH="true"
+  fi
+  if [[ "${SUPPORT_TAILNET_MATCH}" != "true" ]]; then
+    SUPPORT_REASON="tailnet no coincide con support_tailnet_id"
+  fi
+}
+
+write_state() {
+  local active pid url eligible now
+  active="${1:-false}"
+  pid="${2:-}"
+  url="${3:-}"
+  eligible="${4:-false}"
+  now="$(now_utc)"
+  jq -nc \
+    --arg updated_at "${now}" \
+    --arg support_target_id "${SUPPORT_TARGET_ID}" \
+    --arg support_target_url "${SUPPORT_TARGET_URL}" \
+    --arg backend_state "${SUPPORT_BACKEND}" \
+    --arg reason "${SUPPORT_REASON}" \
+    --arg url "${url}" \
+    --arg pid "${pid}" \
+    --argjson support_enabled "$(json_bool "${SUPPORT_ENABLED}")" \
+    --argjson tailnet_match "$(json_bool "${SUPPORT_TAILNET_MATCH}")" \
+    --argjson eligible "$(json_bool "${eligible}")" \
+    --argjson active "$(json_bool "${active}")" \
+    '{
+      updated_at: $updated_at,
+      support_enabled: $support_enabled,
+      support_target_id: $support_target_id,
+      support_target_url: $support_target_url,
+      backend_state: $backend_state,
+      tailnet_match: $tailnet_match,
+      eligible: $eligible,
+      active: $active,
+      pid: $pid,
+      url: $url,
+      reason: $reason
+    }' > "${STATE_FILE}"
+}
+
+status_cmd() {
+  local pid active url eligible
+  build_eligibility
+  pid="$(cloudflared_pid)"
+  active=false
+  url="$(extract_url)"
+  if is_pid_running "${pid}"; then
+    active=true
+  else
+    pid=""
+    rm -f "${PID_FILE}"
+  fi
+  eligible=false
+  if [[ "${SUPPORT_ENABLED}" == "true" && "${SUPPORT_TAILNET_MATCH}" == "true" && "${SUPPORT_BACKEND}" == "Running" ]]; then
+    eligible=true
+  fi
+  write_state "${active}" "${pid}" "${url}" "${eligible}"
+  cat "${STATE_FILE}"
+}
+
+enable_cmd() {
+  local pid loop url
+  build_eligibility
+  if [[ "${SUPPORT_ENABLED}" != "true" || "${SUPPORT_TAILNET_MATCH}" != "true" || "${SUPPORT_BACKEND}" != "Running" ]]; then
+    write_state false "" "" false
+    echo '{"ok":false,"error":"support tunnel no permitido en este estado"}'
+    exit 1
+  fi
+
+  pid="$(cloudflared_pid)"
+  if is_pid_running "${pid}"; then
+    status_cmd
+    exit 0
+  fi
+
+  rm -f "${LOG_FILE}"
+  : > "${LOG_FILE}"
+  cloudflared tunnel --no-autoupdate --url "${SUPPORT_TARGET_URL}" >> "${LOG_FILE}" 2>&1 &
+  pid=$!
+  echo "${pid}" > "${PID_FILE}"
+
+  url=""
+  for (( loop=0; loop<STARTUP_WAIT_LOOPS; loop++ )); do
+    if ! is_pid_running "${pid}"; then
+      break
+    fi
+    url="$(extract_url)"
+    if [[ -n "${url}" ]]; then
+      break
+    fi
+    sleep "${STARTUP_WAIT_DELAY}"
+  done
+
+  if ! is_pid_running "${pid}"; then
+    rm -f "${PID_FILE}"
+    SUPPORT_REASON="cloudflared finalizo al arrancar"
+    write_state false "" "" false
+    echo '{"ok":false,"error":"cloudflared no pudo arrancar"}'
+    exit 1
+  fi
+
+  write_state true "${pid}" "${url}" true
+  cat "${STATE_FILE}"
+}
+
+disable_cmd() {
+  local pid
+  pid="$(cloudflared_pid)"
+  if is_pid_running "${pid}"; then
+    kill "${pid}" 2>/dev/null || true
+    sleep 0.2
+  fi
+  rm -f "${PID_FILE}"
+  build_eligibility
+  write_state false "" "" false
+  cat "${STATE_FILE}"
+}
+
+case "${1:-status}" in
+  status)
+    status_cmd
+    ;;
+  enable)
+    enable_cmd
+    ;;
+  disable)
+    disable_cmd
+    ;;
+  *)
+    echo "Usage: support-tunnel [status|enable|disable]" >&2
+    exit 2
+    ;;
+esac

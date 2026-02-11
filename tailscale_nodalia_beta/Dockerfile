@@ -10,6 +10,7 @@ ARG TAILSCALE_REPO="https://pkgs.tailscale.com/stable"
 
 RUN \
   apk add --no-cache \
+    cloudflared \
     ethtool \
     ipcalc \
     iproute2 \
@@ -55,7 +56,9 @@ RUN set -eux; \
   find /etc/services.d -type f -name run -exec chmod 0755 {} \; 2>/dev/null || true; \
   \
   # Permisos de scripts propios si existen (ajusta nombres si los tienes)
-  chmod 0755 /usr/bin/subnet-routes 2>/dev/null || true
+  chmod 0755 /usr/bin/subnet-routes 2>/dev/null || true; \
+  chmod 0755 /usr/bin/support-tunnel 2>/dev/null || true; \
+  chmod 0755 /etc/support-api/cgi-bin/support 2>/dev/null || true
 
 HEALTHCHECK CMD healthcheck
 
