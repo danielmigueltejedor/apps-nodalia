@@ -134,10 +134,12 @@ login_server="$(bashio::config "login_server" "https://controlplane.tailscale.co
 socket_ok=false
 webui_ok=false
 control_ok=false
+webui_http_code="000"
 if [[ -S /var/run/tailscale/tailscaled.sock ]]; then
   socket_ok=true
 fi
-if curl -fsS --max-time 1 "http://127.0.0.1:25899/" > /dev/null 2>&1; then
+webui_http_code="$(curl -sS --max-time 1 -o /dev/null -w "%{http_code}" "http://127.0.0.1:25899/" 2>/dev/null || echo "000")"
+if [[ "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
   webui_ok=true
 fi
 if curl -fsS --max-time 2 "${login_server}" > /dev/null 2>&1; then

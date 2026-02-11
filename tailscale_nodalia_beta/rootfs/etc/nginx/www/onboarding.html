@@ -281,7 +281,7 @@
     </div>
     <div id="ok-box" hidden>
       <div class="actions">
-        <a id="open-webui-btn" class="btn disabled" href="webui">Entrar Web UI (ingress)</a>
+        <a id="open-webui-btn" class="btn disabled" href="./webui">Entrar Web UI (ingress)</a>
         <a id="open-direct-btn" class="btn ghost disabled" href="#" target="_blank" rel="noopener noreferrer">Abrir Web UI directa (tailnet)</a>
         <button id="refresh-ok-btn" type="button" class="ghost">Actualizar estado</button>
         <button id="cancel-redirect-btn" type="button" class="ghost" hidden>Cancelar auto-entrada</button>
@@ -526,7 +526,13 @@
           cache: "no-store",
           signal: controller.signal,
         });
-        if (response.status >= 500) {
+        const status = Number(response.status || 0);
+        const statusLooksReady = (
+          (status >= 200 && status < 400) ||
+          status === 401 ||
+          status === 403
+        );
+        if (!statusLooksReady) {
           return false;
         }
         const text = await response.text();
@@ -904,7 +910,7 @@
         const remaining = Math.max(0, Math.ceil((redirectDeadlineMs - Date.now()) / 1000));
         redirectState.textContent = "Redireccion automatica en " + remaining + "s...";
         if (remaining <= 0) {
-          window.location.replace("webui");
+          window.location.replace("./webui");
           return;
         }
         redirectHandle = setTimeout(tick, 200);
@@ -1354,7 +1360,7 @@
       }
       cancelAutoRedirect();
       event.preventDefault();
-      window.location.replace("webui");
+      window.location.replace("./webui");
     });
     goStatusBtn.addEventListener("click", (event) => {
       event.preventDefault();

@@ -4,6 +4,17 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta33 - 2026-02-11
+### Fixed
+- Web UI readiness detection hardened across backend and frontend:
+  - runtime probe now accepts `403` as valid ready response (in addition to `2xx/3xx/401`).
+  - runtime probe timeout increased to 2s to reduce false negatives during warmup spikes.
+  - onboarding live probe now validates allowed status codes (`2xx/3xx/401/403`) and rejects other responses.
+- Health/diagnostic checks are now more accurate when Web UI requires auth:
+  - `control-api` uses HTTP code probing and considers `401/403` as reachable Web UI instead of false failure.
+- Ingress navigation reliability:
+  - onboarding Web UI links now use explicit relative path `./webui` to avoid route resolution edge cases.
+
 ## 3.0.0-beta32 - 2026-02-11
 ### Changed
 - Updated Tailscale beta branding assets with the new uploaded logo:

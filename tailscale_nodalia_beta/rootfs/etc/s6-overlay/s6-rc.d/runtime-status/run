@@ -63,7 +63,7 @@ do
   webui_probe_body=""
   webui_http_code="000"
   webui_probe_payload="$(
-    curl -sS --max-time 1 -w $'\n__TS_META__:%{time_total}:%{http_code}' "http://127.0.0.1:25899/" 2>/dev/null || true
+    curl -sS --max-time 2 -w $'\n__TS_META__:%{time_total}:%{http_code}' "http://127.0.0.1:25899/" 2>/dev/null || true
   )"
   if [[ -n "${webui_probe_payload}" && "${webui_probe_payload}" == *"__TS_META__:"* ]]; then
     webui_probe_time="${webui_probe_payload##*__TS_META__:}"
@@ -73,7 +73,7 @@ do
     if [[ -n "${webui_probe_time}" ]]; then
       webui_probe_s="${webui_probe_time}"
     fi
-    if [[ "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401)$ ]]; then
+    if [[ "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
       if grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
         webui_ready=false
         ready_streak=0
