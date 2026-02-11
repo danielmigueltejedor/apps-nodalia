@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta44 - 2026-02-11
+### Fixed
+- Revertido bloque `/webui` de beta al comportamiento de la rama estable (más fiable):
+  - eliminado override de headers que no estaban en estable.
+  - `proxy_pass` vuelve a `http://backend` en `/webui` y `/webui-ready`.
+  - se recupera el rewrite interno de redirección `document.location.href -> window.top.location.href`.
+- Objetivo de esta beta: eliminar el estado permanente de `Tailscale web interface is unavailable`.
+
 ## 3.0.0-beta43 - 2026-02-11
 ### Fixed
 - Corregido enrutado de Web UI por ingress:
