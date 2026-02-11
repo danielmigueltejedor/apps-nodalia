@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta53 - 2026-02-12
+### Fixed
+- Revisión exhaustiva de regresiones beta frente a estable y corrección del flujo Web UI:
+  - `web/run` vuelve al arranque probado del canal estable (`/opt/tailscale web` sin preflight agresivo ni socket forzado).
+  - eliminada la detección por contenido HTML (`"Tailscale web interface is unavailable"`) en runtime y onboarding, que generaba falsos negativos permanentes.
+  - la disponibilidad de Web UI ahora se basa en señal robusta (código HTTP + latencia), alineada con estable.
+
+### Changed
+- Se mantiene el panel avanzado beta, pero con criterio de readiness más fiable para evitar quedarse atascado en “Web UI no responde” cuando realmente el backend está operativo.
+
 ## 3.0.0-beta52 - 2026-02-12
 ### Added
 - La elegibilidad de soporte ahora acepta coincidencia por DNS de tailnet:

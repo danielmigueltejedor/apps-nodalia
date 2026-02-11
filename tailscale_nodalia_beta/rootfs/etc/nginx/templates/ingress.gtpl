@@ -59,9 +59,9 @@ server {
     }
 
     location = /webui-ready {
-        proxy_connect_timeout 2s;
-        proxy_send_timeout 3s;
-        proxy_read_timeout 3s;
+        proxy_connect_timeout 1s;
+        proxy_send_timeout 1s;
+        proxy_read_timeout 1s;
         proxy_pass http://backend;
     }
 
