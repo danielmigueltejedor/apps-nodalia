@@ -4,6 +4,28 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta21 - 2026-02-11
+### Fixed
+- Manual refresh actions in onboarding now provide clear feedback and deterministic behavior:
+  - `Actualizar estado` now performs an explicit runtime+state refresh with visible loading state.
+  - avoids the perception of no-op clicks when poll updates were subtle.
+- `Recargar panel` now performs a true full reload and clears cached runtime snapshot first.
+- Navigation polish:
+  - quick action scroll target now adapts to the currently visible section (login/actions/state),
+    avoiding apparent no-op behavior when `ok-box` is hidden.
+
+## 3.0.0-beta20 - 2026-02-11
+### Fixed
+- Web UI loading reliability improved:
+  - runtime readiness probe now uses a single robust fetch (body + timing) to avoid race conditions between dual HTTP checks.
+  - keeps blocking readiness when backend still returns `Tailscale web interface is unavailable.`
+- Logout UX consistency improved:
+  - panel now waits and verifies backend transition to login-required states before confirming logout success.
+  - avoids false success messages when backend remains `Running`.
+- Onboarding static assets fixed under ingress:
+  - nginx now serves real static files before fallback to onboarding.
+  - resolves broken logo rendering (question mark placeholder).
+
 ## 3.0.0-beta19 - 2026-02-11
 ### Fixed
 - Logout now enforces real session termination from Nodalia panel:

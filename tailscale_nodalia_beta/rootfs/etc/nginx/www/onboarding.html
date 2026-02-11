@@ -799,6 +799,30 @@
       URL.revokeObjectURL(url);
     }
 
+    async function handleManualRefresh(triggerButton, idleLabel) {
+      beginUiAction();
+      if (pollHandle) {
+        clearTimeout(pollHandle);
+      }
+      cancelAutoRedirect();
+      const previousText = triggerButton?.textContent || idleLabel;
+      if (triggerButton) {
+        triggerButton.disabled = true;
+        triggerButton.textContent = "Actualizando...";
+      }
+      updateStateView("Actualizando estado...", "");
+      try {
+        await refreshRuntime(1800);
+        await loadState();
+      } finally {
+        if (triggerButton) {
+          triggerButton.disabled = false;
+          triggerButton.textContent = previousText || idleLabel;
+        }
+        endUiAction();
+      }
+    }
+
     function schedulePoll(delayMs = 1000) {
       if (pollHandle) {
         clearTimeout(pollHandle);
@@ -1274,19 +1298,11 @@
     });
     downloadReportBtn.addEventListener("click", downloadDiagnostics);
 
-    refreshBtn.addEventListener("click", () => {
-      if (pollHandle) {
-        clearTimeout(pollHandle);
-      }
-      cancelAutoRedirect();
-      loadState();
+    refreshBtn.addEventListener("click", async () => {
+      await handleManualRefresh(refreshBtn, "Actualizar estado");
     });
-    refreshOkBtn.addEventListener("click", () => {
-      if (pollHandle) {
-        clearTimeout(pollHandle);
-      }
-      cancelAutoRedirect();
-      loadState();
+    refreshOkBtn.addEventListener("click", async () => {
+      await handleManualRefresh(refreshOkBtn, "Actualizar estado");
     });
     cancelRedirectBtn.addEventListener("click", cancelAutoRedirect);
     autoOpenCheck.addEventListener("change", () => {
@@ -1311,11 +1327,11 @@
       target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     hardRefreshBtn.addEventListener("click", () => {
-      if (pollHandle) {
-        clearTimeout(pollHandle);
+      try {
+        localStorage.removeItem(RUNTIME_CACHE_KEY);
+      } catch (_) {
       }
-      cancelAutoRedirect();
-      loadState();
+      window.location.reload();
     });
     toggleAdvancedBtn.addEventListener("click", () => {
       advancedModeEnabled = !advancedModeEnabled;
