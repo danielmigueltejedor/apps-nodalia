@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta50 - 2026-02-11
+### Fixed
+- Eliminada la autorrecuperación agresiva que terminaba reiniciando todo el addon al matar `tailscale web` desde `runtime-status`.
+- Se mantiene diagnóstico fuerte pero sin acciones destructivas:
+  - ahora se registra un `webui_banner_excerpt` cuando aparece `upstream-unavailable-banner`, para identificar la causa textual exacta del propio frontend de Tailscale.
+
+### Changed
+- En beta, `webui_readonly` pasa a `false` por defecto para evitar limitaciones de control y facilitar pruebas de Web UI completa.
+
 ## 3.0.0-beta49 - 2026-02-11
 ### Fixed
 - Endurecido arranque de Web UI para atacar el estado atascado `upstream-unavailable-banner`:
