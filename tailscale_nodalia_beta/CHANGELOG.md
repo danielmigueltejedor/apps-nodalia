@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta28 - 2026-02-11
+### Fixed
+- Web UI readiness detection tuned to avoid false positives:
+  - keeps HTTP status validation (`2xx/3xx/401`),
+  - but explicitly rejects readiness when response body contains
+    `Tailscale web interface is unavailable`,
+  - and rejects empty-body responses.
+- Prevents onboarding from enabling ingress Web UI when backend is still showing the unavailable page.
+
 ## 3.0.0-beta27 - 2026-02-11
 ### Fixed
 - Critical fix for Web UI readiness detection:
