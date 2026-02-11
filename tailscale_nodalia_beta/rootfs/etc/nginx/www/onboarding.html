@@ -479,6 +479,7 @@
     let opBusy = false;
     let opCanLogout = false;
     let liveWebUiReadyStreak = 0;
+    let runningSinceMs = 0;
     const RUNTIME_CACHE_KEY = "nodalia_runtime_cache_v1";
     const UI_PREFS_KEY = "nodalia_ui_prefs_v1";
     const aclWebUiSnippet = JSON.stringify({
@@ -518,7 +519,7 @@
       }
     }
 
-    async function probeIngressWebUiReady(timeoutMs = 1200) {
+    async function probeIngressWebUiReady(timeoutMs = 2200) {
       const controller = new AbortController();
       const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
       try {
@@ -1023,6 +1024,7 @@
         }
 
         if (backendState !== "Running") {
+          runningSinceMs = 0;
           cancelAutoRedirect();
           liveWebUiReadyStreak = 0;
           setActiveStep("warmup");
@@ -1037,11 +1039,14 @@
         }
 
         updateStateView("Estado: conectado (" + backendState + "). Verificando Web UI...", "running");
+        if (runningSinceMs === 0) {
+          runningSinceMs = Date.now();
+        }
         okBox.hidden = false;
         loginBox.hidden = true;
         const runtimeWebUiReady = Boolean(lastRuntime?.webui_ready);
         const runtimeStreak = Number(lastRuntime?.webui_ready_streak || 0);
-        const liveWebUiReady = await probeIngressWebUiReady(1200);
+        const liveWebUiReady = await probeIngressWebUiReady(2200);
         if (liveWebUiReady) {
           liveWebUiReadyStreak += 1;
         } else {
@@ -1050,6 +1055,7 @@
         const runtimeStable = runtimeWebUiReady && runtimeStreak >= 2;
         const liveStable = liveWebUiReadyStreak >= 2;
         const webUiReady = runtimeStable || liveStable;
+        const allowManualOpen = (Date.now() - runningSinceMs) >= 12000;
         if (webUiReady) {
           setActiveStep("access");
           updateStateView("Estado: conectado (" + backendState + "). Web UI lista.", "running");
@@ -1058,9 +1064,11 @@
         } else {
           cancelAutoRedirect();
           setActiveStep("warmup");
-          setUiDisabled(openWebuiBtn, true);
+          setUiDisabled(openWebuiBtn, !allowManualOpen);
           if (runtimeWebUiReady || liveWebUiReady) {
             updateStateView("Estado: conectado (" + backendState + "). Confirmando disponibilidad de Web UI...", "running");
+          } else if (allowManualOpen) {
+            updateStateView("Estado: conectado (" + backendState + "). La deteccion automatica sigue en warmup; ya puedes entrar manualmente en Web UI.", "running");
           } else {
             updateStateView("Estado: conectado (" + backendState + "), la Web UI aun no responde. Reintentando...", "running");
           }

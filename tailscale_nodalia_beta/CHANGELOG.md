@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta35 - 2026-02-11
+### Fixed
+- Onboarding no longer gets hard-stuck in warmup when backend is already `Running`.
+- Added safe degraded access behavior:
+  - after 12s in `Running`, manual `Entrar Web UI (ingress)` is enabled even if auto-detection still fails.
+  - keeps automatic redirect disabled until real readiness is confirmed.
+- Improved Web UI readiness probe tolerance:
+  - frontend probe timeout increased to 2.2s.
+  - nginx `/webui-ready` upstream timeouts increased (`connect=2s`, `send/read=3s`) to reduce false negatives.
+
 ## 3.0.0-beta34 - 2026-02-11
 ### Fixed
 - Resolved onboarding loop where state stayed forever in:
