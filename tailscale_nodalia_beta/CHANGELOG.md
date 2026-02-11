@@ -4,6 +4,12 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta10 - 2026-02-11
+### Fixed
+- Fix blank screen in Home Assistant ingress after forcing onboarding as entrypoint.
+- Root path now serves `onboarding.html` directly instead of redirecting to `/onboarding`,
+  avoiding ingress prefix issues in iframe contexts.
+
 ## 3.0.0-beta9 - 2026-02-11
 ### Changed
 - App entrypoint now always opens onboarding (`/onboarding`) instead of embedding Tailscale Web UI directly at root.
