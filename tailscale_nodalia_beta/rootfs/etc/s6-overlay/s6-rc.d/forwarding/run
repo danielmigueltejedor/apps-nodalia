@@ -7,6 +7,7 @@
 
 declare from_address_ipv4 from_address_ipv6
 declare to_address_ipv4 to_address_ipv6
+readonly WEBUI_PORT="5252"
 
 # Return address without prefix, or error if not forwardable
 function get_forwardable_address() {
@@ -62,6 +63,19 @@ function setup_forwarding() {
   if bashio::var.has_value "${from_address}" && bashio::var.has_value "${to_address}"; then
     bashio::log.info \
       "Forwarding incoming tailnet connections directed to ${from_address} to the host's ${to_address} address (${ip_version})"
+
+    # Exclude Tailscale Web UI port from host DNAT so local web checks keep working.
+    # Without this, traffic to <tailscale-ip>:5252 gets redirected to Home Assistant.
+    if ${cmd} -t nat -S PREROUTING \
+      | grep -Eq "^-A PREROUTING -d ${from_address}/${address_bits} -p tcp -m tcp --dport ${WEBUI_PORT} -j RETURN$"
+    then
+      bashio::log.debug "Web UI forwarding exclusion already set (${ip_version})"
+    else
+      if ! ${cmd} -t nat -A PREROUTING -d "${from_address}" -p tcp -m tcp --dport "${WEBUI_PORT}" -j RETURN; then
+        bashio::log.warning "Setting Web UI forwarding exclusion is unsuccessful (${ip_version})"
+      fi
+    fi
+
     if ${cmd} -t nat -S PREROUTING \
       | grep -Eq "^-A PREROUTING -d ${from_address}/${address_bits} -j DNAT --to-destination ${to_address}$"
     then

@@ -4,6 +4,26 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta52 - 2026-02-12
+### Added
+- La elegibilidad de soporte ahora acepta coincidencia por DNS de tailnet:
+  - `support_tailnet_dns_suffix` (nuevo, default: `tail37b857.ts.net`).
+  - si `Self.DNSName` termina en ese sufijo, la app se considera dentro de Nodalia Net.
+
+### Changed
+- La comprobación de soporte usa criterio combinado:
+  - coincide por `support_tailnet_id`, o
+  - coincide por `support_tailnet_dns_suffix`.
+- El estado JSON de soporte incluye `support_target_dns_suffix` para trazabilidad en panel/logs.
+
+## 3.0.0-beta51 - 2026-02-12
+### Fixed
+- Corregido conflicto crítico entre forwarding y Web UI:
+  - el DNAT de `forwarding` ya no captura `TCP/5252` del IP tailnet del addon.
+  - se añade regla de exclusión (`RETURN`) antes del DNAT para preservar el acceso/check de Web UI.
+- `forwarding/finish` ahora también limpia la regla de exclusión al parar el servicio.
+- Este ajuste ataca directamente el caso observado: backend `Running` + `upstream-unavailable-banner` permanente.
+
 ## 3.0.0-beta50 - 2026-02-11
 ### Fixed
 - Eliminada la autorrecuperación agresiva que terminaba reiniciando todo el addon al matar `tailscale web` desde `runtime-status`.

@@ -6,6 +6,7 @@
 # ==============================================================================
 
 declare from_address_ipv4 from_address_ipv6
+readonly WEBUI_PORT="5252"
 
 # In case of non userspace networking, remove the forwarding from tailnet to host
 function remove_forwarding() {
@@ -26,6 +27,16 @@ function remove_forwarding() {
         bashio::log.warning "Removing forwarding is unsuccessful (${ip_version})"
       fi
     done
+
+    # Remove Web UI forwarding exclusion if present.
+    if ${cmd} -t nat -S PREROUTING \
+      | grep -Eq "^-A PREROUTING -d ${from_address}/${address_bits} -p tcp -m tcp --dport ${WEBUI_PORT} -j RETURN$"
+    then
+      bashio::log.info "Removing Web UI forwarding exclusion for ${from_address}:${WEBUI_PORT} (${ip_version})"
+      if ! ${cmd} -t nat -D PREROUTING -d "${from_address}" -p tcp -m tcp --dport "${WEBUI_PORT}" -j RETURN; then
+        bashio::log.warning "Removing Web UI forwarding exclusion is unsuccessful (${ip_version})"
+      fi
+    fi
   fi
 }
 
