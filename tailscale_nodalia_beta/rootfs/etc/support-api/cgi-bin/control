@@ -29,7 +29,7 @@ run_action() {
       ;;
     logout)
       set +e
-      cmd_output="$(/opt/tailscale logout 2>&1)"
+      cmd_output="$(timeout 20 /opt/tailscale logout 2>&1)"
       rc=$?
       set -e
       ;;
@@ -87,6 +87,48 @@ if [[ "${action}" == "logout" ]] && [[ "${backend_state}" == "Running" ]]; then
   dns_name="$(jq -r '.Self.DNSName // empty' <<< "${status_json}" 2>/dev/null || true)"
   tailnet="$(jq -r '.CurrentTailnet.Name // empty' <<< "${status_json}" 2>/dev/null || true)"
   output_trimmed="$(printf '%s' "${ACTION_OUTPUT}" | tail -c 800)"
+fi
+
+# Force logout path: if it still stays Running, clear local state and restart tailscaled.
+if [[ "${action}" == "logout" ]] && [[ "${backend_state}" == "Running" ]]; then
+  set +e
+  force_output="$(
+    {
+      echo "[force] backend still Running, applying hard logout fallback"
+      echo "[force] tailscale down"
+      /opt/tailscale down
+      daemon_pid="$(ps -eo pid,comm | awk '$2==\"tailscaled\"{print $1; exit}')"
+      if [[ -n "${daemon_pid}" ]]; then
+        echo "[force] stopping tailscaled pid=${daemon_pid}"
+        kill "${daemon_pid}"
+      else
+        echo "[force] tailscaled pid not found"
+      fi
+      sleep 1
+      echo "[force] removing local state files"
+      rm -f /data/tailscaled.state
+      rm -rf /data/state
+      mkdir -p /data/state
+      chmod 0700 /data/state
+      echo "[force] waiting for s6 restart"
+      sleep 2
+      echo "[force] post-restart logout probe"
+      timeout 15 /opt/tailscale logout || true
+    } 2>&1
+  )"
+  force_rc=$?
+  set -e
+  ACTION_OUTPUT="${ACTION_OUTPUT}"$'\n'"${force_output}"
+  if (( ACTION_RC == 0 )) && (( force_rc != 0 )); then
+    ACTION_RC=${force_rc}
+  fi
+  status_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
+  backend_state="$(jq -r '.BackendState // "Unknown"' <<< "${status_json}" 2>/dev/null || echo "Unknown")"
+  auth_url="$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/dev/null || true)"
+  online="$(jq -r '.Self.Online // false' <<< "${status_json}" 2>/dev/null || echo "false")"
+  dns_name="$(jq -r '.Self.DNSName // empty' <<< "${status_json}" 2>/dev/null || true)"
+  tailnet="$(jq -r '.CurrentTailnet.Name // empty' <<< "${status_json}" 2>/dev/null || true)"
+  output_trimmed="$(printf '%s' "${ACTION_OUTPUT}" | tail -c 1200)"
 fi
 login_server="$(bashio::config "login_server" "https://controlplane.tailscale.com")"
 socket_ok=false

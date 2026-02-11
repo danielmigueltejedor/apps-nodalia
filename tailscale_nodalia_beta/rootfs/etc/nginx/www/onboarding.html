@@ -763,6 +763,25 @@
       return data;
     }
 
+    async function waitForBackendTransition(targetStates, timeoutMs = 7000, stepMs = 700) {
+      const wanted = new Set(targetStates);
+      const deadline = Date.now() + timeoutMs;
+      let lastStatus = null;
+      while (Date.now() < deadline) {
+        try {
+          const status = await callControlApi("status", "GET");
+          lastStatus = status;
+          const state = String(status?.backend_state || "Unknown");
+          if (wanted.has(state)) {
+            return { matched: true, status };
+          }
+        } catch (_) {
+        }
+        await new Promise((resolve) => setTimeout(resolve, stepMs));
+      }
+      return { matched: false, status: lastStatus };
+    }
+
     async function downloadDiagnostics() {
       const report = {
         generated_at: new Date().toISOString(),
@@ -1172,10 +1191,12 @@
       setOpButtonsBusy(true);
       opMessage.textContent = "Cerrando sesion...";
       opOutput.hidden = true;
+      let logoutRequestOk = false;
       try {
         const data = await callControlApi("logout", "POST");
-        opMessage.textContent = data.ok
-          ? "Sesion cerrada. Vuelve a autenticar desde esta pagina."
+        logoutRequestOk = Boolean(data?.ok);
+        opMessage.textContent = logoutRequestOk
+          ? "Logout solicitado. Confirmando estado real..."
           : "Logout no confirmado. Estado actual: " + String(data.backend_state || "Unknown");
         if (data.output) {
           opOutput.textContent = data.output;
@@ -1185,8 +1206,21 @@
         opMessage.textContent = "Error al cerrar sesion: " + error.message;
       } finally {
         endUiAction();
+        let finalMessage = "";
+        if (logoutRequestOk) {
+          const transition = await waitForBackendTransition(["NeedsLogin", "NeedsMachineAuth"], 7000, 700);
+          if (transition.matched) {
+            finalMessage = "Sesion cerrada confirmada. Vuelve a autenticar desde esta pagina.";
+          } else {
+            const state = String(transition.status?.backend_state || "Unknown");
+            finalMessage = "Logout solicitado, pero el backend sigue en " + state + ". Pulsa Actualizar o revisa logs.";
+          }
+        }
         await refreshRuntime(1800);
         await loadState();
+        if (finalMessage) {
+          opMessage.textContent = finalMessage;
+        }
         setOpButtonsBusy(false);
       }
     });
@@ -1273,7 +1307,8 @@
     });
     goStatusBtn.addEventListener("click", (event) => {
       event.preventDefault();
-      okBox.scrollIntoView({ behavior: "smooth", block: "start" });
+      const target = loginBox.hidden ? (okBox.hidden ? stateEl : okBox) : loginBox;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     hardRefreshBtn.addEventListener("click", () => {
       if (pollHandle) {

@@ -4,6 +4,21 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta19 - 2026-02-11
+### Fixed
+- Logout now enforces real session termination from Nodalia panel:
+  - `control-api` adds a hard fallback path when backend stays `Running`
+    (`tailscale down`, restart daemon, clear local state files, re-check status).
+  - avoids false "Sesion cerrada" messages when session was not actually dropped.
+- Web UI readiness gate hardened:
+  - runtime check no longer marks Web UI as ready when backend returns
+    `Tailscale web interface is unavailable.`
+  - prevents opening iframe before it is truly operational.
+- Onboarding navigation polish:
+  - removed duplicate iframe action in hero.
+  - quick action now scrolls to the currently relevant section (login/actions/status).
+  - added Nodalia logo in panel header.
+
 ## 3.0.0-beta18 - 2026-02-11
 ### Fixed
 - Logout action reliability from Nodalia panel:

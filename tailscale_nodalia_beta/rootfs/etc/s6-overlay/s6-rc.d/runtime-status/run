@@ -23,6 +23,7 @@ declare setup_profile
 declare webui_readonly
 declare share_mode
 declare webui_probe_s
+declare webui_probe_body
 declare direct_webui_url
 declare support_json
 declare support_enabled
@@ -56,9 +57,15 @@ do
 
   webui_ready=false
   webui_probe_s="n/a"
+  webui_probe_body=""
   if webui_probe_s=$(curl -o /dev/null -sS -w '%{time_total}' --max-time 1 "http://127.0.0.1:25899/"); then
-    webui_ready=true
-    ready_streak=$((ready_streak + 1))
+    webui_probe_body="$(curl -sS --max-time 1 "http://127.0.0.1:25899/" 2>/dev/null || true)"
+    if [[ -n "${webui_probe_body}" ]] && ! grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
+      webui_ready=true
+      ready_streak=$((ready_streak + 1))
+    else
+      ready_streak=0
+    fi
   else
     ready_streak=0
   fi
