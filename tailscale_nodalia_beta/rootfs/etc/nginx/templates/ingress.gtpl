@@ -49,7 +49,9 @@ server {
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
         proxy_intercept_errors on;
         error_page 500 502 503 504 = /onboarding;
-        proxy_pass http://backend;
+        # IMPORTANT: forward to upstream root, not "/webui".
+        # If "/webui" is sent upstream, Tailscale returns an unavailable page.
+        proxy_pass http://backend/;
 
         # Inject a persistent return-to-panel button inside Tailscale Web UI.
         # This keeps beta UX consistent: panel first, iframe as optional view.
@@ -61,7 +63,8 @@ server {
         proxy_connect_timeout 2s;
         proxy_send_timeout 3s;
         proxy_read_timeout 3s;
-        proxy_pass http://backend;
+        # Probe upstream root for readiness checks.
+        proxy_pass http://backend/;
     }
 
     location / {

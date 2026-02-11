@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta43 - 2026-02-11
+### Fixed
+- Corregido enrutado de Web UI por ingress:
+  - `/webui` ahora proxya a la raiz real del backend (`/`) en lugar de reenviar la ruta `/webui`.
+  - `/webui-ready` tambien prueba contra la raiz del backend para no dar falsos negativos.
+- Este ajuste corrige el bucle donde el panel quedaba en `Web UI aun no responde` y la pagina devolvia `Tailscale web interface is unavailable`.
+
 ## 3.0.0-beta42 - 2026-02-11
 ### Added
 - Nuevo test DNS dedicado en el panel (`Test DNS tailnet`) para comprobar resolver por resolver sin salir de la UI.
