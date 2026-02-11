@@ -361,6 +361,8 @@
         <div>Perfil:</div><div><code id="rt-profile">-</code></div>
         <div>Share mode:</div><div><code id="rt-share">-</code></div>
         <div>DNSName:</div><div><code id="rt-dnsname">-</code></div>
+        <div>DNS resolvers:</div><div><code id="rt-dns-resolvers">-</code></div>
+        <div>DNS warning:</div><div><code id="rt-dns-warning">-</code></div>
         <div>HostName:</div><div><code id="rt-hostname">-</code></div>
         <div>IPv4:</div><div><code id="rt-ipv4">-</code></div>
         <div>IPv6:</div><div><code id="rt-ipv6">-</code></div>
@@ -389,6 +391,7 @@
       <div class="score-row">
         <span id="health-score-pill" class="score-pill">Health score: --</span>
         <button id="run-health-btn" type="button" class="ghost">Ejecutar test de conectividad</button>
+        <button id="run-dns-btn" type="button" class="ghost">Test DNS tailnet</button>
         <button id="download-report-btn" type="button" class="ghost">Descargar diagnostico JSON</button>
       </div>
       <ul id="health-checks" class="diag-list"></ul>
@@ -496,6 +499,8 @@
     const rtProfile = document.getElementById("rt-profile");
     const rtShare = document.getElementById("rt-share");
     const rtDnsName = document.getElementById("rt-dnsname");
+    const rtDnsResolvers = document.getElementById("rt-dns-resolvers");
+    const rtDnsWarning = document.getElementById("rt-dns-warning");
     const rtHostName = document.getElementById("rt-hostname");
     const rtIpv4 = document.getElementById("rt-ipv4");
     const rtIpv6 = document.getElementById("rt-ipv6");
@@ -514,6 +519,7 @@
     const opMessage = document.getElementById("op-message");
     const opOutput = document.getElementById("op-output");
     const runHealthBtn = document.getElementById("run-health-btn");
+    const runDnsBtn = document.getElementById("run-dns-btn");
     const downloadReportBtn = document.getElementById("download-report-btn");
     const healthChecks = document.getElementById("health-checks");
     const healthScorePill = document.getElementById("health-score-pill");
@@ -715,15 +721,19 @@
       const online = Boolean(runtime?.self_online);
       const webui = Boolean(runtime?.webui_ready);
       const supportEligible = Boolean(runtime?.support_eligible);
+      const dnsDegraded = Boolean(runtime?.dns_degraded);
       let score = 0;
       if (backend === "Running") {
-        score += 45;
+        score += 55;
       } else if (backend === "NeedsLogin" || backend === "NeedsMachineAuth") {
         score += 25;
       }
       if (online) score += 20;
-      if (webui) score += 20;
+      if (webui) score += 15;
       if (supportEligible) score += 15;
+      if (backend === "Running" && online && score < 65) score = 65;
+      if (dnsDegraded) score -= 5;
+      if (score < 0) score = 0;
       if (score > 100) score = 100;
       healthScorePill.textContent = "Health score: " + score;
       healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
@@ -739,6 +749,7 @@
         { ok: backend === "Running", label: "Backend Running" },
         { ok: online, label: "Self online" },
         { ok: webui, label: "Web UI local disponible" },
+        { ok: !dnsDegraded, label: "DNS tailnet estable" },
         { ok: !!runtime?.support_enabled, label: "Modo soporte habilitado" },
       ];
       const html = checks.map((c) =>
@@ -761,6 +772,9 @@
         data?.setup_profile,
         data?.share_mode,
         data?.self_dns_name,
+        data?.dns_warning,
+        data?.dns_degraded,
+        Array.isArray(data?.dns_resolvers) ? data.dns_resolvers.join(",") : "",
         data?.self_host_name,
         data?.support_enabled,
         data?.support_tailnet_match,
@@ -788,6 +802,8 @@
       rtProfile.textContent = String(data.setup_profile || "-");
       rtShare.textContent = String(data.share_mode || "-");
       rtDnsName.textContent = String(data.self_dns_name || "-");
+      rtDnsResolvers.textContent = Array.isArray(data.dns_resolvers) && data.dns_resolvers.length ? data.dns_resolvers.join(", ") : "-";
+      rtDnsWarning.textContent = data.dns_warning ? String(data.dns_warning) : (data.dns_degraded ? "Degradado" : "OK");
       rtHostName.textContent = String(data.self_host_name || "-");
       rtIpv4.textContent = Array.isArray(data.ipv4) && data.ipv4.length ? data.ipv4.join(", ") : "-";
       rtIpv6.textContent = Array.isArray(data.ipv6) && data.ipv6.length ? data.ipv6.join(", ") : "-";
@@ -1019,6 +1035,9 @@
       if (!hasTailnetIp) {
         suggestions.push("Sin IP tailnet detectada: revisa conectividad y estado de inicio de sesion.");
       }
+      if (lastRuntime?.dns_degraded) {
+        suggestions.push("DNS tailnet degradado: si persiste, prueba accept_dns=false o revisa DNS en admin de Tailscale.");
+      }
       if (lastRuntime?.support_enabled && !lastRuntime?.support_tailnet_match) {
         suggestions.push("Soporte remoto bloqueado: esta instancia no coincide con la tailnet de soporte.");
       }
@@ -1160,6 +1179,8 @@
         rtWebUiStreak.textContent = "n/a";
         rtWebUiProbe.textContent = "n/a";
         rtOnline.textContent = "n/a";
+        rtDnsResolvers.textContent = "n/a";
+        rtDnsWarning.textContent = "n/a";
         rtUptime.textContent = "n/a";
         rtUpdated.textContent = "n/a";
         supportEnabled.textContent = "n/a";
@@ -1192,6 +1213,7 @@
       checks.push({ label: "Web UI lista (esperado: true)", ok: !!lastRuntime?.webui_ready });
       checks.push({ label: "Web UI estable (streak >= 2)", ok: Number(lastRuntime?.webui_ready_streak || 0) >= 2 });
       checks.push({ label: "self_online=true", ok: !!lastRuntime?.self_online });
+      checks.push({ label: "dns_degraded=false", ok: !lastRuntime?.dns_degraded });
       checks.push({ label: "support elegible", ok: !!lastRuntime?.support_eligible });
 
       diagList.innerHTML = checks.map((c) =>
@@ -1387,6 +1409,8 @@
           { ok: !!checks.tailscaled_socket, label: "Socket tailscaled" },
           { ok: !!checks.webui_local, label: "Web UI local 127.0.0.1:25899" },
           { ok: !!checks.control_plane_reachable, label: "Control plane accesible" },
+          { ok: !!checks.dns_any_resolver_ok, label: "Al menos 1 resolver DNS responde" },
+          { ok: !!checks.dns_all_resolvers_ok, label: "Todos los resolvers DNS responden" },
         ];
         const html = rows.map((c) =>
           `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
@@ -1408,6 +1432,37 @@
         opMessage.textContent = "No se pudo ejecutar el diagnostico: " + error.message;
       } finally {
         runHealthBtn.disabled = false;
+        endUiAction();
+      }
+    });
+    runDnsBtn.addEventListener("click", async () => {
+      beginUiAction();
+      runDnsBtn.disabled = true;
+      opMessage.textContent = "Ejecutando test DNS tailnet...";
+      try {
+        const data = await callControlApi("dnsdiag", "POST");
+        const dns = data?.dns || {};
+        const resolvers = Array.isArray(dns.resolvers) ? dns.resolvers : [];
+        const rows = resolvers.length
+          ? resolvers.map((item) => ({
+            ok: !!item.dns_query_ok,
+            label: "Resolver " + String(item.resolver || "-") + " (query=" + (item.dns_query_ok ? "ok" : "fail") + ", reach=" + (item.transport_ok ? "ok" : "fail") + ")"
+          }))
+          : [{ ok: false, label: "No se detectaron resolvers DNS para test" }];
+        const summary = {
+          ok: !!dns.all_resolvers_ok,
+          label: "Resumen DNS: " + (dns.any_resolver_ok ? "parcial/ok" : "fallo total") + " para " + String(dns.target || "target")
+        };
+        const html = [summary, ...rows].map((c) =>
+          `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+        ).join("");
+        healthChecks.innerHTML = html;
+        lastHealthHtml = html;
+        opMessage.textContent = "Test DNS completado.";
+      } catch (error) {
+        opMessage.textContent = "No se pudo ejecutar test DNS: " + error.message;
+      } finally {
+        runDnsBtn.disabled = false;
         endUiAction();
       }
     });

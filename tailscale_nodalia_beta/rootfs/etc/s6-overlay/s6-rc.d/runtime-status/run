@@ -38,6 +38,9 @@ declare support_url
 declare support_reason
 declare support_expires_at
 declare support_ttl_minutes
+declare dns_resolvers
+declare dns_warning
+declare dns_degraded
 
 declare -i ready_streak=0
 declare -i start_epoch
@@ -109,6 +112,18 @@ do
   support_reason="$(jq -r '.reason // empty' <<< "${support_json}" 2>/dev/null || true)"
   support_expires_at="$(jq -r '.expires_at // empty' <<< "${support_json}" 2>/dev/null || true)"
   support_ttl_minutes="$(jq -r '.ttl_minutes // 0' <<< "${support_json}" 2>/dev/null || echo "0")"
+  dns_resolvers="$(awk '/^[[:space:]]*nameserver[[:space:]]+/ {print $2}' /etc/resolv.conf 2>/dev/null | jq -Rsc 'split("\n") | map(select(length>0))' || echo '[]')"
+  dns_warning="$(jq -r '
+    (.Health // [])
+    | map(select(type=="string"))
+    | map(select(test("dns|nameserver|resolver"; "i")))
+    | .[0] // empty
+  ' <<< "${status_json}" 2>/dev/null || true)"
+  if [[ -n "${dns_warning}" ]]; then
+    dns_degraded=true
+  else
+    dns_degraded=false
+  fi
 
   now_epoch=$(date +%s)
   uptime_sec=$((now_epoch - start_epoch))
@@ -137,6 +152,9 @@ do
     --arg support_reason "${support_reason}" \
     --arg support_expires_at "${support_expires_at}" \
     --arg support_ttl_minutes "${support_ttl_minutes}" \
+    --arg dns_warning "${dns_warning}" \
+    --arg dns_degraded "${dns_degraded}" \
+    --arg dns_resolvers "${dns_resolvers}" \
     --arg ipv4 "${ipv4_list}" \
     --arg ipv6 "${ipv6_list}" \
     '{
@@ -160,6 +178,9 @@ do
       support_reason:$support_reason,
       support_expires_at:$support_expires_at,
       support_ttl_minutes:($support_ttl_minutes | tonumber? // 0),
+      dns_warning:$dns_warning,
+      dns_degraded:($dns_degraded == "true"),
+      dns_resolvers: ($dns_resolvers | fromjson? // []),
       direct_webui_url:$direct_webui_url,
       self_dns_name:$self_dns_name,
       self_host_name:$self_host_name,

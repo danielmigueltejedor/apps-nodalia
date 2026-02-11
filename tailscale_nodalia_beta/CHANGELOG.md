@@ -4,6 +4,26 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta42 - 2026-02-11
+### Added
+- Nuevo test DNS dedicado en el panel (`Test DNS tailnet`) para comprobar resolver por resolver sin salir de la UI.
+- `control-api` ahora expone diagnostico DNS estructurado:
+  - lista de resolvers detectados,
+  - estado de reachability por resolver,
+  - resultado de consulta DNS por resolver,
+  - resumen `any/all`.
+
+### Changed
+- Ajuste de health score para evitar caidas exageradas cuando Tailscale ya esta `Running`:
+  - base mas alta en estado operativo,
+  - degradacion DNS resta poco y visible, sin penalizar en exceso el estado general.
+- Panel en vivo ampliado con campos DNS:
+  - `DNS resolvers`
+  - `DNS warning`.
+
+### Fixed
+- Diagnostico de conectividad general ahora incluye checks DNS (`any/all resolver ok`) junto al socket/webui/control-plane.
+
 ## 3.0.0-beta41 - 2026-02-11
 ### Fixed
 - Logout action is now more deterministic and resilient:
