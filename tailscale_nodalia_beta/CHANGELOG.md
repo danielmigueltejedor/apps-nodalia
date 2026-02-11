@@ -4,14 +4,22 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta40 - 2026-02-11
+### Fixed
+- Restored floating `Volver al panel Nodalia` button inside Tailscale iframe Web UI.
+- Keeps beta UX model:
+  - Nodalia panel as main entrypoint.
+  - Web UI opened from panel.
+  - always-available return path from iframe back to panel.
+
 ## 3.0.0-beta39 - 2026-02-11
 ### Fixed
-- Restored practical access to iframe Web UI when backend is already `Running`.
-- Removed over-restrictive manual open gating that could block access forever.
-- New behavior:
-  - manual `Entrar Web UI` is enabled after short running warmup window (15s),
-  - preflight check is still attempted first,
-  - if preflight fails but backend is `Running`, it opens Web UI anyway (no hard lockout).
+- Restored iframe rendering of Tailscale Web UI in Home Assistant ingress.
+- Removed the break-out sub_filter that could prevent iframe display.
+- Stripped restrictive headers from upstream Web UI:
+  - `X-Frame-Options` and `Content-Security-Policy` are removed.
+  - adds a safe `frame-ancestors 'self'` policy to allow ingress iframe.
+- Added `Host` header forwarding for better upstream compatibility.
 
 ## 3.0.0-beta38 - 2026-02-11
 ### Fixed

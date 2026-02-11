@@ -50,6 +50,11 @@ server {
         proxy_intercept_errors on;
         error_page 500 502 503 504 = /onboarding;
         proxy_pass http://backend;
+
+        # Inject a persistent return-to-panel button inside Tailscale Web UI.
+        # This keeps beta UX consistent: panel first, iframe as optional view.
+        sub_filter_once off;
+        sub_filter '</body>' '<script>(function(){try{if(document.getElementById("nodalia-back-btn"))return;var a=document.createElement("a");a.id="nodalia-back-btn";a.href="./";a.textContent="Volver al panel Nodalia";a.style.cssText="position:fixed;left:16px;bottom:16px;z-index:2147483647;background:#0b63ce;color:#fff;padding:10px 12px;border-radius:10px;text-decoration:none;font:700 13px/1.1 Segoe UI,Noto Sans,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25)";document.body.appendChild(a);}catch(e){}})();</script></body>';
     }
 
     location = /webui-ready {
