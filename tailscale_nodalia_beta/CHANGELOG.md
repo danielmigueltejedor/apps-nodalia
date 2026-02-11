@@ -4,6 +4,22 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta24 - 2026-02-11
+### Changed
+- Session control panel simplified to button-driven UX only.
+- Removed command-copy diagnostics element from `Control de sesion`.
+- Diagnostics in that section now stay fully action-based:
+  - `Ejecutar diagnostico`
+  - `Descargar diagnostico`
+
+## 3.0.0-beta23 - 2026-02-11
+### Changed
+- Diagnostic actions are now also available directly inside `Control de sesion`:
+  - `Ejecutar diagnostico`
+  - `Descargar diagnostico`
+  - `Copiar comando de diagnostico`
+- Avoids confusion when navigating advanced panels and makes diagnostics accessible from both sections.
+
 ## 3.0.0-beta22 - 2026-02-11
 ### Fixed
 - Fixed `403 Forbidden` regression in ingress root route after static-file handling changes.

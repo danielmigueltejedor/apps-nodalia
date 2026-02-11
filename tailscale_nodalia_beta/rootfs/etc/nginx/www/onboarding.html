@@ -385,9 +385,11 @@
     </section>
     <section class="panel advanced-only">
       <h2>Control de sesion</h2>
-      <p class="small">Si ves "Viewing" en Web UI, usa acceso directo tailnet y revisa ACL/tagOwners.</p>
-      <div class="mono" id="session-report">tailscale status --json | jq '.BackendState,.AuthURL'</div>
-      <button id="copy-session-report" type="button" class="ghost">Copiar comando de diagnostico</button>
+      <p class="small">Si ves "Viewing" en Web UI, usa acceso directo tailnet y revisa ACL/tagOwners. Todo el control de esta pagina se realiza con botones.</p>
+      <div class="actions">
+        <button id="session-diag-btn" type="button" class="ghost">Ejecutar diagnostico</button>
+        <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
+      </div>
     </section>
     <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion.</p>
   </main>
@@ -447,7 +449,8 @@
     const stepAccess = document.getElementById("step-access");
     const copyProfileHome = document.getElementById("copy-profile-home");
     const copyProfileSubnet = document.getElementById("copy-profile-subnet");
-    const copySessionReport = document.getElementById("copy-session-report");
+    const sessionDiagBtn = document.getElementById("session-diag-btn");
+    const sessionDownloadBtn = document.getElementById("session-download-btn");
     const opReconnectBtn = document.getElementById("op-reconnect-btn");
     const opLogoutBtn = document.getElementById("op-logout-btn");
     const opRefreshBtn = document.getElementById("op-refresh-btn");
@@ -1108,10 +1111,8 @@
     copyProfileSubnet.addEventListener("click", async () => {
       await copyText("setup_profile: subnet_router", copyProfileSubnet, "Copiado", "Copiar");
     });
-    copySessionReport.addEventListener("click", async () => {
-      const cmd = "tailscale status --json | jq '.BackendState,.AuthURL'";
-      await copyText(cmd, copySessionReport, "Comando copiado", "Copiar comando de diagnostico");
-    });
+    sessionDiagBtn.addEventListener("click", runDiagnostics);
+    sessionDownloadBtn.addEventListener("click", downloadDiagnostics);
     copyAclWebuiBtn.addEventListener("click", async () => {
       await copyText(aclWebUiSnippet, copyAclWebuiBtn, "ACL copiada", "Copiar ACL Web UI (self:5252)");
     });
