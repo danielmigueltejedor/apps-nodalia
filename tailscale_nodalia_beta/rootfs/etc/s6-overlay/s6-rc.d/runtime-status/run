@@ -73,7 +73,7 @@ do
     if [[ -n "${webui_probe_time}" ]]; then
       webui_probe_s="${webui_probe_time}"
     fi
-    if [[ "${webui_http_code}" =~ ^(2|3|401) ]] && ! grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
+    if [[ "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401)$ ]]; then
       webui_ready=true
       ready_streak=$((ready_streak + 1))
     else

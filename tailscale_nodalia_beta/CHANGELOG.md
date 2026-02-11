@@ -4,6 +4,22 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta27 - 2026-02-11
+### Fixed
+- Critical fix for Web UI readiness detection:
+  - corrected HTTP status regex in runtime probe (`200/3xx/401` were not matching due to a regex bug).
+  - this bug forced `webui_ready=false` permanently and kept onboarding stuck in `Inicializacion de Web UI`.
+
+## 3.0.0-beta26 - 2026-02-11
+### Fixed
+- Web UI readiness detector simplified to avoid false negatives:
+  - readiness now relies on HTTP status from local Web UI endpoint (`2xx/3xx/401`),
+    instead of HTML-content matching that could fail even when the service was up.
+- Prevents panel from staying stuck in `Inicializacion de Web UI` with backend already `Running`.
+- Diagnostic labels in onboarding are now clearer:
+  - `Web UI lista (esperado: true)`
+  - `Web UI estable (streak >= 2)`
+
 ## 3.0.0-beta25 - 2026-02-11
 ### Fixed
 - Web UI warmup detector no longer gets stuck when backend responds with valid HTTP but minimal/empty body.

@@ -1075,8 +1075,8 @@
       checks.push({ label: "onboarding.json disponible", ok: !!lastOnboarding });
       checks.push({ label: "runtime.json disponible", ok: !!lastRuntime });
       checks.push({ label: "backend Running", ok: (lastRuntime?.backend_state || lastOnboarding?.backend_state) === "Running" });
-      checks.push({ label: "webui_ready=true", ok: !!lastRuntime?.webui_ready });
-      checks.push({ label: "webui_ready_streak>=2", ok: Number(lastRuntime?.webui_ready_streak || 0) >= 2 });
+      checks.push({ label: "Web UI lista (esperado: true)", ok: !!lastRuntime?.webui_ready });
+      checks.push({ label: "Web UI estable (streak >= 2)", ok: Number(lastRuntime?.webui_ready_streak || 0) >= 2 });
       checks.push({ label: "self_online=true", ok: !!lastRuntime?.self_online });
       checks.push({ label: "support elegible", ok: !!lastRuntime?.support_eligible });
 
