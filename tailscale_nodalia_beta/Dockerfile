@@ -65,7 +65,8 @@ RUN set -eux; \
   # Permisos de scripts propios si existen (ajusta nombres si los tienes)
   chmod 0755 /usr/bin/subnet-routes 2>/dev/null || true; \
   chmod 0755 /usr/bin/support-tunnel 2>/dev/null || true; \
-  chmod 0755 /etc/support-api/cgi-bin/support 2>/dev/null || true
+  chmod 0755 /etc/support-api/cgi-bin/support 2>/dev/null || true; \
+  chmod 0755 /etc/support-api/cgi-bin/control 2>/dev/null || true
 
 HEALTHCHECK CMD healthcheck
 

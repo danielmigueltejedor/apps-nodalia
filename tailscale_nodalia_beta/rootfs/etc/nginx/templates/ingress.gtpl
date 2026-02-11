@@ -30,6 +30,14 @@ server {
         proxy_pass http://127.0.0.1:25910/cgi-bin/support;
     }
 
+    location = /control-api {
+        proxy_connect_timeout 1s;
+        proxy_send_timeout 2s;
+        proxy_read_timeout 10s;
+        add_header Cache-Control "no-store";
+        proxy_pass http://127.0.0.1:25910/cgi-bin/control;
+    }
+
     location = /webui {
         proxy_connect_timeout 2s;
         proxy_send_timeout 8s;
@@ -43,7 +51,7 @@ server {
         # Replace the internal redirect to break out to the top window.
         sub_filter_once off;
         sub_filter 'document.location.href = url' 'window.top.location.href = url';
-        sub_filter '</body>' '<script>(function(){try{var a=document.createElement("a");a.href="/onboarding";a.textContent="Volver al panel Nodalia";a.style.cssText="position:fixed;left:16px;bottom:16px;z-index:2147483647;background:#0b63ce;color:#fff;padding:10px 12px;border-radius:10px;text-decoration:none;font:600 13px/1.1 Segoe UI,Noto Sans,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25)";document.body.appendChild(a);}catch(e){}})();</script></body>';
+        sub_filter '</body>' '<script>(function(){try{var a=document.createElement("a");a.href="./";a.textContent="Volver al panel Nodalia";a.style.cssText="position:fixed;left:16px;bottom:16px;z-index:2147483647;background:#0b63ce;color:#fff;padding:10px 12px;border-radius:10px;text-decoration:none;font:600 13px/1.1 Segoe UI,Noto Sans,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.25)";document.body.appendChild(a);}catch(e){}})();</script></body>';
     }
 
     location = /webui-ready {

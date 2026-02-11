@@ -103,6 +103,12 @@
       flex-wrap: wrap;
       gap: 8px;
     }
+    .advanced-only {
+      display: block;
+    }
+    .advanced-hidden .advanced-only {
+      display: none;
+    }
     .panel {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -206,6 +212,7 @@
       <div class="quick">
         <a id="go-webui-btn" class="btn ghost" href="webui">Ir al iframe de Tailscale</a>
         <button id="hard-refresh-btn" type="button" class="ghost">Recargar panel</button>
+        <button id="toggle-advanced-btn" type="button" class="ghost">Modo avanzado: ON</button>
       </div>
       <p class="small">Dentro del iframe veras un boton flotante para volver a este panel.</p>
     </section>
@@ -263,6 +270,17 @@
       <ul id="diag-list" class="diag-list"></ul>
     </section>
     <section class="panel">
+      <h2>Control rapido</h2>
+      <p class="small">Acciones operativas sin salir del panel principal.</p>
+      <div class="actions">
+        <button id="op-reconnect-btn" type="button">Reintentar conexion</button>
+        <button id="op-logout-btn" type="button" class="ghost">Cerrar sesion</button>
+        <button id="op-refresh-btn" type="button" class="ghost">Actualizar estado ahora</button>
+      </div>
+      <p id="op-message" class="small"></p>
+      <div id="op-output" class="mono" hidden></div>
+    </section>
+    <section class="panel advanced-only">
       <h2>Sugerencias inteligentes</h2>
       <ul id="suggestions-list" class="diag-list"></ul>
       <div class="actions" style="margin-top:10px;">
@@ -270,7 +288,7 @@
         <button id="copy-tagowners-btn" type="button" class="ghost">Copiar bloque tagOwners</button>
       </div>
     </section>
-    <section class="panel">
+    <section class="panel advanced-only">
       <h2>Soporte remoto</h2>
       <p class="small">Disponible solo si esta app esta en la tailnet de soporte configurada.</p>
       <div class="kv">
@@ -289,7 +307,7 @@
       </div>
       <p id="sup-message" class="small"></p>
     </section>
-    <section class="panel">
+    <section class="panel advanced-only">
       <h2>Perfiles recomendados</h2>
       <div class="grid-2">
         <article class="profile">
@@ -306,7 +324,7 @@
         </article>
       </div>
     </section>
-    <section class="panel">
+    <section class="panel advanced-only">
       <h2>Control de sesion</h2>
       <p class="small">Si ves "Viewing" en Web UI, usa acceso directo tailnet y revisa ACL/tagOwners.</p>
       <div class="mono" id="session-report">tailscale status --json | jq '.BackendState,.AuthURL'</div>
@@ -325,6 +343,7 @@
     const openDirectBtn = document.getElementById("open-direct-btn");
     const goWebuiBtn = document.getElementById("go-webui-btn");
     const hardRefreshBtn = document.getElementById("hard-refresh-btn");
+    const toggleAdvancedBtn = document.getElementById("toggle-advanced-btn");
     const refreshBtn = document.getElementById("refresh-btn");
     const refreshOkBtn = document.getElementById("refresh-ok-btn");
     const cancelRedirectBtn = document.getElementById("cancel-redirect-btn");
@@ -367,6 +386,11 @@
     const copyProfileHome = document.getElementById("copy-profile-home");
     const copyProfileSubnet = document.getElementById("copy-profile-subnet");
     const copySessionReport = document.getElementById("copy-session-report");
+    const opReconnectBtn = document.getElementById("op-reconnect-btn");
+    const opLogoutBtn = document.getElementById("op-logout-btn");
+    const opRefreshBtn = document.getElementById("op-refresh-btn");
+    const opMessage = document.getElementById("op-message");
+    const opOutput = document.getElementById("op-output");
     let pollHandle = null;
     let redirectHandle = null;
     let lastOnboarding = null;
@@ -375,7 +399,9 @@
     let lastStateMessage = "";
     let lastStateClass = "";
     let isFirstRender = true;
+    let advancedModeEnabled = true;
     const RUNTIME_CACHE_KEY = "nodalia_runtime_cache_v1";
+    const UI_PREFS_KEY = "nodalia_ui_prefs_v1";
     const aclWebUiSnippet = JSON.stringify({
       acls: [
         { action: "accept", src: ["autogroup:member"], dst: ["autogroup:self:5252"] }
@@ -411,6 +437,30 @@
       } finally {
         clearTimeout(timeoutHandle);
       }
+    }
+
+    function loadUiPrefs() {
+      try {
+        const raw = localStorage.getItem(UI_PREFS_KEY);
+        if (!raw) {
+          return;
+        }
+        const prefs = JSON.parse(raw);
+        advancedModeEnabled = prefs?.advanced_mode !== false;
+      } catch (_) {
+      }
+    }
+
+    function saveUiPrefs() {
+      try {
+        localStorage.setItem(UI_PREFS_KEY, JSON.stringify({ advanced_mode: advancedModeEnabled }));
+      } catch (_) {
+      }
+    }
+
+    function renderAdvancedMode() {
+      document.body.classList.toggle("advanced-hidden", !advancedModeEnabled);
+      toggleAdvancedBtn.textContent = advancedModeEnabled ? "Modo avanzado: ON" : "Modo avanzado: OFF";
     }
 
     function setSupportButtonState(busy) {
@@ -500,6 +550,24 @@
       return data;
     }
 
+    async function callControlApi(action, method = "POST") {
+      const response = await fetch("control-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now(), {
+        method,
+        cache: "no-store",
+      });
+      const payload = await response.text();
+      let data;
+      try {
+        data = JSON.parse(payload);
+      } catch (_) {
+        data = { ok: false, raw: payload };
+      }
+      if (!response.ok) {
+        throw new Error(data?.output || data?.error || "control_api_failed");
+      }
+      return data;
+    }
+
     function schedulePoll(delayMs = 1000) {
       if (pollHandle) {
         clearTimeout(pollHandle);
@@ -519,6 +587,12 @@
         stateEl.className = "state" + (cssClass ? " " + cssClass : "");
         lastStateClass = cssClass;
       }
+    }
+
+    function setOpButtonsBusy(busy) {
+      opReconnectBtn.disabled = busy;
+      opLogoutBtn.disabled = busy;
+      opRefreshBtn.disabled = busy;
     }
 
     function cancelAutoRedirect() {
@@ -809,6 +883,58 @@
       }
       await copyText(lastSupportUrl, supportCopyUrlBtn, "URL copiada", "Copiar URL soporte");
     });
+    opReconnectBtn.addEventListener("click", async () => {
+      setOpButtonsBusy(true);
+      opMessage.textContent = "Reintentando conexion con Tailscale...";
+      opOutput.hidden = true;
+      try {
+        const data = await callControlApi("reconnect", "POST");
+        opMessage.textContent = data.ok
+          ? "Accion completada. Estado: " + String(data.backend_state || "Unknown")
+          : "No se pudo completar reconnect.";
+        if (data.output) {
+          opOutput.textContent = data.output;
+          opOutput.hidden = false;
+        }
+      } catch (error) {
+        opMessage.textContent = "Error al reconectar: " + error.message;
+      } finally {
+        await refreshRuntime(1800);
+        loadState();
+        setOpButtonsBusy(false);
+      }
+    });
+    opLogoutBtn.addEventListener("click", async () => {
+      const confirmed = window.confirm("Se cerrara la sesion actual de Tailscale en este dispositivo. Continuar?");
+      if (!confirmed) {
+        return;
+      }
+      setOpButtonsBusy(true);
+      opMessage.textContent = "Cerrando sesion...";
+      opOutput.hidden = true;
+      try {
+        const data = await callControlApi("logout", "POST");
+        opMessage.textContent = data.ok
+          ? "Sesion cerrada. Vuelve a autenticar desde esta pagina."
+          : "No se pudo cerrar sesion.";
+        if (data.output) {
+          opOutput.textContent = data.output;
+          opOutput.hidden = false;
+        }
+      } catch (error) {
+        opMessage.textContent = "Error al cerrar sesion: " + error.message;
+      } finally {
+        await refreshRuntime(1800);
+        loadState();
+        setOpButtonsBusy(false);
+      }
+    });
+    opRefreshBtn.addEventListener("click", async () => {
+      opMessage.textContent = "Actualizando estado...";
+      await refreshRuntime(1800);
+      loadState();
+      opMessage.textContent = "Estado actualizado.";
+    });
 
     refreshBtn.addEventListener("click", () => {
       if (pollHandle) {
@@ -852,6 +978,11 @@
       cancelAutoRedirect();
       loadState();
     });
+    toggleAdvancedBtn.addEventListener("click", () => {
+      advancedModeEnabled = !advancedModeEnabled;
+      renderAdvancedMode();
+      saveUiPrefs();
+    });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         if (pollHandle) {
@@ -867,6 +998,8 @@
     });
     diagBtn.addEventListener("click", runDiagnostics);
     copyReportBtn.addEventListener("click", copyReport);
+    loadUiPrefs();
+    renderAdvancedMode();
     hydrateRuntimeFromCache();
     loadState();
   </script>

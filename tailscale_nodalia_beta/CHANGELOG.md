@@ -4,6 +4,26 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta15 - 2026-02-11
+### Fixed
+- Fix return button from Tailscale iframe to Nodalia panel under Home Assistant ingress.
+- Switched from absolute path (`/onboarding`) to ingress-safe relative path (`./`) to avoid `404 Not Found`.
+
+## 3.0.0-beta14 - 2026-02-11
+### Added
+- New operational control API endpoint: `/control-api`.
+- New onboarding "Control rapido" actions:
+  - `Reintentar conexion` (reconnect),
+  - `Cerrar sesion` (logout),
+  - `Actualizar estado ahora`.
+- New basic/advanced UI mode toggle (persisted in browser local storage).
+
+### Changed
+- Onboarding now behaves as a true main control page:
+  - critical controls remain always visible,
+  - technical/advanced panels can be hidden for cleaner navigation.
+- Log review note: current beta startup log is healthy (reaches `Running` quickly); only non-critical `resolv.conf` fallback warning observed.
+
 ## 3.0.0-beta13 - 2026-02-11
 ### Changed
 - Reduced UI flicker on onboarding page:
