@@ -4,6 +4,12 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta22 - 2026-02-11
+### Fixed
+- Fixed `403 Forbidden` regression in ingress root route after static-file handling changes.
+- Root fallback now serves onboarding correctly while still allowing static assets like `nodalia-logo.png`.
+- NGINX route normalized in both static and templated ingress configs to prevent root directory resolution issues.
+
 ## 3.0.0-beta21 - 2026-02-11
 ### Fixed
 - Manual refresh actions in onboarding now provide clear feedback and deterministic behavior:
