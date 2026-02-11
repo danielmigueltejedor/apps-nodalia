@@ -26,6 +26,7 @@ declare webui_probe_s
 declare webui_probe_body
 declare webui_probe_payload
 declare webui_probe_time
+declare webui_http_code
 declare direct_webui_url
 declare support_json
 declare support_enabled
@@ -60,16 +61,19 @@ do
   webui_ready=false
   webui_probe_s="n/a"
   webui_probe_body=""
+  webui_http_code="000"
   webui_probe_payload="$(
-    curl -sS --max-time 1 -w $'\n__TS_TIME__:%{time_total}' "http://127.0.0.1:25899/" 2>/dev/null || true
+    curl -sS --max-time 1 -w $'\n__TS_META__:%{time_total}:%{http_code}' "http://127.0.0.1:25899/" 2>/dev/null || true
   )"
-  if [[ -n "${webui_probe_payload}" && "${webui_probe_payload}" == *"__TS_TIME__:"* ]]; then
-    webui_probe_time="${webui_probe_payload##*__TS_TIME__:}"
-    webui_probe_body="${webui_probe_payload%$'\n'__TS_TIME__:*}"
+  if [[ -n "${webui_probe_payload}" && "${webui_probe_payload}" == *"__TS_META__:"* ]]; then
+    webui_probe_time="${webui_probe_payload##*__TS_META__:}"
+    webui_http_code="${webui_probe_time##*:}"
+    webui_probe_time="${webui_probe_time%:*}"
+    webui_probe_body="${webui_probe_payload%$'\n'__TS_META__:*}"
     if [[ -n "${webui_probe_time}" ]]; then
       webui_probe_s="${webui_probe_time}"
     fi
-    if [[ -n "${webui_probe_body}" ]] && ! grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
+    if [[ "${webui_http_code}" =~ ^(2|3|401) ]] && ! grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
       webui_ready=true
       ready_streak=$((ready_streak + 1))
     else

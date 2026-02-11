@@ -4,6 +4,12 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta25 - 2026-02-11
+### Fixed
+- Web UI warmup detector no longer gets stuck when backend responds with valid HTTP but minimal/empty body.
+- Runtime readiness probe now evaluates both response time and HTTP status code (2xx/3xx/401), while still blocking the known unavailable page.
+- Prevents infinite `Inicializacion de Web UI` loops when Tailscale web is actually reachable.
+
 ## 3.0.0-beta24 - 2026-02-11
 ### Changed
 - Session control panel simplified to button-driven UX only.
