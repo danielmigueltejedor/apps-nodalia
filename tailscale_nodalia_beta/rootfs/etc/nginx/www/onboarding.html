@@ -455,17 +455,17 @@
           <span class="brand-name">Nodalia</span>
         </div>
         <div class="hero-actions">
+          <span id="logout-hint" class="logout-hint" hidden></span>
           <button id="op-logout-btn" type="button" class="power-btn" aria-label="Logauth y reset de identidad local" title="Logauth (reset tailnet)">&#x23FB;</button>
           <button id="theme-toggle-btn" type="button" class="ghost theme-toggle" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">☀</button>
-          <span id="logout-hint" class="logout-hint" hidden></span>
         </div>
       </div>
       <span class="badge">Nodalia Control Center</span>
       <h1>Asistente de inicio de sesion</h1>
       <p>Gestiona Tailscale desde aqui sin depender del iframe, con acceso directo cuando quieras.</p>
       <div class="quick">
-        <a id="go-status-btn" class="btn ghost" href="#ok-box">Ir a acciones de conexion</a>
-        <button id="hard-refresh-btn" type="button" class="ghost">Recargar panel</button>
+        <a id="go-status-btn" class="btn ghost" href="#ok-box" title="Ir al bloque de acciones">Ir a acciones</a>
+        <button id="hard-refresh-btn" type="button" class="ghost" title="Recargar panel completo">Recargar ↻</button>
         <button id="toggle-advanced-btn" type="button" class="ghost">Modo avanzado: ON</button>
       </div>
       <p class="small">Dentro del iframe veras un boton flotante para volver a este panel.</p>
@@ -482,15 +482,15 @@
         <div class="actions">
           <button id="copy-btn" type="button">Copiar URL</button>
           <a id="open-btn" class="btn" href="#" target="_blank" rel="noopener noreferrer">Abrir URL</a>
-          <button id="refresh-btn" type="button" class="ghost">Actualizar estado</button>
+          <button id="refresh-btn" type="button" class="ghost" title="Actualizar estado">Actualizar ↻</button>
         </div>
       </div>
     </div>
     <div id="ok-box" hidden>
       <div class="actions">
-        <a id="open-webui-btn" class="btn disabled" href="#">Entrar Web UI (ingress)</a>
+        <a id="open-webui-btn" class="btn disabled" href="#" title="Abrir iframe Tailscale por ingress">Iframe Tailscale</a>
         <a id="open-direct-btn" class="btn ghost disabled" href="#" target="_blank" rel="noopener noreferrer">Acceso directo tailnet (no disponible en esta app)</a>
-        <button id="refresh-ok-btn" type="button" class="ghost">Actualizar estado</button>
+        <button id="refresh-ok-btn" type="button" class="ghost" title="Actualizar estado">Actualizar ↻</button>
         <button id="cancel-redirect-btn" type="button" class="ghost" hidden>Cancelar auto-entrada</button>
       </div>
       <label class="check" style="margin-top:10px;">
@@ -592,7 +592,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta79</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta81</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1387,7 +1387,7 @@
         suggestions.push("Backend aun no esta Running: espera 20-60s tras actualizar/reinstalar.");
       }
       if (backend === "Running" && streak < 2) {
-        suggestions.push("Web UI calentando: manten esta pagina abierta y pulsa Actualizar estado.");
+        suggestions.push("Web UI calentando: manten esta pagina abierta y pulsa Actualizar ↻.");
       }
       if (backend === "Running" && webUiReason.startsWith("http-")) {
         suggestions.push("La sonda local de Web UI devuelve " + webUiReason + ": revisa salud de tailscale web y vuelve a intentar.");
@@ -1824,10 +1824,10 @@
     downloadReportBtn.addEventListener("click", downloadDiagnostics);
 
     refreshBtn.addEventListener("click", async () => {
-      await handleManualRefresh(refreshBtn, "Actualizar estado");
+      await handleManualRefresh(refreshBtn, "Actualizar ↻");
     });
     refreshOkBtn.addEventListener("click", async () => {
-      await handleManualRefresh(refreshOkBtn, "Actualizar estado");
+      await handleManualRefresh(refreshOkBtn, "Actualizar ↻");
     });
     cancelRedirectBtn.addEventListener("click", () => {
       autoOpenCheck.checked = false;
@@ -1903,7 +1903,7 @@
     openDirectBtn.addEventListener("click", (event) => {
       if (isUiDisabled(openDirectBtn)) {
         event.preventDefault();
-        updateStateView("El acceso directo por tailnet no aplica a esta app. Usa 'Entrar Web UI (ingress)'.", "login");
+        updateStateView("El acceso directo por tailnet no aplica a esta app. Usa 'Iframe Tailscale'.", "login");
       }
     });
     diagBtn.addEventListener("click", runDiagnostics);

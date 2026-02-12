@@ -30,47 +30,94 @@ run_action() {
       ;;
     logout)
       set +e
-      cmd_output="$(
-        {
-          echo "[logout] hard identity reset start"
-          echo "[logout] tailscale down"
-          timeout 20 /opt/tailscale down || true
-          echo "[logout] localapi prefs WantRunning=false (pre-reset)"
-          timeout 10 curl -sS --max-time 8 --unix-socket /var/run/tailscale/tailscaled.sock \
-            -X PATCH \
-            -H "Content-Type: application/json" \
-            --data '{"WantRunning":false}' \
-            http://local-tailscaled.sock/localapi/v0/prefs || true
-          echo "[logout] localapi /localapi/v0/logout"
-          timeout 15 curl -sS --max-time 12 --unix-socket /var/run/tailscale/tailscaled.sock \
-            -X POST http://local-tailscaled.sock/localapi/v0/logout || true
-          echo "[logout] tailscale logout"
-          timeout 20 /opt/tailscale logout || true
-          daemon_pid="$(ps -eo pid,comm | awk '$2==\"tailscaled\"{print $1; exit}')"
-          if [[ -n "${daemon_pid}" ]]; then
-            echo "[logout] stopping tailscaled pid=${daemon_pid}"
-            kill "${daemon_pid}" || true
-          else
-            echo "[logout] tailscaled pid not found"
-          fi
-          sleep 1
-          echo "[logout] removing local auth/state files"
-          rm -f /data/tailscaled.state
-          rm -rf /data/state
-          mkdir -p /data/state
-          chmod 0700 /data/state
-          echo "[logout] waiting for s6 restart"
-          sleep 2
-          echo "[logout] localapi prefs WantRunning=false (post-reset)"
-          timeout 10 curl -sS --max-time 8 --unix-socket /var/run/tailscale/tailscaled.sock \
-            -X PATCH \
-            -H "Content-Type: application/json" \
-            --data '{"WantRunning":false}' \
-            http://local-tailscaled.sock/localapi/v0/prefs || true
+      local tmp_output
+      local down_rc prefs_pre_rc local_logout_rc cli_logout_rc kill_rc reset_state_rc prefs_post_rc
+      local daemon_pid logout_ok
+      tmp_output="$(mktemp)"
+      down_rc=1
+      prefs_pre_rc=1
+      local_logout_rc=1
+      cli_logout_rc=1
+      kill_rc=0
+      reset_state_rc=1
+      prefs_post_rc=1
+      logout_ok=false
+      {
+        echo "[logout] hard identity reset start"
+        echo "[logout] tailscale down"
+        timeout 20 /opt/tailscale down
+        down_rc=$?
+        echo "[logout] tailscale down rc=${down_rc}"
+
+        echo "[logout] localapi prefs WantRunning=false (pre-reset)"
+        timeout 10 curl -sS --max-time 8 --unix-socket /var/run/tailscale/tailscaled.sock \
+          -X PATCH \
+          -H "Content-Type: application/json" \
+          --data '{"WantRunning":false}' \
+          http://local-tailscaled.sock/localapi/v0/prefs
+        prefs_pre_rc=$?
+        echo "[logout] prefs pre-reset rc=${prefs_pre_rc}"
+
+        echo "[logout] localapi /localapi/v0/logout"
+        timeout 15 curl -sS --max-time 12 --unix-socket /var/run/tailscale/tailscaled.sock \
+          -X POST http://local-tailscaled.sock/localapi/v0/logout
+        local_logout_rc=$?
+        echo "[logout] localapi logout rc=${local_logout_rc}"
+
+        echo "[logout] tailscale logout"
+        timeout 20 /opt/tailscale logout
+        cli_logout_rc=$?
+        echo "[logout] tailscale logout rc=${cli_logout_rc}"
+
+        daemon_pid="$(ps -eo pid,comm | awk '$2==\"tailscaled\"{print $1; exit}')"
+        if [[ -n "${daemon_pid}" ]]; then
+          echo "[logout] stopping tailscaled pid=${daemon_pid}"
+          kill "${daemon_pid}"
+          kill_rc=$?
+        else
+          echo "[logout] tailscaled pid not found"
+          kill_rc=0
+        fi
+        echo "[logout] kill rc=${kill_rc}"
+
+        sleep 1
+        echo "[logout] removing local auth/state files"
+        rm -f /data/tailscaled.state
+        rm -rf /data/state
+        mkdir -p /data/state
+        chmod 0700 /data/state
+        reset_state_rc=$?
+        echo "[logout] state reset rc=${reset_state_rc}"
+
+        echo "[logout] waiting for s6 restart"
+        sleep 2
+
+        echo "[logout] localapi prefs WantRunning=false (post-reset)"
+        timeout 10 curl -sS --max-time 8 --unix-socket /var/run/tailscale/tailscaled.sock \
+          -X PATCH \
+          -H "Content-Type: application/json" \
+          --data '{"WantRunning":false}' \
+          http://local-tailscaled.sock/localapi/v0/prefs
+        prefs_post_rc=$?
+        echo "[logout] prefs post-reset rc=${prefs_post_rc}"
+
+        # Consider reset requested only if we could clear persisted state and
+        # at least one logout path succeeded.
+        if (( reset_state_rc == 0 )) && { (( local_logout_rc == 0 )) || (( cli_logout_rc == 0 )); }; then
+          logout_ok=true
           echo "[logout] hard identity reset requested"
-        } 2>&1
-      )"
-      rc=0
+        else
+          logout_ok=false
+          echo "[logout] hard identity reset failed"
+        fi
+      } > "${tmp_output}" 2>&1
+      cmd_output="$(cat "${tmp_output}")"
+      rm -f "${tmp_output}"
+      if [[ "${logout_ok}" == "true" ]]; then
+        rc=0
+      else
+        rc=1
+      fi
       set -e
       ;;
     diag|dnsdiag)
@@ -99,7 +146,8 @@ log_control_action() {
     return
   fi
   # Write operational traces to the add-on log without polluting CGI stdout.
-  printf '%s control-api: %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${1}" > /proc/1/fd/1 2>/dev/null || true
+  printf '%s control-api: %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${1}" > /proc/1/fd/1 2>/dev/null || \
+    printf '%s control-api: %s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" "${1}" >&2 || true
 }
 
 run_dns_checks=false
@@ -120,12 +168,12 @@ auth_url="$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/d
 online="$(jq -r '.Self.Online // false' <<< "${status_json}" 2>/dev/null || echo "false")"
 dns_name="$(jq -r '.Self.DNSName // empty' <<< "${status_json}" 2>/dev/null || true)"
 tailnet="$(jq -r '.CurrentTailnet.Name // empty' <<< "${status_json}" 2>/dev/null || true)"
-output_trimmed="$(printf '%s' "${ACTION_OUTPUT}" | tail -c 800)"
+output_trimmed="$(printf '%s' "${ACTION_OUTPUT}" | tail -c 2000)"
 
 # After a hard identity reset, give tailscaled a few seconds to converge into
 # a login-required state so the UI can render the new auth flow immediately.
 if [[ "${action}" == "logout" ]]; then
-  logout_deadline=$((SECONDS + 12))
+  logout_deadline=$((SECONDS + 20))
   while (( SECONDS < logout_deadline )); do
     candidate_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
     candidate_state="$(jq -r '.BackendState // "Unknown"' <<< "${candidate_json}" 2>/dev/null || echo "Unknown")"
@@ -263,12 +311,6 @@ if [[ "${action}" == "logout" ]] && \
   [[ "${backend_state}" != "NoState" ]];
 then
   ok="false"
-fi
-
-# For logout we treat command execution success as request accepted, even if
-# the state transition still needs a few seconds to be observed by polling.
-if [[ "${action}" == "logout" ]] && (( ACTION_RC == 0 )); then
-  ok="true"
 fi
 
 log_control_action "response action=${action} rc=${ACTION_RC} ok=${ok} backend=${backend_state} online=${online}"

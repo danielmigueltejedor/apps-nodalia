@@ -4,6 +4,31 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta81 - 2026-02-12
+### Changed
+- Rediseño de copy y etiquetas en onboarding para una interfaz más compacta y clara:
+  - `Entrar Web UI (ingress)` pasa a `Iframe Tailscale`,
+  - `Actualizar estado` pasa a `Actualizar ↻` (login + estado operativo),
+  - `Recargar panel` pasa a `Recargar ↻`,
+  - `Ir a acciones de conexion` pasa a `Ir a acciones`.
+- Ajustados mensajes contextuales para reflejar los nuevos nombres de acciones en la UI.
+- Marcador visual actualizado a `UI build: 3.0.0-beta81`.
+
+## 3.0.0-beta80 - 2026-02-12
+### Fixed
+- `logauth` deja de reportar éxito silencioso cuando la operación no pudo ejecutarse realmente:
+  - el endpoint `control-api` ya no ignora errores críticos del flujo de reset local,
+  - ahora devuelve error si no puede limpiar estado local o si no consigue ejecutar ninguna vía de logout.
+- Endurecido el criterio de éxito de `logout`:
+  - se mantiene la espera de transición de backend, ampliada, y no se fuerza `ok=true` por defecto cuando el estado sigue en `Running`.
+- Mejorado el diagnóstico operativo del `control-api`:
+  - se amplía la salida devuelta al frontend para ver más detalle técnico en `op-output`,
+  - logging de `control-api` con fallback a `stderr` cuando no puede escribir en `/proc/1/fd/1`.
+- `support-api` pasa a ejecutarse explícitamente como `root` (`busybox httpd -u root:root`) para evitar fallos por permisos en acciones que requieren acceso local privilegiado.
+
+### Changed
+- Marcador visual actualizado a `UI build: 3.0.0-beta80`.
+
 ## 3.0.0-beta79 - 2026-02-12
 ### Changed
 - Selector de tema en onboarding pasa a modo icon-only (`☀`/`🌙`) sin texto visible, manteniendo `title`/`aria-label`.
