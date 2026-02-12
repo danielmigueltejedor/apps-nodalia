@@ -4,6 +4,23 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta84 - 2026-02-12
+### Fixed
+- `Estado en vivo` (modo no avanzado): si `runtime.json` no está disponible, ahora fuerza `HostName/IPv4/IPv6` a `n/a` para evitar valores obsoletos.
+- `runtime.json` signature incluye `ipv4/ipv6` para refrescar correctamente esos campos cuando cambian.
+
+### Changed
+- Marcador visual actualizado a `UI build: 3.0.0-beta84`.
+
+## 3.0.0-beta83 - 2026-02-12
+### Changed
+- Reordenado el onboarding:
+  - `Salud y diagnostico` pasa por encima de `Estado en vivo`.
+- `Estado en vivo` se simplifica cuando el modo avanzado está desactivado:
+  - se muestran solo `HostName`, `IPv4` e `IPv6`,
+  - el resto de métricas y acciones (`diagnóstico/reporte`) pasan a modo avanzado.
+- Marcador visual actualizado a `UI build: 3.0.0-beta83`.
+
 ## 3.0.0-beta82 - 2026-02-12
 ### Fixed
 - `logauth` añade fallback activo de reautenticación cuando el reset local no saca al backend de `Running`:

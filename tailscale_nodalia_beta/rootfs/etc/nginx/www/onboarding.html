@@ -502,32 +502,6 @@
       <div id="op-output" class="mono" hidden></div>
     </div>
     <section class="panel">
-      <h2>Estado en vivo</h2>
-      <div class="kv">
-        <div>Backend:</div><div><code id="rt-backend">-</code></div>
-        <div>Web UI lista:</div><div><code id="rt-webui">-</code></div>
-        <div>Web UI streak:</div><div><code id="rt-webui-streak">-</code></div>
-        <div>Web UI probe(s):</div><div><code id="rt-webui-probe">-</code></div>
-        <div>Web UI readonly:</div><div><code id="rt-readonly">-</code></div>
-        <div>Self online:</div><div><code id="rt-online">-</code></div>
-        <div>Perfil:</div><div><code id="rt-profile">-</code></div>
-        <div>Share mode:</div><div><code id="rt-share">-</code></div>
-        <div>DNSName:</div><div><code id="rt-dnsname">-</code></div>
-        <div>DNS resolvers:</div><div><code id="rt-dns-resolvers">-</code></div>
-        <div>DNS warning:</div><div><code id="rt-dns-warning">-</code></div>
-        <div>HostName:</div><div><code id="rt-hostname">-</code></div>
-        <div>IPv4:</div><div><code id="rt-ipv4">-</code></div>
-        <div>IPv6:</div><div><code id="rt-ipv6">-</code></div>
-        <div>Uptime(s):</div><div><code id="rt-uptime">-</code></div>
-        <div>Actualizado:</div><div><code id="rt-updated">-</code></div>
-      </div>
-      <div class="actions" style="margin-top:10px;">
-        <button id="diag-btn" type="button" class="ghost">Ejecutar diagnóstico</button>
-        <button id="copy-report-btn" type="button" class="ghost">Copiar reporte</button>
-      </div>
-      <ul id="diag-list" class="diag-list"></ul>
-    </section>
-    <section class="panel">
       <h2>Salud y diagnostico</h2>
       <div class="score-row">
         <span id="health-score-pill" class="score-pill">&#10084; --</span>
@@ -536,6 +510,32 @@
         <button id="download-report-btn" type="button" class="ghost">Descargar diagnostico JSON</button>
       </div>
       <ul id="health-checks" class="diag-list"></ul>
+    </section>
+    <section class="panel">
+      <h2>Estado en vivo</h2>
+      <div class="kv">
+        <div class="advanced-only">Backend:</div><div class="advanced-only"><code id="rt-backend">-</code></div>
+        <div class="advanced-only">Web UI lista:</div><div class="advanced-only"><code id="rt-webui">-</code></div>
+        <div class="advanced-only">Web UI streak:</div><div class="advanced-only"><code id="rt-webui-streak">-</code></div>
+        <div class="advanced-only">Web UI probe(s):</div><div class="advanced-only"><code id="rt-webui-probe">-</code></div>
+        <div class="advanced-only">Web UI readonly:</div><div class="advanced-only"><code id="rt-readonly">-</code></div>
+        <div class="advanced-only">Self online:</div><div class="advanced-only"><code id="rt-online">-</code></div>
+        <div class="advanced-only">Perfil:</div><div class="advanced-only"><code id="rt-profile">-</code></div>
+        <div class="advanced-only">Share mode:</div><div class="advanced-only"><code id="rt-share">-</code></div>
+        <div class="advanced-only">DNSName:</div><div class="advanced-only"><code id="rt-dnsname">-</code></div>
+        <div class="advanced-only">DNS resolvers:</div><div class="advanced-only"><code id="rt-dns-resolvers">-</code></div>
+        <div class="advanced-only">DNS warning:</div><div class="advanced-only"><code id="rt-dns-warning">-</code></div>
+        <div>HostName:</div><div><code id="rt-hostname">-</code></div>
+        <div>IPv4:</div><div><code id="rt-ipv4">-</code></div>
+        <div>IPv6:</div><div><code id="rt-ipv6">-</code></div>
+        <div class="advanced-only">Uptime(s):</div><div class="advanced-only"><code id="rt-uptime">-</code></div>
+        <div class="advanced-only">Actualizado:</div><div class="advanced-only"><code id="rt-updated">-</code></div>
+      </div>
+      <div class="actions advanced-only" style="margin-top:10px;">
+        <button id="diag-btn" type="button" class="ghost">Ejecutar diagnóstico</button>
+        <button id="copy-report-btn" type="button" class="ghost">Copiar reporte</button>
+      </div>
+      <ul id="diag-list" class="diag-list advanced-only"></ul>
     </section>
     <section class="panel advanced-only">
       <h2>Sugerencias inteligentes</h2>
@@ -592,7 +592,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta82</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta84</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1018,6 +1018,8 @@
         data?.dns_degraded,
         Array.isArray(data?.dns_resolvers) ? data.dns_resolvers.join(",") : "",
         data?.self_host_name,
+        Array.isArray(data?.ipv4) ? data.ipv4.join(",") : "",
+        Array.isArray(data?.ipv6) ? data.ipv6.join(",") : "",
         data?.support_enabled,
         data?.support_tailnet_dns_suffix,
         data?.support_tailnet_match,
@@ -1559,6 +1561,9 @@
         rtOnline.textContent = "n/a";
         rtDnsResolvers.textContent = "n/a";
         rtDnsWarning.textContent = "n/a";
+        rtHostName.textContent = "n/a";
+        rtIpv4.textContent = "n/a";
+        rtIpv6.textContent = "n/a";
         rtUptime.textContent = "n/a";
         rtUpdated.textContent = "n/a";
         supportEnabled.textContent = "n/a";
