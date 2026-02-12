@@ -24,9 +24,12 @@ declare setup_profile
 declare webui_readonly
 declare share_mode
 declare webui_probe_s
+declare webui_probe_payload
+declare webui_probe_body
 declare webui_probe_meta
 declare webui_probe_time
 declare webui_http_code
+declare webui_has_unavailable_banner
 declare direct_webui_url
 declare support_json
 declare support_enabled
@@ -42,6 +45,7 @@ declare dns_resolvers
 declare dns_warning
 declare dns_degraded
 declare webui_reason
+declare webui_banner_excerpt
 declare log_summary
 
 declare -i ready_streak=0
@@ -73,17 +77,30 @@ do
 
   webui_ready=false
   webui_probe_s="n/a"
+  webui_probe_body=""
+  webui_has_unavailable_banner=false
   webui_http_code="000"
-  webui_probe_meta="$(
-    curl -sS --max-time 2 -o /dev/null -w "%{time_total}:%{http_code}" "http://127.0.0.1:25899/" 2>/dev/null || echo "0:000"
+  webui_probe_payload="$(
+    curl -sS --max-time 2 -w $'\n__TS_META__:%{time_total}:%{http_code}' "http://127.0.0.1:25899/" 2>/dev/null || true
   )"
-  if [[ -n "${webui_probe_meta}" && "${webui_probe_meta}" == *:* ]]; then
+  if [[ -n "${webui_probe_payload}" && "${webui_probe_payload}" == *"__TS_META__:"* ]]; then
+    webui_probe_meta="${webui_probe_payload##*__TS_META__:}"
+    webui_probe_body="${webui_probe_payload%$'\n'__TS_META__:*}"
     webui_probe_time="${webui_probe_meta%:*}"
     webui_http_code="${webui_probe_meta##*:}"
-    webui_probe_s="${webui_probe_time}"
+    if [[ -n "${webui_probe_time}" ]]; then
+      webui_probe_s="${webui_probe_time}"
+    fi
+    if grep -qi "Tailscale web interface is unavailable" <<< "${webui_probe_body}"; then
+      webui_has_unavailable_banner=true
+    fi
     if [[ "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
-      webui_ready=true
-      ready_streak=$((ready_streak + 1))
+      if [[ "${webui_has_unavailable_banner}" == "true" ]]; then
+        ready_streak=0
+      else
+        webui_ready=true
+        ready_streak=$((ready_streak + 1))
+      fi
     else
       ready_streak=0
     fi
@@ -91,8 +108,12 @@ do
     ready_streak=0
   fi
   webui_reason="ok"
+  webui_banner_excerpt=""
   if [[ "${webui_http_code}" == "000" ]]; then
     webui_reason="probe-timeout"
+  elif [[ "${webui_has_unavailable_banner}" == "true" ]]; then
+    webui_reason="upstream-unavailable-banner"
+    webui_banner_excerpt="$(printf '%s' "${webui_probe_body}" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | cut -c1-220)"
   elif [[ ! "${webui_http_code}" =~ ^(2[0-9][0-9]|3[0-9][0-9]|401|403)$ ]]; then
     webui_reason="http-${webui_http_code}"
   fi
@@ -208,6 +229,9 @@ do
   then
     log_summary="runtime-status: backend=${backend_state} online=${self_online} webui_ready=${webui_ready} streak=${ready_streak} webui_http=${webui_http_code} webui_reason=${webui_reason} probe_s=${webui_probe_s} dns_degraded=${dns_degraded} support_eligible=${support_eligible} support_active=${support_active}"
     bashio::log.info "${log_summary}"
+    if [[ "${webui_reason}" == "upstream-unavailable-banner" ]] && [[ -n "${webui_banner_excerpt}" ]]; then
+      bashio::log.warning "runtime-status: webui_banner_excerpt=${webui_banner_excerpt}"
+    fi
     if [[ -n "${dns_warning}" ]]; then
       bashio::log.warning "runtime-status: dns_warning=${dns_warning}"
     fi

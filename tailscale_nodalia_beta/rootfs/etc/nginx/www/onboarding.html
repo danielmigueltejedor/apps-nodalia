@@ -604,6 +604,10 @@
         if (!statusLooksReady) {
           return false;
         }
+        const text = await response.text();
+        if (text && text.toLowerCase().includes("tailscale web interface is unavailable")) {
+          return false;
+        }
         return true;
       } catch (_) {
         return false;

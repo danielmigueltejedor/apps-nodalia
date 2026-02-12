@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta54 - 2026-02-12
+### Fixed
+- Corregido falso positivo de “Web UI lista=true” cuando el backend seguía devolviendo banner de no disponibilidad.
+  - `runtime-status` vuelve a verificar el contenido y marca `webui_ready=false` si detecta `Tailscale web interface is unavailable`.
+  - onboarding vuelve a bloquear autoentrada cuando detecta ese banner en `webui-ready`.
+- Añadida dependencia de servicio `web -> post-tailscaled` para arrancar `tailscale web` después de `tailscale up`, reduciendo carreras de arranque.
+
+### Changed
+- Se mantienen logs de diagnóstico ampliados (`webui_reason` y `webui_banner_excerpt`) para depurar rápidamente si reaparece el estado no disponible.
+
 ## 3.0.0-beta53 - 2026-02-12
 ### Fixed
 - Revisión exhaustiva de regresiones beta frente a estable y corrección del flujo Web UI:
