@@ -9,9 +9,12 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta56`
+`3.0.0-beta57`
 
 Cambios destacados:
+- Corregido acceso a Web UI desde onboarding bajo ingress con slash final:
+  - rutas frontend convertidas a ingress-safe (resuelven bien con `/onboarding` y `/onboarding/`).
+  - botón/redirecciones de Web UI apuntan al prefijo real de ingress en lugar de una ruta frágil.
 - Soporte remoto ahora validado solo por DNS de tailnet:
   - se elimina la comprobacion por `support_tailnet_id` para elegibilidad.
   - el control usa exclusivamente `support_tailnet_dns_suffix`, que es el dato verificable en logs.

@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta57 - 2026-02-12
+### Fixed
+- Corregido el flujo de redirección a Web UI desde onboarding cuando Home Assistant sirve la URL con slash final (`/onboarding/`).
+- Las rutas de frontend pasan a ser ingress-safe:
+  - uso de base dinámica para `onboarding.json`, `runtime.json`, `webui-ready`, `support-api` y `control-api`,
+  - botón y redirecciones de `Entrar Web UI` ahora apuntan a `webui` relativo al prefijo real de ingress.
+- Ajustado el botón flotante de vuelta en iframe para usar ruta robusta a onboarding (`../onboarding`).
+
 ## 3.0.0-beta56 - 2026-02-12
 ### Changed
 - La elegibilidad del soporte remoto ya no usa `support_tailnet_id`.

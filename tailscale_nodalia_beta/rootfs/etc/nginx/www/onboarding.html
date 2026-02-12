@@ -307,7 +307,7 @@
   <main class="card">
     <section class="hero">
       <div class="brand">
-        <img src="nodalia-logo.png" alt="Nodalia logo">
+        <img src="../nodalia-logo.png" alt="Nodalia logo">
         <span class="brand-name">Nodalia</span>
       </div>
       <span class="badge">Nodalia Control Center</span>
@@ -338,7 +338,7 @@
     </div>
     <div id="ok-box" hidden>
       <div class="actions">
-        <a id="open-webui-btn" class="btn disabled" href="./">Entrar Web UI (ingress)</a>
+        <a id="open-webui-btn" class="btn disabled" href="../webui">Entrar Web UI (ingress)</a>
         <a id="open-direct-btn" class="btn ghost disabled" href="#" target="_blank" rel="noopener noreferrer">Acceso directo tailnet (no disponible en esta app)</a>
         <button id="refresh-ok-btn" type="button" class="ghost">Actualizar estado</button>
         <button id="cancel-redirect-btn" type="button" class="ghost" hidden>Cancelar auto-entrada</button>
@@ -569,11 +569,17 @@
       }
     }
 
+    function ingressUrl(pathWithQuery = "") {
+      const base = window.location.pathname.replace(/\/onboarding\/?$/, "/");
+      const clean = String(pathWithQuery || "").replace(/^\/+/, "");
+      return base + clean;
+    }
+
     async function fetchJsonWithTimeout(path, timeoutMs = 1200) {
       const controller = new AbortController();
       const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetch(path, { cache: "no-store", signal: controller.signal });
+        const response = await fetch(ingressUrl(path), { cache: "no-store", signal: controller.signal });
         if (!response.ok) {
           throw new Error("http_" + response.status);
         }
@@ -587,7 +593,7 @@
       const controller = new AbortController();
       const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetch("webui-ready?_ts=" + Date.now(), {
+        const response = await fetch(ingressUrl("webui-ready?_ts=" + Date.now()), {
           cache: "no-store",
           signal: controller.signal,
           redirect: "manual",
@@ -843,7 +849,7 @@
     }
 
     async function callSupportApi(action, method = "GET") {
-      const response = await fetch("support-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now(), {
+      const response = await fetch(ingressUrl("support-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now()), {
         method,
         cache: "no-store",
       });
@@ -861,7 +867,7 @@
     }
 
     async function callControlApi(action, method = "POST") {
-      const response = await fetch("control-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now(), {
+      const response = await fetch(ingressUrl("control-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now()), {
         method,
         cache: "no-store",
       });
@@ -992,7 +998,7 @@
         const remaining = Math.max(0, Math.ceil((redirectDeadlineMs - Date.now()) / 1000));
         redirectState.textContent = "Redireccion automatica en " + remaining + "s...";
         if (remaining <= 0) {
-          window.location.replace("./");
+          window.location.replace(ingressUrl("webui"));
           return;
         }
         redirectHandle = setTimeout(tick, 200);
@@ -1310,7 +1316,7 @@
       supportAuditOutput.hidden = false;
       supportAuditOutput.textContent = "Cargando auditoria...";
       try {
-        const response = await fetch("support-api?action=audit&_ts=" + Date.now(), { cache: "no-store" });
+        const response = await fetch(ingressUrl("support-api?action=audit&_ts=" + Date.now()), { cache: "no-store" });
         const text = await response.text();
         supportAuditOutput.textContent = text.trim() || "Sin eventos de auditoria todavia.";
       } catch (error) {
@@ -1497,13 +1503,13 @@
         updateStateView("Comprobando disponibilidad de Web UI...", "running");
         const preflightOk = await probeIngressWebUiReady(2500);
         if (preflightOk) {
-          window.location.replace("./");
+          window.location.replace(ingressUrl("webui"));
           return;
         }
         const backendState = String(lastRuntime?.backend_state || lastOnboarding?.backend_state || "Unknown");
         if (backendState === "Running") {
           updateStateView("La comprobacion previa fallo, pero backend esta Running. Abriendo Web UI igualmente...", "running");
-          window.location.replace("./");
+          window.location.replace(ingressUrl("webui"));
           return;
         }
         updateStateView("Web UI no accesible todavia por ingress. Espera unos segundos y vuelve a intentar.", "login");
