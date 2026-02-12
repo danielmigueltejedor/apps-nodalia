@@ -32,7 +32,11 @@ run_action() {
       set +e
       local tmp_output
       local down_rc prefs_pre_rc local_logout_rc cli_logout_rc kill_rc reset_state_rc prefs_post_rc
+      local reauth_rc
       local daemon_pid logout_ok
+      local status_after_reset_json state_after_reset auth_after_reset
+      local status_after_reauth_json state_after_reauth auth_after_reauth
+      local reauth_output reauth_auth_url
       tmp_output="$(mktemp)"
       down_rc=1
       prefs_pre_rc=1
@@ -41,7 +45,16 @@ run_action() {
       kill_rc=0
       reset_state_rc=1
       prefs_post_rc=1
+      reauth_rc=1
       logout_ok=false
+      status_after_reset_json='{}'
+      state_after_reset="Unknown"
+      auth_after_reset=""
+      status_after_reauth_json='{}'
+      state_after_reauth="Unknown"
+      auth_after_reauth=""
+      reauth_output=""
+      reauth_auth_url=""
       {
         echo "[logout] hard identity reset start"
         echo "[logout] tailscale down"
@@ -101,9 +114,44 @@ run_action() {
         prefs_post_rc=$?
         echo "[logout] prefs post-reset rc=${prefs_post_rc}"
 
+        status_after_reset_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
+        state_after_reset="$(jq -r '.BackendState // "Unknown"' <<< "${status_after_reset_json}" 2>/dev/null || echo "Unknown")"
+        auth_after_reset="$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_after_reset_json}" 2>/dev/null || true)"
+        echo "[logout] state after reset=${state_after_reset}"
+
+        # If reset still leaves backend running, force an interactive reauth.
+        if [[ "${state_after_reset}" == "Running" ]] || \
+          [[ "${state_after_reset}" == "Unknown" ]] || \
+          [[ -z "${auth_after_reset}" ]];
+        then
+          echo "[logout] forcing reauth via tailscale up --force-reauth"
+          reauth_output="$(timeout 30 /opt/tailscale up --force-reauth 2>&1)"
+          reauth_rc=$?
+          echo "[logout] force-reauth rc=${reauth_rc}"
+          if [[ -n "${reauth_output}" ]]; then
+            echo "${reauth_output}"
+          fi
+          reauth_auth_url="$(grep -Eo 'https://login\.tailscale\.com/[[:alnum:]/._-]+' <<< "${reauth_output}" | head -n1 || true)"
+        fi
+
+        status_after_reauth_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
+        state_after_reauth="$(jq -r '.BackendState // "Unknown"' <<< "${status_after_reauth_json}" 2>/dev/null || echo "Unknown")"
+        auth_after_reauth="$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_after_reauth_json}" 2>/dev/null || true)"
+        echo "[logout] state after reauth=${state_after_reauth}"
+
         # Consider reset requested only if we could clear persisted state and
-        # at least one logout path succeeded.
-        if (( reset_state_rc == 0 )) && { (( local_logout_rc == 0 )) || (( cli_logout_rc == 0 )); }; then
+        # drive backend into interactive login.
+        if (( reset_state_rc == 0 )) && \
+          { (( local_logout_rc == 0 )) || (( cli_logout_rc == 0 )); } && \
+          {
+            [[ "${state_after_reauth}" == "NeedsLogin" ]] || \
+            [[ "${state_after_reauth}" == "NeedsMachineAuth" ]] || \
+            [[ "${state_after_reauth}" == "Stopped" ]] || \
+            [[ "${state_after_reauth}" == "NoState" ]] || \
+            [[ -n "${auth_after_reauth}" ]] || \
+            [[ -n "${reauth_auth_url}" ]];
+          };
+        then
           logout_ok=true
           echo "[logout] hard identity reset requested"
         else
@@ -308,7 +356,8 @@ if [[ "${action}" == "logout" ]] && \
   [[ "${backend_state}" != "NeedsLogin" ]] && \
   [[ "${backend_state}" != "NeedsMachineAuth" ]] && \
   [[ "${backend_state}" != "Stopped" ]] && \
-  [[ "${backend_state}" != "NoState" ]];
+  [[ "${backend_state}" != "NoState" ]] && \
+  [[ -z "${auth_url}" ]];
 then
   ok="false"
 fi

@@ -530,8 +530,8 @@
     <section class="panel">
       <h2>Salud y diagnostico</h2>
       <div class="score-row">
-        <span id="health-score-pill" class="score-pill">Health score: --</span>
-        <button id="run-health-btn" type="button" class="ghost">Ejecutar test de conectividad</button>
+        <span id="health-score-pill" class="score-pill">&#10084; --</span>
+        <button id="run-health-btn" type="button" class="ghost">Test</button>
         <button id="run-dns-btn" type="button" class="ghost">Test DNS tailnet</button>
         <button id="download-report-btn" type="button" class="ghost">Descargar diagnostico JSON</button>
       </div>
@@ -592,7 +592,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta81</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta82</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -977,7 +977,7 @@
       if (dnsDegraded) score -= 5;
       if (score < 0) score = 0;
       if (score > 100) score = 100;
-      healthScorePill.textContent = "Health score: " + score;
+      healthScorePill.textContent = "\u2764 " + score;
       healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
       if (score >= 80) {
         healthScorePill.classList.add("score-ok");
@@ -1573,7 +1573,7 @@
         renderSupportButtons();
         opCanLogout = false;
         renderOpButtons();
-        healthScorePill.textContent = "Health score: --";
+        healthScorePill.textContent = "\u2764 --";
         healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
         if (lastHealthHtml !== "") {
           healthChecks.innerHTML = "";
@@ -1773,7 +1773,7 @@
         healthChecks.innerHTML = html;
         lastHealthHtml = html;
         const score = Number(data?.health_score || 0);
-        healthScorePill.textContent = "Health score: " + score;
+        healthScorePill.textContent = "\u2764 " + score;
         healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
         if (score >= 80) {
           healthScorePill.classList.add("score-ok");

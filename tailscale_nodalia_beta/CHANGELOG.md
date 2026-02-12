@@ -4,6 +4,18 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta82 - 2026-02-12
+### Fixed
+- `logauth` añade fallback activo de reautenticación cuando el reset local no saca al backend de `Running`:
+  - tras el reset intenta `tailscale up --force-reauth`,
+  - valida estado final (`NeedsLogin/NeedsMachineAuth/Stopped/NoState`) o URL de login antes de reportar éxito.
+- Ajustado criterio de respuesta de `logout` para no marcar error si hay `auth_url` válida aunque el estado aún no haya convergido.
+
+### Changed
+- UI de salud: `Health score` se muestra como corazón + puntuación (`❤ N`).
+- Botón `Ejecutar test de conectividad` simplificado a `Test`.
+- Marcador visual actualizado a `UI build: 3.0.0-beta82`.
+
 ## 3.0.0-beta81 - 2026-02-12
 ### Changed
 - Rediseño de copy y etiquetas en onboarding para una interfaz más compacta y clara:
