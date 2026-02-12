@@ -24,6 +24,8 @@
       --accent-2: #1858b7;
       --ok: #37c988;
       --warn: #f59a5b;
+      --pending: #f2c94c;
+      --danger: #ff5d5d;
       --border: #2a3f63;
       --line: rgba(155, 181, 224, 0.2);
       --shadow: 0 20px 50px rgba(2, 8, 18, 0.5);
@@ -66,6 +68,8 @@
       --accent-2: #0b4daa;
       --ok: #0f7f4f;
       --warn: #9b3a13;
+      --pending: #b38400;
+      --danger: #c62828;
       --border: #ccdbf0;
       --line: rgba(18, 56, 102, 0.08);
       --shadow: 0 20px 50px rgba(11, 28, 52, 0.13);
@@ -236,9 +240,32 @@
       margin-bottom: 12px;
       font-size: 1.06rem;
       letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text);
     }
-    .state.running { color: var(--ok); }
-    .state.login { color: var(--warn); }
+    .state::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(155, 181, 224, 0.35);
+      box-shadow: 0 0 0 6px rgba(155, 181, 224, 0.07);
+      flex: 0 0 12px;
+    }
+    .state.good::before, .state.running::before {
+      background: var(--ok);
+      box-shadow: 0 0 0 6px rgba(55, 201, 136, 0.18);
+    }
+    .state.warn::before {
+      background: var(--pending);
+      box-shadow: 0 0 0 6px rgba(242, 201, 76, 0.2);
+    }
+    .state.bad::before, .state.login::before {
+      background: var(--danger);
+      box-shadow: 0 0 0 6px rgba(255, 93, 93, 0.18);
+    }
     .url-wrap {
       display: grid;
       gap: 10px;
@@ -327,13 +354,32 @@
     .kv code { word-break: break-all; }
     .diag-list {
       margin: 0;
-      padding-left: 18px;
+      padding: 0;
+      list-style: none;
       color: var(--muted);
       font-size: 0.9rem;
       line-height: 1.45;
+      display: grid;
+      gap: 6px;
     }
-    .diag-ok { color: var(--ok); }
-    .diag-ko { color: var(--warn); }
+    .diag-list li {
+      position: relative;
+      padding-left: 16px;
+    }
+    .diag-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.7em;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--diag-dot, rgba(155, 181, 224, 0.55));
+      transform: translateY(-50%);
+      box-shadow: 0 0 0 4px rgba(155, 181, 224, 0.08);
+    }
+    .diag-ok { --diag-dot: var(--ok); }
+    .diag-ko { --diag-dot: var(--warn); }
     .disabled {
       opacity: 0.55;
       pointer-events: none;
@@ -995,7 +1041,7 @@
         { ok: !!runtime?.support_enabled, label: "Modo soporte habilitado" },
       ];
       const html = checks.map((c) =>
-        `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+        `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.label}</li>`
       ).join("");
       if (html !== lastHealthHtml) {
         healthChecks.innerHTML = html;
@@ -1221,7 +1267,7 @@
         triggerButton.disabled = true;
         triggerButton.textContent = "Actualizando...";
       }
-      updateStateView("Actualizando estado...", "");
+      updateStateView("Actualizando...", "warn");
       try {
         await refreshRuntime(1800);
         await loadState();
@@ -1244,14 +1290,23 @@
       pollHandle = setTimeout(loadState, delayMs);
     }
 
+    function normalizeStateTone(value) {
+      const v = String(value || "");
+      if (v === "running") return "good";
+      if (v === "login") return "bad";
+      if (v === "good" || v === "warn" || v === "bad") return v;
+      return "";
+    }
+
     function updateStateView(message, cssClass) {
+      const tone = normalizeStateTone(cssClass);
       if (lastStateMessage !== message) {
         stateEl.textContent = message;
         lastStateMessage = message;
       }
-      if (lastStateClass !== cssClass) {
-        stateEl.className = "state" + (cssClass ? " " + cssClass : "");
-        lastStateClass = cssClass;
+      if (lastStateClass !== tone) {
+        stateEl.className = "state" + (tone ? " " + tone : "");
+        lastStateClass = tone;
       }
     }
 
@@ -1463,7 +1518,7 @@
           setActiveStep("auth");
           setUiDisabled(openWebuiBtn, true);
           setUiDisabled(openDirectBtn, true);
-          updateStateView("Estado: login requerido (" + backendState + ")", "login");
+          updateStateView("Desconectado. Login requerido.", "bad");
           if (authUrl) {
             loginUrlInput.value = authUrl;
             openBtn.href = authUrl;
@@ -1486,7 +1541,7 @@
           liveWebUiReadyStreak = 0;
           setActiveStep("warmup");
           setUiDisabled(openWebuiBtn, true);
-          updateStateView("Estado: iniciando (" + backendState + ")", "login");
+          updateStateView("Conectando...", "warn");
           okBox.hidden = false;
           loginBox.hidden = true;
           renderSuggestions();
@@ -1495,7 +1550,7 @@
           return;
         }
 
-        updateStateView("Estado: conectado (" + backendState + "). Verificando Web UI...", "running");
+        updateStateView("Conectado. Verificando Web UI...", "good");
         if (runningSinceMs === 0) {
           runningSinceMs = Date.now();
         }
@@ -1517,7 +1572,7 @@
         const allowManualOpen = liveWebUiReady || runningForMs >= 15000;
         if (webUiReady) {
           setActiveStep("access");
-          updateStateView("Estado: conectado (" + backendState + "). Web UI lista.", "running");
+          updateStateView("Conectado. Web UI lista.", "good");
           setUiDisabled(openWebuiBtn, false);
           startAutoRedirect();
           nextDelayMs = 2200;
@@ -1526,11 +1581,11 @@
           setActiveStep("warmup");
           setUiDisabled(openWebuiBtn, !allowManualOpen);
           if (runtimeStable || liveWebUiReady) {
-            updateStateView("Estado: conectado (" + backendState + "). Confirmando disponibilidad de Web UI...", "running");
+            updateStateView("Conectado. Confirmando Web UI...", "good");
           } else if (allowManualOpen) {
-            updateStateView("Estado: conectado (" + backendState + "). Puedes intentar abrir Web UI manualmente mientras termina la verificacion.", "running");
+            updateStateView("Conectado. Puedes abrir Web UI mientras termina la verificacion.", "good");
           } else {
-            updateStateView("Estado: conectado (" + backendState + "). La Web UI aun no esta accesible por ingress. Reintentando...", "running");
+            updateStateView("Conectado. Web UI aun no accesible por ingress. Reintentando...", "good");
           }
           nextDelayMs = 900;
         }
@@ -1538,7 +1593,7 @@
         isFirstRender = false;
         return;
       } catch (error) {
-        updateStateView("Estado no disponible. La aplicacion puede seguir arrancando.", "login");
+        updateStateView("Estado no disponible. Reintentando...", "warn");
         okBox.hidden = false;
         loginBox.hidden = true;
         renderSuggestions();
@@ -1600,7 +1655,7 @@
       checks.push({ label: "support elegible", ok: !!lastRuntime?.support_eligible });
 
       diagList.innerHTML = checks.map((c) =>
-        `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+        `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.label}</li>`
       ).join("");
     }
 
@@ -1803,7 +1858,7 @@
           { ok: !!checks.dns_all_resolvers_ok, label: "Todos los resolvers DNS responden" },
         ];
         const html = rows.map((c) =>
-          `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+          `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.label}</li>`
         ).join("");
         healthChecks.innerHTML = html;
         lastHealthHtml = html;
@@ -1844,7 +1899,7 @@
           label: "Resumen DNS: " + (dns.any_resolver_ok ? "parcial/ok" : "fallo total") + " para " + String(dns.target || "target")
         };
         const html = [summary, ...rows].map((c) =>
-          `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.ok ? "OK" : "WARN"}: ${c.label}</li>`
+          `<li class="${c.ok ? "diag-ok" : "diag-ko"}">${c.label}</li>`
         ).join("");
         healthChecks.innerHTML = html;
         lastHealthHtml = html;
@@ -1887,7 +1942,7 @@
       cancelAutoRedirect();
       beginUiAction();
       try {
-        updateStateView("Comprobando disponibilidad de Web UI...", "running");
+        updateStateView("Comprobando disponibilidad de Web UI...", "warn");
         const preflightOk = await probeIngressWebUiReady(2500, true);
         if (preflightOk) {
           window.location.replace(ingressRootUrl());
@@ -1895,10 +1950,10 @@
         }
         const backendState = String(lastRuntime?.backend_state || lastOnboarding?.backend_state || "Unknown");
         if (backendState === "Running") {
-          updateStateView("Backend Running, pero Web UI sigue devolviendo unavailable por ingress. Se mantiene este panel para evitar bucle.", "login");
+          updateStateView("Conectado, pero la Web UI sigue devolviendo unavailable por ingress. Se mantiene este panel para evitar bucle.", "warn");
           return;
         }
-        updateStateView("Web UI no accesible todavia por ingress. Espera unos segundos y vuelve a intentar.", "login");
+        updateStateView("Web UI no accesible todavia por ingress. Espera unos segundos y vuelve a intentar.", "warn");
         return;
       } finally {
         endUiAction();
@@ -1938,7 +1993,7 @@
     openDirectBtn.addEventListener("click", (event) => {
       if (isUiDisabled(openDirectBtn)) {
         event.preventDefault();
-        updateStateView("El acceso directo por tailnet no aplica a esta app. Usa 'Iframe Tailscale'.", "login");
+        updateStateView("El acceso directo por tailnet no aplica a esta app. Usa 'Iframe Tailscale'.", "warn");
       }
     });
     diagBtn.addEventListener("click", runDiagnostics);
