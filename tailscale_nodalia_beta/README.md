@@ -9,9 +9,15 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta60`
+`3.0.0-beta61`
 
 Cambios destacados:
+- Corregida señal falsa de `Web UI lista`:
+  - onboarding ya no se desbloquea solo por `runtime.webui_ready`; exige confirmación real reciente por preflight ingress.
+  - el preflight vuelve a filtrar el banner de no disponibilidad con análisis de texto visible (evita falsos positivos por scripts).
+- Optimización de eficiencia:
+  - `runtime-status` reutiliza el JSON de `tailscale status` al consultar soporte y evita sondeo duplicado por ciclo.
+  - polling de onboarding más liviano cuando la WebUI ya está estable.
 - Corregido falso `tailscale web is unavailable` en beta:
   - se elimina la validación por texto del banner HTML en runtime/frontend.
   - la disponibilidad WebUI vuelve a evaluarse por estado HTTP/redirect (comportamiento alineado con estable).

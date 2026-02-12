@@ -543,6 +543,8 @@
     let opCanLogout = false;
     let liveWebUiReadyStreak = 0;
     let liveWebUiSeenAtMs = 0;
+    let lastWebUiProbeAtMs = 0;
+    let lastWebUiProbeOk = false;
     let runningSinceMs = 0;
     const RUNTIME_CACHE_KEY = "nodalia_runtime_cache_v1";
     const UI_PREFS_KEY = "nodalia_ui_prefs_v1";
@@ -599,9 +601,24 @@
       }
     }
 
-    async function probeIngressWebUiReady(timeoutMs = 2200) {
+    function hasUnavailableWebUiBanner(html) {
+      const visibleText = String(html || "")
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .toLowerCase();
+      return visibleText.includes("tailscale web interface is unavailable");
+    }
+
+    async function probeIngressWebUiReady(timeoutMs = 2200, force = false) {
+      const now = Date.now();
+      if (!force && now - lastWebUiProbeAtMs < 1200) {
+        return lastWebUiProbeOk;
+      }
       const controller = new AbortController();
       const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
+      let result = false;
       try {
         const response = await fetch(ingressUrl("webui-ready?_ts=" + Date.now()), {
           cache: "no-store",
@@ -609,7 +626,8 @@
           redirect: "manual",
         });
         if (response.type === "opaqueredirect") {
-          return true;
+          result = true;
+          return result;
         }
         const status = Number(response.status || 0);
         const statusLooksReady = (
@@ -618,13 +636,24 @@
           status === 403
         );
         if (!statusLooksReady) {
-          return false;
+          result = false;
+          return result;
         }
-        return true;
+        // 401/403 is enough evidence of a reachable upstream endpoint.
+        if (status === 401 || status === 403) {
+          result = true;
+          return result;
+        }
+        const text = await response.text();
+        result = !hasUnavailableWebUiBanner(text);
+        return result;
       } catch (_) {
-        return false;
+        result = false;
+        return result;
       } finally {
         clearTimeout(timeoutHandle);
+        lastWebUiProbeAtMs = Date.now();
+        lastWebUiProbeOk = result;
       }
     }
 
@@ -1028,6 +1057,7 @@
       const isReadonly = Boolean(lastRuntime?.webui_readonly);
       const hasTailnetIp = Array.isArray(lastRuntime?.ipv4) && lastRuntime.ipv4.length > 0;
       const streak = Number(lastRuntime?.webui_ready_streak || 0);
+      const webUiReason = String(lastRuntime?.webui_reason || "");
 
       if (needsLogin) {
         suggestions.push("Login pendiente: abre la URL de inicio y completa la autenticacion.");
@@ -1040,6 +1070,9 @@
       }
       if (backend === "Running" && streak < 2) {
         suggestions.push("Web UI calentando: manten esta pagina abierta y pulsa Actualizar estado.");
+      }
+      if (backend === "Running" && webUiReason.startsWith("http-")) {
+        suggestions.push("La sonda local de Web UI devuelve " + webUiReason + ": revisa salud de tailscale web y vuelve a intentar.");
       }
       if (isReadonly) {
         suggestions.push("Modo readonly activo: para logout/cambios avanzados pon webui_readonly=false.");
@@ -1148,7 +1181,8 @@
         }
         const runtimeStable = runtimeWebUiReady && runtimeStreak >= 2;
         const liveStable = liveWebUiReadyStreak >= 2;
-        const webUiReady = runtimeStable || liveStable;
+        const hasRecentLiveSuccess = liveWebUiSeenAtMs > 0 && (Date.now() - liveWebUiSeenAtMs) <= 20000;
+        const webUiReady = liveStable || (runtimeStable && hasRecentLiveSuccess);
         const runningForMs = Date.now() - runningSinceMs;
         const allowManualOpen = webUiReady || runningForMs >= 15000;
         if (webUiReady) {
@@ -1156,6 +1190,7 @@
           updateStateView("Estado: conectado (" + backendState + "). Web UI lista.", "running");
           setUiDisabled(openWebuiBtn, false);
           startAutoRedirect();
+          nextDelayMs = 2200;
         } else {
           cancelAutoRedirect();
           setActiveStep("warmup");
@@ -1507,7 +1542,7 @@
       beginUiAction();
       try {
         updateStateView("Comprobando disponibilidad de Web UI...", "running");
-        const preflightOk = await probeIngressWebUiReady(2500);
+        const preflightOk = await probeIngressWebUiReady(2500, true);
         if (preflightOk) {
           window.location.replace(ingressRootUrl());
           return;

@@ -113,7 +113,7 @@ do
   # Publishing a direct tailnet :5252 URL causes false expectations on many setups.
   direct_webui_url=""
 
-  support_json="$(support-tunnel status 2>/dev/null || echo '{}')"
+  support_json="$(SUPPORT_STATUS_JSON="${status_json}" support-tunnel status 2>/dev/null || echo '{}')"
   support_enabled="$(jq -r '.support_enabled // false' <<< "${support_json}" 2>/dev/null || echo "false")"
   support_tailnet_id="$(jq -r '.support_target_id // empty' <<< "${support_json}" 2>/dev/null || true)"
   support_tailnet_dns_suffix="$(jq -r '.support_target_dns_suffix // empty' <<< "${support_json}" 2>/dev/null || true)"
@@ -150,6 +150,8 @@ do
     --arg share_mode "${share_mode}" \
     --arg self_online "${self_online}" \
     --arg webui_ready "${webui_ready}" \
+    --arg webui_http_code "${webui_http_code}" \
+    --arg webui_reason "${webui_reason}" \
     --arg webui_readonly "${webui_readonly}" \
     --arg webui_probe_s "${webui_probe_s}" \
     --arg direct_webui_url "${direct_webui_url}" \
@@ -176,6 +178,8 @@ do
       auth_url:$auth_url,
       self_online: ($self_online == "true"),
       webui_ready: ($webui_ready == "true"),
+      webui_http_code:$webui_http_code,
+      webui_reason:$webui_reason,
       webui_readonly: ($webui_readonly == "true"),
       webui_probe_s:$webui_probe_s,
       webui_ready_streak:$webui_ready_streak,

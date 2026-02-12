@@ -4,6 +4,19 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta61 - 2026-02-12
+### Fixed
+- Corregida señal falsa de `Web UI lista=true` en onboarding:
+  - ahora no se considera lista solo por `runtime.webui_ready`,
+  - se exige confirmación real reciente por preflight de ingress.
+- El preflight de `webui-ready` vuelve a filtrar el banner `Tailscale web interface is unavailable`, pero con limpieza de HTML visible para evitar falsos positivos por texto dentro de scripts.
+
+### Changed
+- Optimización de rendimiento en runtime:
+  - `runtime-status` reutiliza el `status_json` ya leído y lo pasa a `support-tunnel`, evitando una segunda llamada redundante a `tailscale status` en cada ciclo.
+- Optimización del polling de onboarding en estado estable:
+  - cuando Web UI ya está lista, el refresco baja de intensidad para reducir carga.
+
 ## 3.0.0-beta60 - 2026-02-12
 ### Fixed
 - Corregido falso negativo persistente de Web UI en beta (`tailscale web is unavailable`) causado por la detección por texto del HTML.
