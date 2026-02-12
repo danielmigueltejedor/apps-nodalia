@@ -1809,10 +1809,15 @@
           result = await attempt("GET");
         }
         data = result.data || {};
-        logoutRequestOk = Boolean(data?.ok);
-        opMessage.textContent = logoutRequestOk
-          ? "Logout solicitado. Confirmando estado real..."
-          : "Logout no confirmado. Estado actual: " + String(data.backend_state || "Unknown");
+        const responseAction = String(data?.action || "");
+        logoutRequestOk = Boolean(data?.ok) && responseAction === "logout";
+        if (responseAction && responseAction !== "logout") {
+          opMessage.textContent = "La llamada no ejecuto Logauth (action=" + responseAction + ").";
+        } else {
+          opMessage.textContent = logoutRequestOk
+            ? "Logout solicitado. Confirmando estado real..."
+            : "Logout no confirmado. Estado actual: " + String(data.backend_state || "Unknown");
+        }
       } catch (error) {
         opMessage.textContent = "Error al cerrar sesion: " + error.message;
         opOutput.textContent = String(error?.message || "logout_error");
