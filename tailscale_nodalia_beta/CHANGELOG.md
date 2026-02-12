@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta63 - 2026-02-12
+### Fixed
+- Corregidos timeouts demasiado agresivos en APIs de operación de onboarding:
+  - `support-api` pasa a `proxy_read_timeout 30s` para permitir alta de túnel Cloudflare sin cortar respuesta.
+  - `control-api` pasa a `proxy_read_timeout 60s` para cubrir secuencias de `logout` con fallback.
+- Mejorada estabilidad de la Web UI por ingress en sesiones largas:
+  - `/` y `/webui` usan timeouts largos (`proxy_read_timeout`/`proxy_send_timeout` de 86400s) para evitar cortes en conexiones persistentes.
+  - `webui-ready` amplía timeout a 2s para reducir falsos negativos por latencia puntual.
+
 ## 3.0.0-beta62 - 2026-02-12
 ### Fixed
 - Endurecido el criterio de `Web UI lista` para evitar falsos positivos:

@@ -35,7 +35,9 @@ server {
     location = /support-api {
         proxy_connect_timeout 1s;
         proxy_send_timeout 2s;
-        proxy_read_timeout 5s;
+        # Enabling a support tunnel can take several seconds while cloudflared
+        # allocates a public URL. Avoid timing out the CGI response too early.
+        proxy_read_timeout 30s;
         add_header Cache-Control "no-store";
         proxy_pass http://127.0.0.1:25910/cgi-bin/support;
     }
@@ -43,15 +45,18 @@ server {
     location = /control-api {
         proxy_connect_timeout 1s;
         proxy_send_timeout 2s;
-        proxy_read_timeout 10s;
+        # Logout/reconnect operations can include fallback steps and daemon restarts.
+        # Keep this endpoint responsive without aborting long but valid operations.
+        proxy_read_timeout 60s;
         add_header Cache-Control "no-store";
         proxy_pass http://127.0.0.1:25910/cgi-bin/control;
     }
 
     location = /webui {
         proxy_connect_timeout 2s;
-        proxy_send_timeout 8s;
-        proxy_read_timeout 8s;
+        # Preserve long-lived Web UI connections (SSE/websocket/polling) inside ingress.
+        proxy_send_timeout 86400s;
+        proxy_read_timeout 86400s;
         proxy_intercept_errors on;
         error_page 500 502 503 504 = /onboarding;
         # Preserve compatibility with old /webui links, but always hit backend root.
@@ -69,16 +74,17 @@ server {
 
     location = /webui-ready {
         proxy_connect_timeout 1s;
-        proxy_send_timeout 1s;
-        proxy_read_timeout 1s;
+        proxy_send_timeout 2s;
+        proxy_read_timeout 2s;
         # Probe backend root to avoid false negatives on non-root paths.
         proxy_pass http://backend/;
     }
 
     location / {
         proxy_connect_timeout 2s;
-        proxy_send_timeout 8s;
-        proxy_read_timeout 8s;
+        # Preserve long-lived Web UI connections (SSE/websocket/polling) inside ingress.
+        proxy_send_timeout 86400s;
+        proxy_read_timeout 86400s;
         proxy_intercept_errors on;
         error_page 500 502 503 504 = /onboarding;
         proxy_pass http://backend;
