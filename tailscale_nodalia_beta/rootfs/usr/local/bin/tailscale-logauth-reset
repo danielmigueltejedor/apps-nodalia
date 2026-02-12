@@ -46,8 +46,10 @@ if [[ -z "${daemon_pids}" ]] && command -v pgrep > /dev/null 2>&1; then
 fi
 
 if [[ -n "${daemon_pids}" ]]; then
-  log "Stopping tailscaled pids=${daemon_pids}"
-  kill ${daemon_pids} 2>/dev/null || true
+  # Avoid SIGTERM: tailscaled/finish halts the whole add-on on signal 15.
+  # Use SIGINT for a graceful-ish stop, then SIGKILL as fallback.
+  log "Stopping tailscaled pids=${daemon_pids} (SIGINT)"
+  kill -INT ${daemon_pids} 2>/dev/null || true
 else
   log "tailscaled pid not found"
 fi

@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta87 - 2026-02-12
+### Fixed
+- `Logauth` ya no mata `tailscaled` con `SIGTERM` (que paraba el add-on por el `finish` de s6); ahora usa `SIGINT` + `SIGKILL` como fallback.
+
+### Changed
+- Marcador visual actualizado a `UI build: 3.0.0-beta87`.
+
 ## 3.0.0-beta86 - 2026-02-12
 ### Fixed
 - `Logauth` refactorizado a un script dedicado (`/usr/local/bin/tailscale-logauth-reset`) y el botón lo ejecuta vía `control-api`.
