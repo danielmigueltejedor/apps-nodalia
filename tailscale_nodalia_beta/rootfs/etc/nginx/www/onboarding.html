@@ -638,7 +638,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta88</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta89</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1133,7 +1133,7 @@
     async function callSupportApi(action, method = "GET", allowGetFallback = false) {
       const request = async (httpMethod) => {
         try {
-          const response = await fetch(ingressUrl("support-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now()), {
+          const response = await fetch(ingressUrl("support-api/" + encodeURIComponent(action)), {
             method: httpMethod,
             cache: "no-store",
           });
@@ -1178,7 +1178,7 @@
     async function callControlApi(action, method = "POST", allowGetFallback = false) {
       const request = async (httpMethod) => {
         try {
-          const response = await fetch(ingressUrl("control-api?action=" + encodeURIComponent(action) + "&_ts=" + Date.now()), {
+          const response = await fetch(ingressUrl("control-api/" + encodeURIComponent(action)), {
             method: httpMethod,
             cache: "no-store",
           });
@@ -1745,7 +1745,7 @@
       supportAuditOutput.hidden = false;
       supportAuditOutput.textContent = "Cargando auditoria...";
       try {
-        const response = await fetch(ingressUrl("support-api?action=audit&_ts=" + Date.now()), { cache: "no-store" });
+        const response = await fetch(ingressUrl("support-api/audit"), { cache: "no-store" });
         const text = await response.text();
         supportAuditOutput.textContent = text.trim() || "Sin eventos de auditoria todavia.";
       } catch (error) {
@@ -1761,7 +1761,7 @@
       if (Date.now() > logoutConfirmUntilMs) {
         armLogoutConfirm(8000);
         opMessage.textContent = "Pulsa otra vez en menos de 8s para confirmar Logauth (reset tailnet).";
-        opOutput.textContent = "Listo para ejecutar Logauth.\nEndpoint: " + ingressUrl("control-api?action=logout");
+        opOutput.textContent = "Listo para ejecutar Logauth.\nEndpoint: " + ingressUrl("control-api/logout");
         opOutput.hidden = false;
         return;
       }
@@ -1777,7 +1777,7 @@
       opOutput.hidden = false;
       let logoutRequestOk = false;
       try {
-        const url = ingressUrl("control-api?action=logout&_ts=" + Date.now());
+        const url = ingressUrl("control-api/logout");
         let response = null;
         let payload = "";
         let data = null;

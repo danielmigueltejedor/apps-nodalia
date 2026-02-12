@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta89 - 2026-02-12
+### Fixed
+- Los endpoints de control (`control-api`) y soporte (`support-api`) ahora soportan rutas tipo `/control-api/logout` y `/support-api/enable` para evitar proxies de ingress que descartan query strings; esto hace que `Logauth` y el túnel de soporte funcionen desde la UI.
+
+### Changed
+- Estado simplificado: punto de color (verde/amarillo/rojo) + texto corto sin `(Running)`.
+- Diagnóstico simplificado: sin prefijos `OK:`/`WARN:`; solo marcador por color.
+- Marcador visual actualizado a `UI build: 3.0.0-beta89`.
+
 ## 3.0.0-beta88 - 2026-02-12
 ### Fixed
 - `Logauth` muestra trazas de red en UI (`POST/GET`, `HTTP status`, payload) para diagnosticar si `/control-api` está siendo alcanzable desde ingress.
