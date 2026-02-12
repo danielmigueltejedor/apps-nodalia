@@ -631,6 +631,8 @@
     let supportRules = { enable: false, disable: false, copy: false, audit: false };
     let opBusy = false;
     let opCanLogout = false;
+    let logoutArmedUntilMs = 0;
+    let logoutArmHandle = null;
     let liveWebUiReadyStreak = 0;
     let liveWebUiSeenAtMs = 0;
     let lastWebUiProbeAtMs = 0;
@@ -861,6 +863,9 @@
     }
 
     function renderOpButtons() {
+      if (opBusy || !opCanLogout) {
+        clearLogoutArm();
+      }
       setUiDisabled(opReconnectBtn, opBusy);
       setUiDisabled(opRefreshBtn, opBusy);
       setUiDisabled(opLogoutBtn, opBusy || !opCanLogout);
@@ -1143,6 +1148,27 @@
     function setOpButtonsBusy(busy) {
       opBusy = busy;
       renderOpButtons();
+    }
+
+    function clearLogoutArm() {
+      logoutArmedUntilMs = 0;
+      if (logoutArmHandle) {
+        clearTimeout(logoutArmHandle);
+        logoutArmHandle = null;
+      }
+      opLogoutBtn.textContent = "Cerrar sesion";
+    }
+
+    function armLogoutConfirm(windowMs = 8000) {
+      clearLogoutArm();
+      logoutArmedUntilMs = Date.now() + windowMs;
+      opLogoutBtn.textContent = "Confirmar cierre";
+      logoutArmHandle = setTimeout(() => {
+        clearLogoutArm();
+        if (!opBusy) {
+          opMessage.textContent = "Confirmacion expirada. Pulsa otra vez para cerrar sesion.";
+        }
+      }, windowMs + 100);
     }
 
     function cancelAutoRedirect() {
@@ -1544,10 +1570,12 @@
         opMessage.textContent = "Logout no disponible: el backend no esta en Running.";
         return;
       }
-      const confirmed = window.confirm("Se cerrara la sesion actual de Tailscale en este dispositivo. Continuar?");
-      if (!confirmed) {
+      if (Date.now() > logoutArmedUntilMs) {
+        armLogoutConfirm(8000);
+        opMessage.textContent = "Pulsa otra vez en menos de 8s para confirmar cierre de sesion.";
         return;
       }
+      clearLogoutArm();
       beginUiAction();
       setOpButtonsBusy(true);
       opMessage.textContent = "Cerrando sesion...";
@@ -1584,6 +1612,7 @@
         if (finalMessage) {
           opMessage.textContent = finalMessage;
         }
+        clearLogoutArm();
         setOpButtonsBusy(false);
       }
     });
