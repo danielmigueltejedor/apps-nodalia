@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta70 - 2026-02-12
+### Added
+- Selector de tema (claro/oscuro) en la esquina superior derecha del panel onboarding.
+
+### Changed
+- El onboarding usa modo oscuro por defecto.
+- La preferencia de tema se guarda en `localStorage` y se restaura al recargar.
+
 ## 3.0.0-beta69 - 2026-02-12
 ### Fixed
 - Corregido cálculo de base ingress en onboarding para forzar siempre slash final.
