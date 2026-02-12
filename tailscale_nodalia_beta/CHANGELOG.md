@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta58 - 2026-02-12
+### Fixed
+- Corregida validación DNS del túnel de soporte cuando `Self.DNSName` llega con punto final (ej. `homeassistant-4.tail37b857.ts.net.`).
+- La detección ahora normaliza DNS (lowercase + trim de puntos) y valida por sufijo real del tailnet:
+  - acepta formato `nombre-nodo.<dns-tailnet>`,
+  - evita falsos negativos en nodos correctamente unidos a la tailnet de soporte.
+
 ## 3.0.0-beta57 - 2026-02-12
 ### Fixed
 - Corregido el flujo de redirección a Web UI desde onboarding cuando Home Assistant sirve la URL con slash final (`/onboarding/`).

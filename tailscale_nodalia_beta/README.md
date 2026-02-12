@@ -9,9 +9,12 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta57`
+`3.0.0-beta58`
 
 Cambios destacados:
+- Corregida validación DNS de soporte para nodos con formato real de Tailscale:
+  - ahora detecta correctamente valores como `homeassistant-4.tail37b857.ts.net.` (con punto final).
+  - la comprobación normaliza DNS y valida por sufijo `nombre-nodo + dns de tailnet`.
 - Corregido acceso a Web UI desde onboarding bajo ingress con slash final:
   - rutas frontend convertidas a ingress-safe (resuelven bien con `/onboarding` y `/onboarding/`).
   - botón/redirecciones de Web UI apuntan al prefijo real de ingress en lugar de una ruta frágil.
