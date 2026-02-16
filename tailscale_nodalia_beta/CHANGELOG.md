@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta91 - 2026-02-13
+### Fixed
+- Acciones por ruta en ingress: Nginx ahora mapea `/control-api/<accion>` y `/support-api/<accion>` a query strings internos (`/cgi-bin/control?action=logout`, etc.), evitando depender de `PATH_INFO`/headers que no siempre llegan al CGI bajo BusyBox `httpd`.
+
+### Changed
+- Marcador visual actualizado a `UI build: 3.0.0-beta91`.
+
 ## 3.0.0-beta90 - 2026-02-12
 ### Fixed
 - `Logauth` por ingress: se soporta `PATH_INFO` y el header `X-Nodalia-Action` en los CGI de `control-api`/`support-api` para que las acciones no dependan de query strings. Esto corrige casos donde `/control-api/logout` devolvía `action=status`.

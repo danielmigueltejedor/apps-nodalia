@@ -42,16 +42,35 @@ server {
         proxy_pass http://127.0.0.1:25910/cgi-bin/support;
     }
 
-    # Path-style support endpoints for ingress proxies that drop query strings.
-    # Example: /support-api/enable
-    location ~ ^/support-api/(enable|disable|audit|status)/?$ {
-        proxy_connect_timeout 1s;
-        proxy_send_timeout 2s;
-        proxy_read_timeout 30s;
-        add_header Cache-Control "no-store";
-        proxy_set_header X-Nodalia-Action $1;
-        proxy_pass http://127.0.0.1:25910/cgi-bin/support/$1;
-    }
+	    # Path-style support endpoints (mapped internally to query-string actions for CGI).
+	    location = /support-api/enable {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 30s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/support?action=enable;
+	    }
+	    location = /support-api/disable {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 30s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/support?action=disable;
+	    }
+	    location = /support-api/audit {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 30s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/support?action=audit;
+	    }
+	    location = /support-api/status {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 30s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/support?action=status;
+	    }
 
     location = /control-api {
         proxy_connect_timeout 1s;
@@ -63,16 +82,42 @@ server {
         proxy_pass http://127.0.0.1:25910/cgi-bin/control;
     }
 
-    # Path-style control endpoints for ingress proxies that drop query strings.
-    # Example: /control-api/logout
-    location ~ ^/control-api/(reconnect|logout|diag|dnsdiag|status)/?$ {
-        proxy_connect_timeout 1s;
-        proxy_send_timeout 2s;
-        proxy_read_timeout 120s;
-        add_header Cache-Control "no-store";
-        proxy_set_header X-Nodalia-Action $1;
-        proxy_pass http://127.0.0.1:25910/cgi-bin/control/$1;
-    }
+	    # Path-style control endpoints (mapped internally to query-string actions for CGI).
+	    location = /control-api/reconnect {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 120s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/control?action=reconnect;
+	    }
+	    location = /control-api/logout {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 120s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/control?action=logout;
+	    }
+	    location = /control-api/diag {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 120s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/control?action=diag;
+	    }
+	    location = /control-api/dnsdiag {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 120s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/control?action=dnsdiag;
+	    }
+	    location = /control-api/status {
+	        proxy_connect_timeout 1s;
+	        proxy_send_timeout 2s;
+	        proxy_read_timeout 120s;
+	        add_header Cache-Control "no-store";
+	        proxy_pass http://127.0.0.1:25910/cgi-bin/control?action=status;
+	    }
 
     location = /webui {
         proxy_connect_timeout 2s;
