@@ -25,6 +25,39 @@ cleanup_lock() {
 }
 trap cleanup_lock EXIT
 
+list_tailscaled_pids() {
+  local pids=""
+  pids="$(pidof tailscaled 2>/dev/null || true)"
+  if [[ -z "${pids}" ]] && command -v pgrep > /dev/null 2>&1; then
+    pids="$(pgrep -x tailscaled 2>/dev/null | tr '\n' ' ' || true)"
+  fi
+  printf '%s' "${pids}"
+}
+
+stop_tailscaled_signal() {
+  local signal_name="${1:-INT}"
+  local attempts="${2:-8}"
+  local i
+  local pids
+  for ((i=1; i<=attempts; i++)); do
+    pids="$(list_tailscaled_pids)"
+    if [[ -z "${pids}" ]]; then
+      if [[ ! -S "${SOCK}" ]]; then
+        return 0
+      fi
+      rm -f "${SOCK}" 2>/dev/null || true
+      if [[ ! -S "${SOCK}" ]]; then
+        return 0
+      fi
+    else
+      log "Sending SIG${signal_name} to tailscaled pids=${pids} (attempt ${i}/${attempts})"
+      kill -"${signal_name}" ${pids} 2>/dev/null || true
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 log "Acquiring reset lock: ${LOCK_FILE}"
 printf '%s\n' "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" > "${LOCK_FILE}" 2>/dev/null || true
 chmod 0600 "${LOCK_FILE}" 2>/dev/null || true
@@ -40,40 +73,26 @@ else
   log "Socket not present yet; skipping tailscale down/logout pre-flight"
 fi
 
-daemon_pids="$(pidof tailscaled 2>/dev/null || true)"
-if [[ -z "${daemon_pids}" ]] && command -v pgrep > /dev/null 2>&1; then
-  daemon_pids="$(pgrep -x tailscaled 2>/dev/null | tr '\n' ' ' || true)"
+# Avoid SIGTERM: tailscaled/finish halts the whole add-on on signal 15.
+# Use SIGINT first, then SIGKILL as fallback; keep retrying in case s6 respawns
+# briefly before honoring the reset lock.
+if [[ -n "$(list_tailscaled_pids)" ]] || [[ -S "${SOCK}" ]]; then
+  stop_tailscaled_signal INT 10 || true
 fi
+if [[ -n "$(list_tailscaled_pids)" ]] || [[ -S "${SOCK}" ]]; then
+  stop_tailscaled_signal KILL 8 || true
+fi
+
+daemon_pids="$(list_tailscaled_pids)"
+if [[ -S "${SOCK}" ]]; then
+  rm -f "${SOCK}" 2>/dev/null || true
+fi
+log "socket present after stop=$([[ -S "${SOCK}" ]] && echo true || echo false) pids=$([[ -n "${daemon_pids}" ]] && echo "${daemon_pids}" || echo none)"
 
 if [[ -n "${daemon_pids}" ]]; then
-  # Avoid SIGTERM: tailscaled/finish halts the whole add-on on signal 15.
-  # Use SIGINT for a graceful-ish stop, then SIGKILL as fallback.
-  log "Stopping tailscaled pids=${daemon_pids} (SIGINT)"
-  kill -INT ${daemon_pids} 2>/dev/null || true
-else
-  log "tailscaled pid not found"
+  log "Abort reset: unable to stop tailscaled cleanly."
+  exit 1
 fi
-
-# Wait briefly for socket to disappear so it can't rewrite state while we delete it.
-for ((i=0; i<12; i++)); do
-  if [[ ! -S "${SOCK}" ]]; then
-    break
-  fi
-  sleep 1
-done
-
-if [[ -S "${SOCK}" ]] && [[ -n "${daemon_pids}" ]]; then
-  log "tailscaled still running; sending SIGKILL pids=${daemon_pids}"
-  kill -9 ${daemon_pids} 2>/dev/null || true
-fi
-
-for ((i=0; i<6; i++)); do
-  if [[ ! -S "${SOCK}" ]]; then
-    break
-  fi
-  sleep 1
-done
-log "socket present after stop=$([[ -S "${SOCK}" ]] && echo true || echo false)"
 
 log "Removing local auth/state files"
 rm -f "${STATE}"
@@ -111,12 +130,12 @@ backend_state="$(jq -r '.BackendState // "Unknown"' <<< "${status_json}" 2>/dev/
 auth_url="$(jq -r '.AuthURL // .Self.AuthURL // empty' <<< "${status_json}" 2>/dev/null || true)"
 
 if [[ "${backend_state}" == "Running" ]] && [[ -z "${auth_url}" ]]; then
-  log "Backend still Running; forcing interactive reauth (tailscale up --force-reauth)"
+  log "Backend still Running; forcing interactive reauth (tailscale up --reset --force-reauth)"
   set +e
-  reauth_output="$(timeout 15 /opt/tailscale up --force-reauth 2>&1)"
+  reauth_output="$(timeout 20 /opt/tailscale up --reset --force-reauth 2>&1)"
   reauth_rc=$?
   set -e
-  log "force-reauth rc=${reauth_rc}"
+  log "force-reauth+reset rc=${reauth_rc}"
   if [[ -n "${reauth_output}" ]]; then
     printf '%s\n' "${reauth_output}" | tail -n 60
   fi

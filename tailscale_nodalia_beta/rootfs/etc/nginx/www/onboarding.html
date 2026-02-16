@@ -638,7 +638,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta91</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta92</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1766,7 +1766,7 @@
       if (Date.now() > logoutConfirmUntilMs) {
         armLogoutConfirm(8000);
         opMessage.textContent = "Pulsa otra vez en menos de 8s para confirmar Logauth (reset tailnet).";
-        opOutput.textContent = "Listo para ejecutar Logauth.\nEndpoint: " + ingressUrl("control-api/logout");
+        opOutput.textContent = "Listo para ejecutar Logauth.\nEndpoint principal: " + ingressUrl("control-api");
         opOutput.hidden = false;
         return;
       }
@@ -1782,17 +1782,26 @@
       opOutput.hidden = false;
       let logoutRequestOk = false;
       try {
-        const url = ingressUrl("control-api/logout");
+        const endpointBase = ingressUrl("control-api");
+        const endpointPath = ingressUrl("control-api/logout");
+        const endpointQuery = ingressUrl("control-api?action=logout");
         let response = null;
         let payload = "";
         let data = null;
-        const attempt = async (method) => {
-          opOutput.textContent += method + " " + url + "\n";
-          response = await fetch(url, {
-            method,
-            cache: "no-store",
-            headers: { "X-Nodalia-Action": "logout" },
-          });
+        const attempt = async (method, url, useBodyAction = false) => {
+          opOutput.textContent += method + " " + url + (useBodyAction ? " (body action=logout)" : "") + "\n";
+          const headers = { "X-Nodalia-Action": "logout" };
+          const requestInit = { method, cache: "no-store", headers };
+          if (useBodyAction) {
+            headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8";
+            requestInit.body = "action=logout";
+          }
+          try {
+            response = await fetch(url, requestInit);
+          } catch (error) {
+            opOutput.textContent += "ERR " + String(error?.message || "fetch_failed") + "\n";
+            return { response: null, data: { ok: false, error: "fetch_failed", message: String(error?.message || "fetch_failed") } };
+          }
           payload = await response.text();
           opOutput.textContent += "HTTP " + response.status + "\n";
           opOutput.textContent += (payload || "(empty)") + "\n";
@@ -1805,17 +1814,18 @@
         };
 
         let result = null;
-        try {
-          result = await attempt("POST");
-        } catch (error) {
-          // Network failure or ingress disruption: surface it plainly.
-          throw new Error("fetch_failed: " + String(error?.message || "unknown"));
-        }
-        const firstStatus = Number(result.response?.status || 0);
-        const firstError = String(result.data?.error || "");
-        if (firstStatus === 405 || firstError === "method_not_allowed") {
-          // Some ingress setups can block POST; retry as GET.
-          result = await attempt("GET");
+        const attempts = [
+          { method: "POST", url: endpointBase, useBodyAction: true },
+          { method: "POST", url: endpointPath, useBodyAction: false },
+          { method: "GET", url: endpointQuery, useBodyAction: false },
+          { method: "GET", url: endpointPath, useBodyAction: false },
+        ];
+        for (const item of attempts) {
+          result = await attempt(item.method, item.url, item.useBodyAction);
+          const responseAction = String(result?.data?.action || "");
+          if (responseAction === "logout") {
+            break;
+          }
         }
         data = result.data || {};
         const responseAction = String(data?.action || "");
@@ -1836,7 +1846,7 @@
         let finalMessage = "";
         let transitionMatched = false;
         if (logoutRequestOk) {
-          const transition = await waitForBackendTransition(["NeedsLogin", "NeedsMachineAuth", "NoState", "Stopped"], 9000, 700);
+          const transition = await waitForBackendTransition(["NeedsLogin", "NeedsMachineAuth", "NoState", "Stopped"], 20000, 800);
           if (transition.matched) {
             transitionMatched = true;
             finalMessage = "Reset de identidad confirmado. Ya puedes autenticar en otra tailnet desde esta pagina.";

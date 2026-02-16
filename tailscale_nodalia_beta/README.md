@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta91`
+`3.0.0-beta92`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -25,6 +25,7 @@ Cambios destacados (resumen de betas recientes):
   - doble confirmación en UI con feedback visual claro (estado armado, cuenta atrás y resultado).
   - mejora de compatibilidad de llamadas de control (`POST` con fallback a `GET` cuando aplica).
   - ingress: rutas tipo `/control-api/logout` se traducen internamente a query string para evitar setups que descartan `QUERY_STRING`/`PATH_INFO`.
+  - el botón power prueba primero `POST /control-api` con `action=logout` en body y mantiene fallbacks, para no depender de una sola vía de enrutado.
 - Soporte remoto y APIs internas más robustas:
   - validación de elegibilidad de soporte alineada al DNS real de tailnet (`support_tailnet_dns_suffix`).
   - timeouts y comportamiento de `control-api`/`support-api` afinados para evitar cortes prematuros.

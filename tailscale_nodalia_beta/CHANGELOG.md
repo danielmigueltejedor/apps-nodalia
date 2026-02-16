@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta92 - 2026-02-16
+### Fixed
+- `Logauth` dispatch endurecido: `control-api` y `support-api` ahora aceptan `action` también desde el body `POST` (form/json), además de query/path/header.
+- Botón power más robusto: el frontend intenta primero `POST /control-api` con `action=logout` en body y mantiene fallbacks por ruta/query para cubrir variaciones de ingress.
+- Reset de identidad más estricto: el script `tailscale-logauth-reset` ahora detiene `tailscaled` en bucle (SIGINT + SIGKILL), valida que el daemon quede realmente parado antes de borrar estado y mejora el fallback final con `tailscale up --reset --force-reauth`.
+
+### Changed
+- Marcador visual actualizado a `UI build: 3.0.0-beta92`.
+
 ## 3.0.0-beta91 - 2026-02-13
 ### Fixed
 - Acciones por ruta en ingress: Nginx ahora mapea `/control-api/<accion>` y `/support-api/<accion>` a query strings internos (`/cgi-bin/control?action=logout`, etc.), evitando depender de `PATH_INFO`/headers que no siempre llegan al CGI bajo BusyBox `httpd`.

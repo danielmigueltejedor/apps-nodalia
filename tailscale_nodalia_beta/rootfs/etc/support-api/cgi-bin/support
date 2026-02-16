@@ -2,13 +2,30 @@
 # shellcheck shell=bash
 set -euo pipefail
 
-action_qs=""
-case "${QUERY_STRING:-}" in
-  *action=enable*) action_qs="enable" ;;
-  *action=disable*) action_qs="disable" ;;
-  *action=audit*) action_qs="audit" ;;
-  *action=status*) action_qs="status" ;;
-esac
+extract_action_from_text() {
+  local text="${1:-}"
+  case "${text}" in
+    *action=enable*|*"\"action\":\"enable\""*) echo "enable" ;;
+    *action=disable*|*"\"action\":\"disable\""*) echo "disable" ;;
+    *action=audit*|*"\"action\":\"audit\""*) echo "audit" ;;
+    *action=status*|*"\"action\":\"status\""*) echo "status" ;;
+    *) echo "" ;;
+  esac
+}
+
+action_qs="$(extract_action_from_text "${QUERY_STRING:-}")"
+
+request_body=""
+content_length_raw="${CONTENT_LENGTH:-0}"
+action_body=""
+if [[ "${REQUEST_METHOD:-GET}" == "POST" ]] && \
+  [[ "${content_length_raw}" =~ ^[0-9]+$ ]] && \
+  (( content_length_raw > 0 )) && \
+  (( content_length_raw <= 8192 ));
+then
+  IFS= read -r -n "${content_length_raw}" request_body || true
+  action_body="$(extract_action_from_text "${request_body}")"
+fi
 
 action_path=""
 if [[ -n "${PATH_INFO:-}" ]]; then
@@ -40,6 +57,9 @@ if [[ -n "${HTTP_X_NODALIA_ACTION:-}" ]]; then
 fi
 
 action="${action_qs:-status}"
+if [[ -n "${action_body}" ]]; then
+  action="${action_body}"
+fi
 if [[ -n "${action_hdr}" ]]; then
   action="${action_hdr}"
 fi

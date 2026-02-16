@@ -2,14 +2,31 @@
 # shellcheck shell=bash
 set -euo pipefail
 
-action_qs=""
-case "${QUERY_STRING:-}" in
-  *action=reconnect*) action_qs="reconnect" ;;
-  *action=logout*) action_qs="logout" ;;
-  *action=dnsdiag*) action_qs="dnsdiag" ;;
-  *action=diag*) action_qs="diag" ;;
-  *action=status*) action_qs="status" ;;
-esac
+extract_action_from_text() {
+  local text="${1:-}"
+  case "${text}" in
+    *action=reconnect*|*"\"action\":\"reconnect\""*) echo "reconnect" ;;
+    *action=logout*|*"\"action\":\"logout\""*) echo "logout" ;;
+    *action=dnsdiag*|*"\"action\":\"dnsdiag\""*) echo "dnsdiag" ;;
+    *action=diag*|*"\"action\":\"diag\""*) echo "diag" ;;
+    *action=status*|*"\"action\":\"status\""*) echo "status" ;;
+    *) echo "" ;;
+  esac
+}
+
+action_qs="$(extract_action_from_text "${QUERY_STRING:-}")"
+
+request_body=""
+content_length_raw="${CONTENT_LENGTH:-0}"
+action_body=""
+if [[ "${REQUEST_METHOD:-GET}" == "POST" ]] && \
+  [[ "${content_length_raw}" =~ ^[0-9]+$ ]] && \
+  (( content_length_raw > 0 )) && \
+  (( content_length_raw <= 8192 ));
+then
+  IFS= read -r -n "${content_length_raw}" request_body || true
+  action_body="$(extract_action_from_text "${request_body}")"
+fi
 
 action_path=""
 if [[ -n "${PATH_INFO:-}" ]]; then
@@ -41,12 +58,18 @@ if [[ -n "${HTTP_X_NODALIA_ACTION:-}" ]]; then
 fi
 
 action="${action_qs:-status}"
+if [[ -n "${action_body}" ]]; then
+  action="${action_body}"
+fi
 if [[ -n "${action_hdr}" ]]; then
   action="${action_hdr}"
 fi
 if [[ -n "${action_path}" ]]; then
   action="${action_path}"
 fi
+
+request_body_preview="$(printf '%s' "${request_body}" | tr '\r\n' '  ')"
+request_body_preview="${request_body_preview:0:180}"
 
 if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${REQUEST_METHOD:-GET}" != "GET" ]]; then
   echo "Status: 405 Method Not Allowed"
@@ -126,7 +149,7 @@ output_trimmed="$(printf '%s' "${ACTION_OUTPUT}" | tail -c 2000)"
 # After a hard identity reset, give tailscaled a few seconds to converge into
 # a login-required state so the UI can render the new auth flow immediately.
 if [[ "${action}" == "logout" ]]; then
-  logout_deadline=$((SECONDS + 12))
+  logout_deadline=$((SECONDS + 20))
   while (( SECONDS < logout_deadline )); do
     candidate_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
     candidate_state="$(jq -r '.BackendState // "Unknown"' <<< "${candidate_json}" 2>/dev/null || echo "Unknown")"
@@ -284,6 +307,12 @@ jq -nc \
   --arg request_uri "${REQUEST_URI:-}" \
   --arg query_string "${QUERY_STRING:-}" \
   --arg path_info "${PATH_INFO:-}" \
+  --arg content_length "${content_length_raw}" \
+  --arg request_body_preview "${request_body_preview}" \
+  --arg action_qs "${action_qs}" \
+  --arg action_body "${action_body}" \
+  --arg action_hdr "${action_hdr}" \
+  --arg action_path "${action_path}" \
   --arg x_action "${HTTP_X_NODALIA_ACTION:-}" \
   --arg backend_state "${backend_state}" \
   --arg auth_url "${auth_url}" \
@@ -311,6 +340,12 @@ jq -nc \
       request_uri: $request_uri,
       query_string: $query_string,
       path_info: $path_info,
+      content_length: $content_length,
+      request_body_preview: $request_body_preview,
+      action_qs: $action_qs,
+      action_body: $action_body,
+      action_hdr: $action_hdr,
+      action_path: $action_path,
       x_nodalia_action: $x_action
     },
     rc: $rc,
