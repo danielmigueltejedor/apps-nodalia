@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta93`
+`3.0.0-beta94`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -34,6 +34,9 @@ Cambios destacados (resumen de betas recientes):
   - tema oscuro por defecto.
   - selector claro/oscuro en modo icon-only (`☀`/`🌙`).
   - limpieza de acciones redundantes en onboarding (se elimina `Control rapido`).
+  - UX de `Logauth` más limpia:
+    - tras éxito muestra estado corto (`Desconectado • listo para nueva tailnet`).
+    - las trazas técnicas de logout solo se muestran en modo avanzado.
 
 Estrategia de versionado a partir de esta versión:
 - `X`: cambios mayores.

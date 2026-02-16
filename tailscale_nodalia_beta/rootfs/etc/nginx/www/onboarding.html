@@ -638,7 +638,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta93</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta94</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -733,6 +733,7 @@
     let logoutConfirmHandle = null;
     let logoutConfirmTickHandle = null;
     let logoutHintHideHandle = null;
+    let logoutTraceLog = "";
     let liveWebUiReadyStreak = 0;
     let liveWebUiSeenAtMs = 0;
     let lastWebUiProbeAtMs = 0;
@@ -923,6 +924,7 @@
     function renderAdvancedMode() {
       document.body.classList.toggle("advanced-hidden", !advancedModeEnabled);
       toggleAdvancedBtn.textContent = advancedModeEnabled ? "Modo avanzado: ON" : "Modo avanzado: OFF";
+      syncLogoutTraceVisibility();
     }
 
     function setUiDisabled(element, disabled) {
@@ -1315,6 +1317,30 @@
     function setOpButtonsBusy(busy) {
       opBusy = busy;
       renderOpButtons();
+    }
+
+    function clearLogoutTrace() {
+      logoutTraceLog = "";
+      opOutput.textContent = "";
+      opOutput.hidden = true;
+    }
+
+    function appendLogoutTrace(text) {
+      if (!text) {
+        return;
+      }
+      logoutTraceLog += text;
+      opOutput.textContent = logoutTraceLog;
+      opOutput.hidden = !advancedModeEnabled;
+    }
+
+    function syncLogoutTraceVisibility() {
+      if (!logoutTraceLog) {
+        opOutput.hidden = true;
+        return;
+      }
+      opOutput.textContent = logoutTraceLog;
+      opOutput.hidden = !advancedModeEnabled;
     }
 
     function showLogoutHint(message, autoHideMs = 0) {
@@ -1766,8 +1792,8 @@
       if (Date.now() > logoutConfirmUntilMs) {
         armLogoutConfirm(8000);
         opMessage.textContent = "Pulsa otra vez en menos de 8s para confirmar Logauth (reset tailnet).";
-        opOutput.textContent = "Listo para ejecutar Logauth.\nEndpoint principal: " + ingressUrl("control-api");
-        opOutput.hidden = false;
+        clearLogoutTrace();
+        appendLogoutTrace("Listo para ejecutar Logauth.\nEndpoint principal: " + ingressUrl("control-api") + "\n");
         return;
       }
       clearLogoutConfirm();
@@ -1778,9 +1804,9 @@
       setOpButtonsBusy(true);
       opMessage.textContent = "Reseteando identidad local de Tailscale...";
       showLogoutHint("Ejecutando reset...", 0);
-      opOutput.textContent = "";
-      opOutput.hidden = false;
+      clearLogoutTrace();
       let logoutRequestOk = false;
+      let logoutFailed = false;
       try {
         const endpointBase = ingressUrl("control-api");
         const endpointPath = ingressUrl("control-api/logout");
@@ -1789,7 +1815,7 @@
         let payload = "";
         let data = null;
         const attempt = async (method, url, useBodyAction = false) => {
-          opOutput.textContent += method + " " + url + (useBodyAction ? " (body action=logout)" : "") + "\n";
+          appendLogoutTrace(method + " " + url + (useBodyAction ? " (body action=logout)" : "") + "\n");
           const headers = { "X-Nodalia-Action": "logout" };
           const requestInit = { method, cache: "no-store", headers };
           if (useBodyAction) {
@@ -1799,12 +1825,12 @@
           try {
             response = await fetch(url, requestInit);
           } catch (error) {
-            opOutput.textContent += "ERR " + String(error?.message || "fetch_failed") + "\n";
+            appendLogoutTrace("ERR " + String(error?.message || "fetch_failed") + "\n");
             return { response: null, data: { ok: false, error: "fetch_failed", message: String(error?.message || "fetch_failed") } };
           }
           payload = await response.text();
-          opOutput.textContent += "HTTP " + response.status + "\n";
-          opOutput.textContent += (payload || "(empty)") + "\n";
+          appendLogoutTrace("HTTP " + response.status + "\n");
+          appendLogoutTrace((payload || "(empty)") + "\n");
           try {
             data = JSON.parse(payload);
           } catch (_) {
@@ -1832,15 +1858,19 @@
         logoutRequestOk = Boolean(data?.ok) && responseAction === "logout";
         if (responseAction && responseAction !== "logout") {
           opMessage.textContent = "La llamada no ejecuto Logauth (action=" + responseAction + ").";
+          logoutFailed = true;
         } else {
           opMessage.textContent = logoutRequestOk
             ? "Logout solicitado. Confirmando estado real..."
             : "Logout no confirmado. Estado actual: " + String(data.backend_state || "Unknown");
+          if (!logoutRequestOk) {
+            logoutFailed = true;
+          }
         }
       } catch (error) {
         opMessage.textContent = "Error al cerrar sesion: " + error.message;
-        opOutput.textContent = String(error?.message || "logout_error");
-        opOutput.hidden = false;
+        appendLogoutTrace("FATAL " + String(error?.message || "logout_error") + "\n");
+        logoutFailed = true;
       } finally {
         endUiAction();
         let finalMessage = "";
@@ -1849,10 +1879,11 @@
           const transition = await waitForBackendTransition(["NeedsLogin", "NeedsMachineAuth", "NoState", "Stopped"], 20000, 800);
           if (transition.matched) {
             transitionMatched = true;
-            finalMessage = "Reset de identidad confirmado. Ya puedes autenticar en otra tailnet desde esta pagina.";
+            finalMessage = "Desconectado • listo para nueva tailnet.";
           } else {
             const state = String(transition.status?.backend_state || "Unknown");
             finalMessage = "Reset solicitado, pero el backend sigue en " + state + ". Pulsa Actualizar o revisa logs.";
+            logoutFailed = true;
           }
         }
         await refreshRuntime(1800);
@@ -1864,6 +1895,13 @@
           showLogoutHint(transitionMatched ? "Reset confirmado" : "Reset en progreso", 2600);
         } else {
           showLogoutHint("Operacion finalizada", 1800);
+        }
+        if (transitionMatched) {
+          clearLogoutTrace();
+        } else if (!logoutFailed && !advancedModeEnabled) {
+          clearLogoutTrace();
+        } else {
+          syncLogoutTraceVisibility();
         }
       }
     });

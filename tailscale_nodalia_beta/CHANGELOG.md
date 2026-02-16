@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta94 - 2026-02-16
+### Changed
+- UX de `Logauth` pulida en onboarding:
+  - tras reset exitoso se muestra mensaje corto: `Desconectado • listo para nueva tailnet`.
+  - las trazas técnicas de `logout` se mantienen ocultas fuera de modo avanzado y solo se muestran cuando `Modo avanzado` está activo.
+- Marcador visual actualizado a `UI build: 3.0.0-beta94`.
+
 ## 3.0.0-beta93 - 2026-02-16
 ### Fixed
 - Entornos ingress donde el CGI no recibe variables HTTP (`REQUEST_METHOD`, `QUERY_STRING`, headers, etc.): las rutas de acción ahora llaman binarios dedicados por nombre (`/cgi-bin/control-logout`, `/cgi-bin/support-enable`, ...), evitando depender de ese entorno.
