@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta94`
+`3.0.0-beta96`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -37,6 +37,8 @@ Cambios destacados (resumen de betas recientes):
   - UX de `Logauth` más limpia:
     - tras éxito muestra estado corto (`Desconectado • listo para nueva tailnet`).
     - las trazas técnicas de logout solo se muestran en modo avanzado.
+    - al confirmar reset se recarga automáticamente el panel para reflejar inmediatamente el estado desconectado.
+    - si el nodo ya está desconectado, el botón power muestra aviso y no vuelve a ejecutar reset innecesario.
 
 Estrategia de versionado a partir de esta versión:
 - `X`: cambios mayores.

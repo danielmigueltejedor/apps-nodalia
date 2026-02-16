@@ -638,7 +638,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta94</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta96</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1302,6 +1302,17 @@
       return "";
     }
 
+    function currentBackendState() {
+      return String(lastRuntime?.backend_state || lastOnboarding?.backend_state || "Unknown");
+    }
+
+    function isAlreadyLoggedOutState(state) {
+      return state === "NeedsLogin" ||
+        state === "NeedsMachineAuth" ||
+        state === "NoState" ||
+        state === "Stopped";
+    }
+
     function updateStateView(message, cssClass) {
       const tone = normalizeStateTone(cssClass);
       if (lastStateMessage !== message) {
@@ -1323,6 +1334,17 @@
       logoutTraceLog = "";
       opOutput.textContent = "";
       opOutput.hidden = true;
+    }
+
+    function reloadPanelSoon(delayMs = 900) {
+      const ms = Math.max(0, Number(delayMs) || 0);
+      setTimeout(() => {
+        try {
+          localStorage.removeItem(RUNTIME_CACHE_KEY);
+        } catch (_) {
+        }
+        window.location.replace(ingressUrl("onboarding?_ts=" + Date.now()));
+      }, ms);
     }
 
     function appendLogoutTrace(text) {
@@ -1789,6 +1811,21 @@
       if (opBusy) {
         return;
       }
+      const backendBeforeLogout = currentBackendState();
+      if (isAlreadyLoggedOutState(backendBeforeLogout)) {
+        clearLogoutConfirm();
+        opMessage.textContent = "Ya estas desconectado (" + backendBeforeLogout + "). No hace falta ejecutar Logauth.";
+        showLogoutHint("Ya desconectado", 2200);
+        clearLogoutTrace();
+        appendLogoutTrace(
+          "Estado actual: " + backendBeforeLogout + "\n" +
+          "No se ejecuta Logauth porque el nodo ya esta desconectado.\n"
+        );
+        if (!advancedModeEnabled) {
+          clearLogoutTrace();
+        }
+        return;
+      }
       if (Date.now() > logoutConfirmUntilMs) {
         armLogoutConfirm(8000);
         opMessage.textContent = "Pulsa otra vez en menos de 8s para confirmar Logauth (reset tailnet).";
@@ -1875,11 +1912,13 @@
         endUiAction();
         let finalMessage = "";
         let transitionMatched = false;
+        let reloadAfterSuccess = false;
         if (logoutRequestOk) {
           const transition = await waitForBackendTransition(["NeedsLogin", "NeedsMachineAuth", "NoState", "Stopped"], 20000, 800);
           if (transition.matched) {
             transitionMatched = true;
             finalMessage = "Desconectado • listo para nueva tailnet.";
+            reloadAfterSuccess = true;
           } else {
             const state = String(transition.status?.backend_state || "Unknown");
             finalMessage = "Reset solicitado, pero el backend sigue en " + state + ". Pulsa Actualizar o revisa logs.";
@@ -1895,6 +1934,11 @@
           showLogoutHint(transitionMatched ? "Reset confirmado" : "Reset en progreso", 2600);
         } else {
           showLogoutHint("Operacion finalizada", 1800);
+        }
+        if (reloadAfterSuccess) {
+          opMessage.textContent = "Desconectado • listo para nueva tailnet. Recargando panel...";
+          showLogoutHint("Recargando panel...", 2600);
+          reloadPanelSoon(850);
         }
         if (transitionMatched) {
           clearLogoutTrace();

@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta96 - 2026-02-16
+### Changed
+- Botón `Logauth` ahora detecta estados ya desconectados (`NeedsLogin`, `NeedsMachineAuth`, `NoState`, `Stopped`) y muestra mensaje de `ya desconectado` sin volver a ejecutar reset.
+- Marcador visual actualizado a `UI build: 3.0.0-beta96`.
+
+## 3.0.0-beta95 - 2026-02-16
+### Changed
+- `Logauth` ahora recarga automáticamente el panel al confirmar reset exitoso, limpiando antes la caché local de runtime para evitar que quede pintado `Running` hasta refresco manual.
+- Marcador visual actualizado a `UI build: 3.0.0-beta95`.
+
 ## 3.0.0-beta94 - 2026-02-16
 ### Changed
 - UX de `Logauth` pulida en onboarding:
