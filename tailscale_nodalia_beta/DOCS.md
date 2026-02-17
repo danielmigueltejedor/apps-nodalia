@@ -1,4 +1,4 @@
-# Home Assistant App: Tailscale (Nodalia)
+# Home Assistant App: Nodalia Connect (BETA)
 
 Tailscale es una VPN “zero config” que se instala en minutos, incluyendo tu instancia de Home Assistant.
 
@@ -30,7 +30,7 @@ También puedes crear la cuenta durante el proceso de autenticación de la aplic
    https://github.com/danielmigueltejedor/apps-nodalia
 
 4. Menú (⋮) → **Reload**
-5. Instala la aplicación **Tailscale (Nodalia)**.
+5. Instala la aplicación **Nodalia Connect (BETA)**.
 6. Inicia la aplicación.
 7. Abre el **Web UI** de la aplicación para completar la autenticación.
 

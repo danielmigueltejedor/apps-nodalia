@@ -9,7 +9,7 @@ ingress_port: 0
 ingress_stream: true
 
 startup: services
-panel_icon: mdi:vpn
+panel_icon: mdi:transit-connection-variant
 
 arch:
   - aarch64

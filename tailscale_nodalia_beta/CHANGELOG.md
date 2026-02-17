@@ -4,6 +4,12 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta104 - 2026-02-17
+### Fixed
+- `ha_users_api_error` en el módulo de soporte:
+  - se eleva el rol del add-on a `hassio_role: manager` para permitir acceso consistente a endpoints de Supervisor/Auth requeridos por `support-tunnel`.
+- Marcador visual actualizado a `UI build: 3.0.0-beta104`.
+
 ## 3.0.0-beta103 - 2026-02-17
 ### Fixed
 - Soporte Nodalia: corrección del `ha_users_api_error` en elegibilidad de soporte.

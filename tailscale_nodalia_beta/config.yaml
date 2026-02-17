@@ -1,5 +1,5 @@
-name: Tailscale (Nodalia Beta)
-version: 3.0.0-beta103
+name: Nodalia Connect (BETA)
+version: 3.0.0-beta104
 slug: tailscale_nodalia_beta
 description: Zero config VPN for building secure networks (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
@@ -10,7 +10,7 @@ ingress_stream: true
 ingress_entry: /onboarding
 
 startup: services
-panel_icon: mdi:vpn
+panel_icon: mdi:transit-connection-variant
 
 arch:
   - aarch64
@@ -20,6 +20,7 @@ init: false
 hassio_api: true
 auth_api: true
 homeassistant_api: true
+hassio_role: manager
 host_network: true
 
 # host_dbus no es necesario para Tailscale -> mejor fuera

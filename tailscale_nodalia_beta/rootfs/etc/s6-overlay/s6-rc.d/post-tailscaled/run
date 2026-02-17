@@ -74,7 +74,7 @@ notify_login_required() {
   fi
 
   notification_payload=$(jq -nc \
-    --arg title "Tailscale (Nodalia): login requerido" \
+    --arg title "Nodalia Connect (BETA): login requerido" \
     --arg message "${message}" \
     --arg notification_id "${LOGIN_NOTIFICATION_ID}" \
     '{title:$title, message:$message, notification_id:$notification_id}')
