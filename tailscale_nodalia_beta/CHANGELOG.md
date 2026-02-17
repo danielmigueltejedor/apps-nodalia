@@ -4,6 +4,18 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta102 - 2026-02-17
+### Fixed
+- `support_status_failed_rc_0` (falso positivo) en runtime:
+  - `runtime-status` ahora intenta parsear:
+    1) salida completa,
+    2) última línea JSON,
+    3) `/data/support-tunnel.json` cacheado.
+  - solo si todo falla aplica fallback.
+- Nuevo motivo de fallback diferenciado:
+  - `support_status_invalid_json` cuando `rc=0` pero payload no parseable.
+- Marcador visual actualizado a `UI build: 3.0.0-beta102`.
+
 ## 3.0.0-beta101 - 2026-02-17
 ### Fixed
 - `support_status_failed` persistente en algunos entornos por resolución de binario:
