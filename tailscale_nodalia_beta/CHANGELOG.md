@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta114 - 2026-02-17
+### Fixed
+- Soporte: corrección del error `no se pudo habilitar support_user` cuando falla activación por API de usuario.
+  - fallback de habilitación endurecido: si falla `is_active` por `id/login`, el add-on intenta activar vía `auth/reset + auth` con password resuelta.
+  - nueva opción `support_user_password` (opcional) para controlar la password usada en ese fallback.
+  - si no se define, se usa fallback derivado del `support_user` para evitar bloqueo del flujo.
+- `support-tunnel` ahora devuelve errores JSON con `reason` detallado en enable/disable, evitando mensajes genéricos.
+- Marcador visual actualizado a `UI build: 3.0.0-beta114`.
+
 ## 3.0.0-beta113 - 2026-02-17
 ### Fixed
 - Onboarding: se elimina el falso genérico `support_api_failed` en rutas de fallback de soporte.

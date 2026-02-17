@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta113`
+`3.0.0-beta114`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -368,6 +368,15 @@ Usuario local de soporte (por defecto: `nodalia`).
 El add-on habilita/revoca este usuario directamente desde la API interna de Home Assistant.
 Recomendación: que sea un usuario local dedicado de soporte (no owner).
 Para crearlo: `Ajustes -> Personas -> Usuarios -> Añadir usuario`.
+
+---
+
+### `support_user_password`
+
+Password preferida para habilitar el usuario de soporte cuando la API no permite activar por `id`.
+
+- Si está vacía (por defecto), el add-on usa fallback con el nombre de usuario (`support_user`).
+- Si la defines, se usa ese valor para el flujo de habilitación.
 
 ---
 

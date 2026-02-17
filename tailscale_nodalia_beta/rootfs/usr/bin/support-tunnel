@@ -55,6 +55,24 @@ sanitize_uint() {
   fi
 }
 
+resolve_support_enable_password() {
+  local configured_password
+  if [[ -n "${SUPPORT_USER_PASSWORD:-}" ]]; then
+    printf '%s' "${SUPPORT_USER_PASSWORD}"
+    return 0
+  fi
+  configured_password="$(bashio::config "support_user_password" "" 2>/dev/null || true)"
+  if [[ -n "${configured_password}" ]]; then
+    printf '%s' "${configured_password}"
+    return 0
+  fi
+  if [[ -n "${SUPPORT_USER_LOGIN_NAME:-}" ]]; then
+    printf '%s' "${SUPPORT_USER_LOGIN_NAME}"
+    return 0
+  fi
+  printf '%s' "${SUPPORT_USER:-}"
+}
+
 api_call() {
   local method path payload response rc
   method="${1:-GET}"
@@ -314,7 +332,7 @@ set_support_user_active_via_core() {
 }
 
 set_support_user_active() {
-  local desired random_password core_reason
+  local desired random_password core_reason enable_password password_source
   desired="${1:-false}"
   USER_OP_REASON=""
 
@@ -336,25 +354,33 @@ set_support_user_active() {
   core_reason="${USER_OP_REASON:-core_user_patch_failed}"
 
   if [[ "${desired}" == "true" ]]; then
-    if [[ -z "${SUPPORT_USER_PASSWORD:-}" ]]; then
+    enable_password="$(resolve_support_enable_password)"
+    if [[ -n "${SUPPORT_USER_PASSWORD:-}" ]]; then
+      password_source="env"
+    elif bashio::config.has_value "support_user_password"; then
+      password_source="config"
+    else
+      password_source="derived_username"
+    fi
+    if [[ -z "${enable_password}" ]]; then
       USER_OP_REASON="${core_reason}"
       return 1
     fi
-    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
+    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${enable_password}"; then
       SUPPORT_USER_ACTIVE="true"
       USER_OP_REASON="already_true"
       return 0
     fi
-    if ! reset_user_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
-      USER_OP_REASON="reset_password_failed"
+    if ! reset_user_password "${SUPPORT_USER_LOGIN_NAME}" "${enable_password}"; then
+      USER_OP_REASON="reset_password_failed_enable_${password_source}"
       return 1
     fi
-    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
+    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${enable_password}"; then
       SUPPORT_USER_ACTIVE="true"
-      USER_OP_REASON="password_set_enable"
+      USER_OP_REASON="password_set_enable_${password_source}"
       return 0
     fi
-    USER_OP_REASON="enable_verify_failed"
+    USER_OP_REASON="enable_verify_failed_${password_source}"
     return 1
   fi
 
@@ -631,7 +657,10 @@ enable_cmd() {
   if [[ "${SUPPORT_ENABLED}" != "true" || "${SUPPORT_TAILNET_MATCH}" != "true" || "${SUPPORT_BACKEND}" != "Running" ]] || \
     [[ "${SUPPORT_USER_EXISTS}" != "true" || "${SUPPORT_USER_IS_OWNER}" == "true" ]]; then
     write_state false false
-    echo '{"ok":false,"error":"support access no permitido en este estado"}'
+    jq -nc \
+      --arg error "support access no permitido en este estado" \
+      --arg reason "${SUPPORT_REASON:-support_not_eligible}" \
+      '{ok:false,error:$error,reason:$reason}'
     exit 1
   fi
 
@@ -647,7 +676,11 @@ enable_cmd() {
   if ! set_support_user_active true; then
     SUPPORT_REASON="${USER_OP_REASON}"
     write_state false true
-    echo '{"ok":false,"error":"no se pudo habilitar support_user"}'
+    jq -nc \
+      --arg error "no se pudo habilitar support_user" \
+      --arg reason "${USER_OP_REASON:-enable_failed}" \
+      --arg lookup_source "${USER_LOOKUP_SOURCE:-}" \
+      '{ok:false,error:$error,reason:$reason,lookup_source:$lookup_source}'
     exit 1
   fi
 
@@ -667,7 +700,10 @@ disable_cmd() {
   if ! disable_running_access "manual_disable"; then
     SUPPORT_REASON="${USER_OP_REASON:-disable_failed}"
     write_state false false
-    echo '{"ok":false,"error":"no se pudo revocar support_user"}'
+    jq -nc \
+      --arg error "no se pudo revocar support_user" \
+      --arg reason "${USER_OP_REASON:-disable_failed}" \
+      '{ok:false,error:$error,reason:$reason}'
     exit 1
   fi
 
