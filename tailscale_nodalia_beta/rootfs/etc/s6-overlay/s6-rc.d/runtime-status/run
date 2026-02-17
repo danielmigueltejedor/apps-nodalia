@@ -59,6 +59,7 @@ declare support_fallback_enabled
 declare support_reason_fallback
 declare last_support_json=""
 declare -i last_support_json_epoch=0
+declare errexit_was_on=false
 
 declare -i ready_streak=0
 declare -i start_epoch
@@ -143,6 +144,10 @@ do
   # Publishing a direct tailnet :5252 URL causes false expectations on many setups.
   direct_webui_url=""
 
+  errexit_was_on=false
+  case "$-" in
+    *e*) errexit_was_on=true ;;
+  esac
   set +e
   if command -v timeout > /dev/null 2>&1; then
     support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" timeout "${SUPPORT_STATUS_TIMEOUT_SEC}" /usr/bin/support-tunnel status 2>/dev/null)"
@@ -150,7 +155,9 @@ do
     support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status 2>/dev/null)"
   fi
   support_cmd_rc=$?
-  set -e
+  if [[ "${errexit_was_on}" == "true" ]]; then
+    set -e
+  fi
   support_cmd_last_line="$(printf '%s\n' "${support_cmd_output}" | awk 'NF{line=$0} END{print line}')"
   support_cached_json=""
   if (( support_cmd_rc == 0 )) && jq -e . > /dev/null 2>&1 <<< "${support_cmd_output}"; then

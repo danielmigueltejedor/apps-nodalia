@@ -637,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta107</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta108</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1670,6 +1670,107 @@
       }
     }
 
+    function setRuntimeUnavailableState(reasonText = "runtime unavailable") {
+      rtBackend.textContent = "n/a";
+      rtWebUi.textContent = "n/a";
+      rtWebUiStreak.textContent = "n/a";
+      rtWebUiProbe.textContent = "n/a";
+      rtOnline.textContent = "n/a";
+      rtDnsResolvers.textContent = "n/a";
+      rtDnsWarning.textContent = "n/a";
+      rtHostName.textContent = "n/a";
+      rtIpv4.textContent = "n/a";
+      rtIpv6.textContent = "n/a";
+      rtUptime.textContent = "n/a";
+      rtUpdated.textContent = "n/a";
+      supportEnabled.textContent = "n/a";
+      supportTailnet.textContent = "n/a";
+      supportMatch.textContent = "n/a";
+      supportEligible.textContent = "n/a";
+      supportActive.textContent = "n/a";
+      supportUser.textContent = "n/a";
+      supportExpires.textContent = "n/a";
+      supportReason.textContent = String(reasonText || "runtime unavailable");
+      supportRules = { enable: false, disable: false, audit: false };
+      renderSupportButtons();
+      opCanLogout = false;
+      renderOpButtons();
+      healthScorePill.textContent = "\u2764 --";
+      healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
+      if (lastHealthHtml !== "") {
+        healthChecks.innerHTML = "";
+        lastHealthHtml = "";
+      }
+    }
+
+    function buildRuntimeFallbackFromApis(controlData, supportData) {
+      if (!controlData || typeof controlData !== "object") {
+        return null;
+      }
+      const nowIso = new Date().toISOString();
+      const dnsName = String(controlData?.self_dns_name || "");
+      const normalizedDnsName = dnsName.replace(/\.$/, "");
+      const hostNameGuess = normalizedDnsName ? normalizedDnsName.split(".")[0] : "";
+      const supportObj = (supportData && typeof supportData === "object") ? supportData : null;
+      const webUiReady = Boolean(controlData?.checks?.webui_local);
+      const priorStreak = Number(lastRuntime?.webui_ready_streak || 0);
+      const staleResolved = supportObj ? "-" : "support_api_status_unavailable";
+
+      return {
+        updated_at: nowIso,
+        backend_state: String(controlData?.backend_state || "Unknown"),
+        auth_url: String(controlData?.auth_url || ""),
+        self_online: Boolean(controlData?.self_online),
+        webui_ready: webUiReady,
+        webui_http_code: webUiReady ? "200" : "000",
+        webui_reason: "fallback-control-api",
+        webui_readonly: Boolean(lastRuntime?.webui_readonly ?? true),
+        webui_probe_s: "n/a",
+        webui_ready_streak: webUiReady ? Math.max(1, priorStreak) : 0,
+        uptime_sec: Number(lastRuntime?.uptime_sec || 0),
+        setup_profile: String(lastRuntime?.setup_profile || "custom"),
+        share_mode: String(lastRuntime?.share_mode || "disabled"),
+        support_enabled: Boolean(supportObj?.support_enabled),
+        support_target_id: String(supportObj?.support_target_id || ""),
+        support_tailnet_dns_suffix: String(supportObj?.support_target_dns_suffix || ""),
+        support_tailnet_match: Boolean(supportObj?.tailnet_match),
+        support_eligible: Boolean(supportObj?.eligible),
+        support_active: Boolean(supportObj?.active),
+        support_url: String(supportObj?.url || ""),
+        support_reason: String(supportObj?.reason || staleResolved),
+        support_expires_at: String(supportObj?.expires_at || ""),
+        support_ttl_minutes: Number(supportObj?.ttl_minutes || 0),
+        support_user: String(supportObj?.support_user || lastRuntime?.support_user || "Nodalia"),
+        dns_warning: "",
+        dns_degraded: false,
+        dns_resolvers: Array.isArray(controlData?.dns?.resolvers) ? controlData.dns.resolvers : [],
+        direct_webui_url: "",
+        self_dns_name: dnsName,
+        self_host_name: String(hostNameGuess || ""),
+        ipv4: Array.isArray(lastRuntime?.ipv4) ? lastRuntime.ipv4 : [],
+        ipv6: Array.isArray(lastRuntime?.ipv6) ? lastRuntime.ipv6 : [],
+      };
+    }
+
+    async function refreshRuntimeFromControlSupportApis(timeoutMs = 1200) {
+      let controlStatus = null;
+      let supportStatus = null;
+      try {
+        controlStatus = await fetchJsonWithTimeout("control-api/status?_ts=" + Date.now(), Math.max(900, timeoutMs));
+      } catch (_) {
+        controlStatus = null;
+      }
+      if (!controlStatus) {
+        return null;
+      }
+      try {
+        supportStatus = await fetchJsonWithTimeout("support-api/status?_ts=" + Date.now(), Math.max(900, timeoutMs));
+      } catch (_) {
+        supportStatus = null;
+      }
+      return buildRuntimeFallbackFromApis(controlStatus, supportStatus);
+    }
+
     async function refreshRuntime(timeoutMs = 1200, force = false) {
       const now = Date.now();
       if (runtimeRequestPromise) {
@@ -1685,36 +1786,13 @@
           lastRuntimeFetchAtMs = Date.now();
           return data;
         } catch (_) {
-          rtBackend.textContent = "n/a";
-          rtWebUi.textContent = "n/a";
-          rtWebUiStreak.textContent = "n/a";
-          rtWebUiProbe.textContent = "n/a";
-          rtOnline.textContent = "n/a";
-          rtDnsResolvers.textContent = "n/a";
-          rtDnsWarning.textContent = "n/a";
-          rtHostName.textContent = "n/a";
-          rtIpv4.textContent = "n/a";
-          rtIpv6.textContent = "n/a";
-          rtUptime.textContent = "n/a";
-          rtUpdated.textContent = "n/a";
-          supportEnabled.textContent = "n/a";
-          supportTailnet.textContent = "n/a";
-          supportMatch.textContent = "n/a";
-          supportEligible.textContent = "n/a";
-          supportActive.textContent = "n/a";
-          supportUser.textContent = "n/a";
-          supportExpires.textContent = "n/a";
-          supportReason.textContent = "runtime unavailable";
-          supportRules = { enable: false, disable: false, audit: false };
-          renderSupportButtons();
-          opCanLogout = false;
-          renderOpButtons();
-          healthScorePill.textContent = "\u2764 --";
-          healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
-          if (lastHealthHtml !== "") {
-            healthChecks.innerHTML = "";
-            lastHealthHtml = "";
+          const fallback = await refreshRuntimeFromControlSupportApis(timeoutMs);
+          if (fallback) {
+            applyRuntimeData(fallback);
+            lastRuntimeFetchAtMs = Date.now();
+            return fallback;
           }
+          setRuntimeUnavailableState("runtime unavailable");
           return null;
         }
       })();

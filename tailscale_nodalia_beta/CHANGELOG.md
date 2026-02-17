@@ -4,6 +4,15 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta108 - 2026-02-17
+### Fixed
+- `runtime-status` deja de alterar el modo `errexit` del shell al consultar `support-tunnel status`:
+  - ahora restaura el estado previo de `-e` en vez de forzarlo siempre, evitando salidas prematuras del loop de runtime en algunos entornos.
+- Onboarding: fallback de estado en vivo cuando `runtime.json` no está disponible o falla parseo:
+  - consulta `control-api/status` y `support-api/status`,
+  - reconstruye los campos principales de `Estado en vivo` y `Soporte` para evitar panel en `n/a`.
+- Marcador visual actualizado a `UI build: 3.0.0-beta108`.
+
 ## 3.0.0-beta107 - 2026-02-17
 ### Fixed
 - Hotfix para `runtime unavailable` en onboarding:
