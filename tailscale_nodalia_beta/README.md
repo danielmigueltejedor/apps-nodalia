@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta119`
+`3.0.0-beta120`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -378,6 +378,32 @@ Password preferida para habilitar el usuario de soporte cuando la API no permite
 
 - Si está vacía (por defecto), el add-on usa fallback con el nombre de usuario (`support_user`).
 - Si la defines, se usa ese valor para el flujo de habilitación.
+
+---
+
+### `support_enable_service`
+
+Servicio opcional de Home Assistant a ejecutar al habilitar soporte (formato `dominio.servicio`).
+
+Útil si tu instalación no permite cambiar `is_active` por API (`support_user_id_vacio`).
+
+Ejemplos:
+- `script.nodalia_support_enable`
+- `python_script.nodalia_support_enable`
+
+---
+
+### `support_disable_service`
+
+Servicio opcional de Home Assistant a ejecutar al revocar soporte (formato `dominio.servicio`).
+
+Útil si tu instalación no permite revocar `is_active` por API.
+
+Ejemplos:
+- `script.nodalia_support_disable`
+- `python_script.nodalia_support_disable`
+
+El add-on verifica después del servicio si el usuario realmente quedó inactivo.
 
 ---
 

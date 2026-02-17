@@ -638,7 +638,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta119</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta120</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1571,7 +1571,13 @@
         suggestions.push("Revocación parcial: se cambió password pero el usuario sigue activo. Tu versión de HA no permite desactivar is_active por API con este método.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_user_id_vacio")) {
-        suggestions.push("La API devolvio usuario sin ID. En beta119 se intenta fallback por login_name/password y rutas alternativas de API.");
+        suggestions.push("La API devolvio usuario sin ID. En beta120 se intenta fallback por login_name/password, rutas alternativas de API y servicios opcionales.");
+      }
+      if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_disable_service_not_configured")) {
+        suggestions.push("Configura support_disable_service (por ejemplo script.nodalia_support_disable) para forzar revocación en instalaciones sin API de usuarios completa.");
+      }
+      if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_disable_service_no_effect")) {
+        suggestions.push("El servicio de revocación se ejecutó pero no desactivó el usuario. Revisa el script de Home Assistant para que marque nodalia como inactivo.");
       }
       if (String(lastRuntime?.support_reason || "").includes("support_status")) {
         suggestions.push("El backend de soporte devolvio fallo interno. Pulsa Recargar y revisa logs del add-on para ver el error exacto.");

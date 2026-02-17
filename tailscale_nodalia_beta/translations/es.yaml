@@ -139,6 +139,23 @@ configuration:
     description: >-
       Nombre del usuario local de Home Assistant que se habilita/revoca para soporte (ejemplo `Nodalia`).
       Debe ser un usuario local dedicado de soporte y no owner.
+  support_user_password:
+    name: Password de soporte (fallback)
+    description: >-
+      Password preferida para habilitar soporte cuando la API no permite activar usuario por ID.
+      Si queda vacía, se usa fallback derivado del username.
+  support_enable_service:
+    name: Servicio HA para habilitar soporte (opcional)
+    description: >-
+      Servicio de Home Assistant a ejecutar al habilitar soporte (formato `dominio.servicio`).
+      Útil cuando tu instalación no permite cambiar `is_active` por API.
+      Ejemplo: `script.nodalia_support_enable`.
+  support_disable_service:
+    name: Servicio HA para revocar soporte (opcional)
+    description: >-
+      Servicio de Home Assistant a ejecutar al revocar soporte (formato `dominio.servicio`).
+      Útil cuando tu instalación no permite cambiar `is_active` por API.
+      Ejemplo: `script.nodalia_support_disable`.
   support_target_url:
     name: URL objetivo legacy (apps externas)
     description: >-

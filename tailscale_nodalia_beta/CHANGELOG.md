@@ -4,6 +4,19 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta120 - 2026-02-17
+### Fixed
+- Fallback por servicios de Home Assistant para soporte:
+  - nuevas opciones `support_enable_service` y `support_disable_service` (formato `dominio.servicio`).
+  - cuando falla la mutación por API (caso `support_user_id_vacio`), el add-on intenta ese servicio antes del fallback por password.
+  - tras ejecutar el servicio, se verifica estado real del usuario para evitar falsos OK.
+- Compatibilidad adicional de endpoints:
+  - lookup Auth/Core mantiene rutas alternativas para instalaciones con API parcial.
+  - debug incluye configuración y endpoints usados para lookup/operación.
+- UI:
+  - sugerencias nuevas para guiar cuando falta configurar `support_disable_service` o el servicio no tiene efecto.
+- Marcador visual actualizado a `UI build: 3.0.0-beta120`.
+
 ## 3.0.0-beta119 - 2026-02-17
 ### Fixed
 - Revocación soporte (sin `support_user_id`) con más compatibilidad:

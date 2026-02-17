@@ -142,6 +142,23 @@ configuration:
     description: >-
       Home Assistant local username enabled/revoked for support access (for example `Nodalia`).
       It should be a dedicated support user and not an owner account.
+  support_user_password:
+    name: Support password (fallback)
+    description: >-
+      Preferred password used when enabling support and API activation by user ID is unavailable.
+      If left empty, the add-on derives a fallback from the username.
+  support_enable_service:
+    name: HA service to enable support (optional)
+    description: >-
+      Home Assistant service to call when enabling support (format `domain.service`).
+      Useful when your installation cannot toggle `is_active` via API.
+      Example: `script.nodalia_support_enable`.
+  support_disable_service:
+    name: HA service to disable support (optional)
+    description: >-
+      Home Assistant service to call when disabling support (format `domain.service`).
+      Useful when your installation cannot toggle `is_active` via API.
+      Example: `script.nodalia_support_disable`.
   support_target_url:
     name: Legacy target URL (external apps)
     description: >-
