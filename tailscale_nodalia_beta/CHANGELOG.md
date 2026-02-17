@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta134 - 2026-02-17
+### Added
+- `support debug` ahora incluye verificación del bot Telegram (`getMe`) sin exponer el token:
+  - `support_notify_telegram_bot_probe_status`
+  - `support_notify_telegram_bot_probe_reason`
+  - `support_notify_telegram_bot_id`
+  - `support_notify_telegram_bot_username`
+  - `support_notify_telegram_bot_name`
+- Marcador visual actualizado a `UI build: 3.0.0-beta134`.
+
 ## 3.0.0-beta133 - 2026-02-17
 ### Fixed
 - Telegram soporte:

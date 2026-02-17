@@ -485,6 +485,59 @@ telegram_notify_enabled() {
   return 1
 }
 
+telegram_probe_bot_identity() {
+  local bot_token response_with_status response_body http_status rc
+  bot_token="${1:-}"
+  TELEGRAM_BOT_PROBE_STATUS="not_configured"
+  TELEGRAM_BOT_PROBE_REASON=""
+  TELEGRAM_BOT_ID=""
+  TELEGRAM_BOT_USERNAME=""
+  TELEGRAM_BOT_NAME=""
+
+  if [[ -z "${bot_token}" ]]; then
+    TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_bot_token_empty"
+    return 1
+  fi
+  if ! command -v curl >/dev/null 2>&1; then
+    TELEGRAM_BOT_PROBE_STATUS="error"
+    TELEGRAM_BOT_PROBE_REASON="support_notify_curl_missing"
+    return 1
+  fi
+
+  set +e
+  response_with_status="$(curl -sS --connect-timeout 5 --max-time 12 \
+    -w '\n%{http_code}' \
+    "https://api.telegram.org/bot${bot_token}/getMe" 2>&1)"
+  rc=$?
+  set -e
+
+  if (( rc != 0 )); then
+    TELEGRAM_BOT_PROBE_STATUS="error"
+    TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_getme_request_failed"
+    return 1
+  fi
+
+  http_status="${response_with_status##*$'\n'}"
+  response_body="${response_with_status%$'\n'*}"
+  if [[ "${http_status}" =~ ^[0-9]{3}$ ]] && [[ "${http_status}" != 2* ]]; then
+    TELEGRAM_BOT_PROBE_STATUS="error"
+    TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_getme_http_${http_status}"
+    return 1
+  fi
+  if ! jq -e '.ok == true' >/dev/null 2>&1 <<< "${response_body}"; then
+    TELEGRAM_BOT_PROBE_STATUS="error"
+    TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_getme_api_failed"
+    return 1
+  fi
+
+  TELEGRAM_BOT_ID="$(jq -r '.result.id // empty' <<< "${response_body}" 2>/dev/null || true)"
+  TELEGRAM_BOT_USERNAME="$(jq -r '.result.username // empty' <<< "${response_body}" 2>/dev/null || true)"
+  TELEGRAM_BOT_NAME="$(jq -r '.result.first_name // empty' <<< "${response_body}" 2>/dev/null || true)"
+  TELEGRAM_BOT_PROBE_STATUS="ok"
+  TELEGRAM_BOT_PROBE_REASON=""
+  return 0
+}
+
 send_support_notification_telegram() {
   local bot_token chat_id_cfg chat_id login_url host_label ttl_minutes token_name message resolved_chat_id alt_chat_id discovered_chat_id
   SUPPORT_NOTIFY_STATUS="disabled"
@@ -2329,6 +2382,8 @@ debug_cmd() {
   local cfg_temp_mode cfg_temp_prefix cfg_temp_password_length
   local cfg_virtual_keys_mode cfg_virtual_keys_token_prefix cfg_target_url cfg_target_domain_suffix
   local cfg_notify_telegram_enabled cfg_notify_telegram_bot_token cfg_notify_telegram_chat_id cfg_notify_telegram_chat_id_normalized
+  local cfg_notify_telegram_bot_probe_status cfg_notify_telegram_bot_probe_reason
+  local cfg_notify_telegram_bot_id cfg_notify_telegram_bot_username cfg_notify_telegram_bot_name
   local cfg_notify_telegram_bot_token_set cfg_notify_telegram_chat_id_set
   local status_json self_dns_name self_host_name magic_dns_suffix current_tailnet_name
   local lookup_forced lookup_rc lookup_hint
@@ -2371,6 +2426,19 @@ debug_cmd() {
   cfg_notify_telegram_chat_id_set=false
   if [[ -n "${cfg_notify_telegram_chat_id}" ]]; then
     cfg_notify_telegram_chat_id_set=true
+  fi
+  cfg_notify_telegram_bot_probe_status="not_configured"
+  cfg_notify_telegram_bot_probe_reason=""
+  cfg_notify_telegram_bot_id=""
+  cfg_notify_telegram_bot_username=""
+  cfg_notify_telegram_bot_name=""
+  if [[ -n "${cfg_notify_telegram_bot_token}" ]]; then
+    telegram_probe_bot_identity "${cfg_notify_telegram_bot_token}" || true
+    cfg_notify_telegram_bot_probe_status="${TELEGRAM_BOT_PROBE_STATUS:-error}"
+    cfg_notify_telegram_bot_probe_reason="${TELEGRAM_BOT_PROBE_REASON:-support_notify_telegram_getme_failed}"
+    cfg_notify_telegram_bot_id="${TELEGRAM_BOT_ID:-}"
+    cfg_notify_telegram_bot_username="${TELEGRAM_BOT_USERNAME:-}"
+    cfg_notify_telegram_bot_name="${TELEGRAM_BOT_NAME:-}"
   fi
   cfg_password_set=false
   if [[ -n "${cfg_password}" ]]; then
@@ -2449,6 +2517,11 @@ debug_cmd() {
     --arg cfg_target_domain_suffix "${cfg_target_domain_suffix}" \
     --arg cfg_notify_telegram_chat_id "${cfg_notify_telegram_chat_id}" \
     --arg cfg_notify_telegram_chat_id_normalized "${cfg_notify_telegram_chat_id_normalized}" \
+    --arg cfg_notify_telegram_bot_probe_status "${cfg_notify_telegram_bot_probe_status}" \
+    --arg cfg_notify_telegram_bot_probe_reason "${cfg_notify_telegram_bot_probe_reason}" \
+    --arg cfg_notify_telegram_bot_id "${cfg_notify_telegram_bot_id}" \
+    --arg cfg_notify_telegram_bot_username "${cfg_notify_telegram_bot_username}" \
+    --arg cfg_notify_telegram_bot_name "${cfg_notify_telegram_bot_name}" \
     --arg backend_state "${SUPPORT_BACKEND:-Unknown}" \
     --arg support_reason "${SUPPORT_REASON:-}" \
     --arg support_user "${SUPPORT_USER:-}" \
@@ -2516,7 +2589,12 @@ debug_cmd() {
         support_notify_telegram_bot_token_set:$cfg_notify_telegram_bot_token_set,
         support_notify_telegram_chat_id_set:$cfg_notify_telegram_chat_id_set,
         support_notify_telegram_chat_id:$cfg_notify_telegram_chat_id,
-        support_notify_telegram_chat_id_normalized:$cfg_notify_telegram_chat_id_normalized
+        support_notify_telegram_chat_id_normalized:$cfg_notify_telegram_chat_id_normalized,
+        support_notify_telegram_bot_probe_status:$cfg_notify_telegram_bot_probe_status,
+        support_notify_telegram_bot_probe_reason:$cfg_notify_telegram_bot_probe_reason,
+        support_notify_telegram_bot_id:$cfg_notify_telegram_bot_id,
+        support_notify_telegram_bot_username:$cfg_notify_telegram_bot_username,
+        support_notify_telegram_bot_name:$cfg_notify_telegram_bot_name
       },
       tailscale:{
         backend_state:$backend_state,
