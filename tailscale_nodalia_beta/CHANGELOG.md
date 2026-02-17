@@ -4,6 +4,18 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta105 - 2026-02-17
+### Fixed
+- Soporte: nuevo intento para resolver `ha_users_api_error`.
+  - `hassio_role` cambia de `manager` a `admin` para cumplir requisitos de endpoints `/auth/*` del Supervisor.
+- Configuración beta simplificada:
+  - eliminado `support_tailnet_id` (obsoleto) de `options` (nuevas instalaciones ya no lo verán en configuración estándar).
+  - el campo legacy se sigue aceptando en `schema` solo para no romper upgrades antiguos.
+  - el runtime deja de publicar `support_tailnet_id` y usa solo `support_target_id`.
+- Nuevo toggle de configuración:
+  - `external_apps_compat_options` para habilitar compatibilidad opcional con configuraciones legacy de apps externas.
+- Marcador visual actualizado a `UI build: 3.0.0-beta105`.
+
 ## 3.0.0-beta104 - 2026-02-17
 ### Fixed
 - `ha_users_api_error` en el módulo de soporte:

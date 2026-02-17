@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta104`
+`3.0.0-beta105`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -335,6 +335,15 @@ El panel `/onboarding` mantiene controles locales de máquina (como `logauth`) i
 
 ---
 
+### `external_apps_compat_options`
+
+Toggle de compatibilidad para escenarios donde compartes valores legacy con otras apps.
+
+- `false` (por defecto): flujo normal recomendado.
+- `true`: habilita modo de compatibilidad para opciones legacy opcionales.
+
+---
+
 ### `support_tunnel_enabled`
 
 Activa el módulo de acceso temporal de soporte Nodalia.
@@ -352,14 +361,6 @@ La elegibilidad del acceso se valida con este valor.
 
 ---
 
-### `support_tailnet_id`
-
-Campo legacy de compatibilidad.
-
-Actualmente no se usa para decidir elegibilidad; se mantiene para no romper configuraciones antiguas.
-
----
-
 ### `support_user`
 
 Usuario local de soporte (por defecto: `Nodalia`).
@@ -372,9 +373,9 @@ Para crearlo: `Ajustes -> Personas -> Usuarios -> Añadir usuario`.
 
 ### `support_target_url`
 
-Campo legacy mantenido por compatibilidad.
+Campo opcional de compatibilidad para apps externas.
 
-Ya no se usa en el flujo de soporte Nodalia basado en servicios HA.
+No se usa en el flujo normal de soporte Nodalia.
 
 ---
 

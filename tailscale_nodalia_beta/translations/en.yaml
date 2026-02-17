@@ -120,17 +120,18 @@ configuration:
       Disable it only if you need full tailnet actions in the Web UI.
       The onboarding panel keeps local machine controls (logout/reconnect) in readonly mode.
       When not set, this option is enabled by default.
+  external_apps_compat_options:
+    name: External apps compatibility (optional)
+    description: >-
+      Compatibility mode for setups that share legacy
+      configuration values with other apps.
+      Keep disabled unless you explicitly need it.
   support_tunnel_enabled:
     name: Support access button
     description: >-
       Enables temporary support access controls in onboarding.
       Support access can be enabled only when this node matches
       the configured support tailnet DNS suffix.
-  support_tailnet_id:
-    name: Support tailnet identifier (deprecated)
-    description: >-
-      Kept for backward compatibility with older configurations.
-      It is no longer used to validate support tunnel eligibility.
   support_tailnet_dns_suffix:
     name: Support tailnet DNS suffix
     description: >-
@@ -142,10 +143,10 @@ configuration:
       Home Assistant local username enabled/revoked for support access (for example `Nodalia`).
       It should be a dedicated support user and not an owner account.
   support_target_url:
-    name: Support tunnel target URL (legacy)
+    name: Legacy target URL (external apps)
     description: >-
-      Legacy option kept for compatibility.
-      It is no longer used by Nodalia support access flow.
+      Optional compatibility value for external apps.
+      It is not used in the normal Nodalia support flow.
   support_tunnel_ttl_minutes:
     name: Support access TTL (minutes)
     description: >-

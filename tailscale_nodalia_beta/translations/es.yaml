@@ -117,17 +117,18 @@ configuration:
       Desactivalo solo si necesitas acciones completas de tailnet en la Web UI.
       El panel onboarding mantiene controles locales (logout/reconnect) en modo readonly.
       Si no se configura, esta opcion esta activada por defecto.
+  external_apps_compat_options:
+    name: Compatibilidad con apps externas (opcional)
+    description: >-
+      Modo de compatibilidad para instalaciones que comparten
+      configuraciones legacy con otras apps.
+      Si no lo necesitas, mantenlo desactivado.
   support_tunnel_enabled:
     name: Boton de acceso de soporte
     description: >-
       Habilita los controles de acceso temporal de soporte en onboarding.
       El acceso de soporte solo puede habilitarse cuando este nodo
       coincide con el DNS de tailnet de soporte configurado.
-  support_tailnet_id:
-    name: Identificador de tailnet (obsoleto)
-    description: >-
-      Campo mantenido solo por compatibilidad con configuraciones antiguas.
-      Ya no se usa para validar el tunel de soporte.
   support_tailnet_dns_suffix:
     name: DNS de tailnet para soporte
     description: >-
@@ -139,10 +140,10 @@ configuration:
       Nombre del usuario local de Home Assistant que se habilita/revoca para soporte (ejemplo `Nodalia`).
       Debe ser un usuario local dedicado de soporte y no owner.
   support_target_url:
-    name: URL interna objetivo del tunel (legacy)
+    name: URL objetivo legacy (apps externas)
     description: >-
-      Opcion legacy mantenida por compatibilidad.
-      Ya no se usa en el flujo de acceso de soporte Nodalia.
+      Opcion opcional de compatibilidad para apps externas.
+      No se usa en el flujo normal de soporte Nodalia.
   support_tunnel_ttl_minutes:
     name: TTL del acceso de soporte (minutos)
     description: >-

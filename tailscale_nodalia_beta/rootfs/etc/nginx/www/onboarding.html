@@ -637,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta104</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta105</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -983,7 +983,7 @@
       const reason = String(runtime?.support_reason || runtime?.reason || "");
       const supportUserValue = String(runtime?.support_user || "Nodalia");
       const targetDns = String(runtime?.support_tailnet_dns_suffix || runtime?.support_target_dns_suffix || "");
-      const targetId = String(runtime?.support_tailnet_id || runtime?.support_target_id || "");
+      const targetId = String(runtime?.support_target_id || "");
       supportEnabled.textContent = enabled ? "true" : "false";
       supportTailnet.textContent = targetDns || targetId || "-";
       supportMatch.textContent = match ? "true" : "false";
@@ -1515,7 +1515,7 @@
         suggestions.push("El usuario de soporte no puede ser owner/admin principal. Usa un usuario local dedicado.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("ha_users_api_error")) {
-        suggestions.push("La API de usuarios de Home Assistant no responde al add-on. Reinicia el add-on y verifica que estas en una beta con auth_api habilitado.");
+        suggestions.push("La API de usuarios de Home Assistant no responde al add-on. Actualiza a la beta mas reciente, acepta permisos nuevos y reinicia el add-on.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("core_user_patch_failed")) {
         suggestions.push("No se pudo cambiar is_active del usuario de soporte. Revisa permisos del add-on y existencia del usuario local.");

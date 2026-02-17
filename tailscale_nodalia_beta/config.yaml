@@ -1,5 +1,5 @@
 name: Nodalia Connect (BETA)
-version: 3.0.0-beta104
+version: 3.0.0-beta105
 slug: tailscale_nodalia_beta
 description: Zero config VPN for building secure networks (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
@@ -20,7 +20,7 @@ init: false
 hassio_api: true
 auth_api: true
 homeassistant_api: true
-hassio_role: manager
+hassio_role: admin
 host_network: true
 
 # host_dbus no es necesario para Tailscale -> mejor fuera
@@ -56,12 +56,11 @@ options:
   taildrop: true
   userspace_networking: false
   webui_readonly: true
+  external_apps_compat_options: false
   support_tunnel_enabled: false
-  support_tailnet_id: ""
   support_tailnet_dns_suffix: "tail37b857.ts.net"
   support_tunnel_ttl_minutes: 30
   support_user: "Nodalia"
-  support_target_url: "http://127.0.0.1:8123"
   exit_node: ""
   login_server: "https://controlplane.tailscale.com"
 
@@ -85,6 +84,7 @@ schema:
   taildrop: bool?
   userspace_networking: bool?
   webui_readonly: bool?
+  external_apps_compat_options: bool?
   support_tunnel_enabled: bool?
   support_tailnet_id: str?
   support_tailnet_dns_suffix: str?
