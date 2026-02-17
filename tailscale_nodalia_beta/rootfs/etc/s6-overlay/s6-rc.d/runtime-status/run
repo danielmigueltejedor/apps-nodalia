@@ -79,10 +79,13 @@ write_runtime_state() {
   tmp_file="$(mktemp "/data/.tailscale-runtime.json.tmp.XXXXXX" 2>/dev/null || true)"
   if [[ -z "${tmp_file}" ]]; then
     printf '%s\n' "${payload}" > "${RUNTIME_STATE_FILE}"
+    chmod 0644 "${RUNTIME_STATE_FILE}" 2>/dev/null || true
     return
   fi
   printf '%s\n' "${payload}" > "${tmp_file}"
+  chmod 0644 "${tmp_file}" 2>/dev/null || true
   mv -f "${tmp_file}" "${RUNTIME_STATE_FILE}"
+  chmod 0644 "${RUNTIME_STATE_FILE}" 2>/dev/null || true
 }
 
 start_epoch=$(date +%s)

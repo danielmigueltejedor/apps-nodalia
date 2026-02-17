@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta107 - 2026-02-17
+### Fixed
+- Hotfix para `runtime unavailable` en onboarding:
+  - `runtime-status` fuerza permisos `0644` en `/data/tailscale-runtime.json` y su temporal durante escritura atómica, evitando que `runtime.json` quede ilegible para nginx en algunos arranques.
+- `support-tunnel` aplica el mismo hardening de permisos `0644` para los archivos de estado/meta (`/data/support-tunnel.json`, `/data/support-tunnel-meta.json`).
+- Marcador visual actualizado a `UI build: 3.0.0-beta107`.
+
 ## 3.0.0-beta106 - 2026-02-17
 ### Changed
 - Pasada de estabilidad/rendimiento general en runtime y UI:
