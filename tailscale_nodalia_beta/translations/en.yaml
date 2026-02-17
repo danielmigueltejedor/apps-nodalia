@@ -121,10 +121,10 @@ configuration:
       The onboarding panel keeps local machine controls (logout/reconnect) in readonly mode.
       When not set, this option is enabled by default.
   support_tunnel_enabled:
-    name: Support tunnel button
+    name: Support access button
     description: >-
-      Enables the support tunnel controls in onboarding.
-      A temporary Cloudflare tunnel can be opened only when this node matches
+      Enables temporary support access controls in onboarding.
+      Support access can be enabled only when this node matches
       the configured support tailnet DNS suffix.
   support_tailnet_id:
     name: Support tailnet identifier (deprecated)
@@ -135,17 +135,33 @@ configuration:
     name: Support tailnet DNS suffix
     description: >-
       DNS suffix used to validate support access (for example `tail37b857.ts.net`).
-      The tunnel is enabled only when this node DNS matches that suffix.
+      Support access is enabled only when this node DNS matches that suffix.
+  support_user:
+    name: Support local user
+    description: >-
+      Local username enabled for support access (for example `Nodalia`).
+      This value is passed as metadata to enable/revoke support services.
+  support_enable_service:
+    name: HA service to enable support
+    description: >-
+      Home Assistant service called when support access is enabled.
+      Format: `domain.service` (example `script.nodalia_support_enable`).
+  support_disable_service:
+    name: HA service to revoke support
+    description: >-
+      Home Assistant service called when support access is revoked
+      or when the TTL expires.
+      Format: `domain.service` (example `script.nodalia_support_disable`).
   support_target_url:
-    name: Support tunnel target URL
+    name: Support tunnel target URL (legacy)
     description: >-
-      Internal URL exposed through the temporary support tunnel.
-      Default points to Home Assistant on this host.
+      Legacy option kept for compatibility.
+      It is no longer used by Nodalia support access flow.
   support_tunnel_ttl_minutes:
-    name: Support tunnel TTL (minutes)
+    name: Support access TTL (minutes)
     description: >-
-      Auto-expire time for the temporary support tunnel.
-      After this duration, the tunnel is revoked automatically and an audit
+      Auto-expire time for temporary support access.
+      After this duration, access is revoked automatically and an audit
       event is recorded.
 network:
   41641/udp: >-

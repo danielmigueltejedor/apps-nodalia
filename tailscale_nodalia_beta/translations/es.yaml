@@ -118,10 +118,10 @@ configuration:
       El panel onboarding mantiene controles locales (logout/reconnect) en modo readonly.
       Si no se configura, esta opcion esta activada por defecto.
   support_tunnel_enabled:
-    name: Boton de tunel de soporte
+    name: Boton de acceso de soporte
     description: >-
-      Habilita los controles de tunel de soporte en onboarding.
-      El tunel temporal de Cloudflare solo puede abrirse cuando este nodo
+      Habilita los controles de acceso temporal de soporte en onboarding.
+      El acceso de soporte solo puede habilitarse cuando este nodo
       coincide con el DNS de tailnet de soporte configurado.
   support_tailnet_id:
     name: Identificador de tailnet (obsoleto)
@@ -132,16 +132,32 @@ configuration:
     name: DNS de tailnet para soporte
     description: >-
       Sufijo DNS usado para validar soporte remoto (por ejemplo `tail37b857.ts.net`).
-      El tunel solo se habilita cuando el DNS de este nodo coincide con ese sufijo.
+      El acceso de soporte solo se habilita cuando el DNS de este nodo coincide con ese sufijo.
+  support_user:
+    name: Usuario local de soporte
+    description: >-
+      Nombre de usuario local que se habilita para soporte (ejemplo `Nodalia`).
+      Este valor se reenvia como metadato a los servicios de habilitar/revocar soporte.
+  support_enable_service:
+    name: Servicio HA para habilitar soporte
+    description: >-
+      Servicio de Home Assistant que se ejecuta al activar soporte.
+      Formato: `dominio.servicio` (ejemplo `script.nodalia_support_enable`).
+  support_disable_service:
+    name: Servicio HA para revocar soporte
+    description: >-
+      Servicio de Home Assistant que se ejecuta al revocar soporte
+      o cuando expira el TTL.
+      Formato: `dominio.servicio` (ejemplo `script.nodalia_support_disable`).
   support_target_url:
-    name: URL interna objetivo del tunel
+    name: URL interna objetivo del tunel (legacy)
     description: >-
-      URL interna que se expone con el tunel temporal de soporte.
-      Por defecto apunta a Home Assistant en este host.
+      Opcion legacy mantenida por compatibilidad.
+      Ya no se usa en el flujo de acceso de soporte Nodalia.
   support_tunnel_ttl_minutes:
-    name: TTL del tunel de soporte (minutos)
+    name: TTL del acceso de soporte (minutos)
     description: >-
-      Tiempo maximo de vida del tunel temporal de soporte.
+      Tiempo maximo de vida del acceso temporal de soporte.
       Al cumplirse, se revoca automaticamente y se registra un evento en auditoria.
 network:
   41641/udp: >-

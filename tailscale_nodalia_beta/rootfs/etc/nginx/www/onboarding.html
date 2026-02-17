@@ -592,22 +592,21 @@
       </div>
     </section>
     <section class="panel advanced-only">
-      <h2>Soporte remoto</h2>
-      <p class="small">Disponible solo si el DNS de esta app coincide con el DNS de soporte configurado.</p>
+      <h2>Acceso soporte Nodalia</h2>
+      <p class="small">Disponible solo si el DNS de esta instancia coincide con el DNS de soporte configurado.</p>
       <div class="kv">
         <div>Soporte habilitado:</div><div><code id="sup-enabled">-</code></div>
         <div>DNS objetivo:</div><div><code id="sup-tailnet">-</code></div>
         <div>DNS coincide:</div><div><code id="sup-match">-</code></div>
         <div>Elegible:</div><div><code id="sup-eligible">-</code></div>
-        <div>Tunel activo:</div><div><code id="sup-active">-</code></div>
-        <div>URL temporal:</div><div><code id="sup-url">-</code></div>
+        <div>Acceso activo:</div><div><code id="sup-active">-</code></div>
+        <div>Usuario soporte:</div><div><code id="sup-user">-</code></div>
         <div>Expira en:</div><div><code id="sup-expires">-</code></div>
         <div>Motivo:</div><div><code id="sup-reason">-</code></div>
       </div>
       <div class="actions" style="margin-top:10px;">
-        <button id="sup-enable-btn" type="button" class="ghost">Activar tunel soporte</button>
+        <button id="sup-enable-btn" type="button" class="ghost">Habilitar acceso soporte</button>
         <button id="sup-disable-btn" type="button" class="ghost">Revocar ahora</button>
-        <button id="sup-copy-url-btn" type="button" class="ghost">Copiar URL soporte</button>
         <button id="sup-audit-btn" type="button" class="ghost">Ver auditoria</button>
       </div>
       <p id="sup-message" class="small"></p>
@@ -638,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta96</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta97</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -670,13 +669,12 @@
     const supportMatch = document.getElementById("sup-match");
     const supportEligible = document.getElementById("sup-eligible");
     const supportActive = document.getElementById("sup-active");
-    const supportUrl = document.getElementById("sup-url");
+    const supportUser = document.getElementById("sup-user");
     const supportExpires = document.getElementById("sup-expires");
     const supportReason = document.getElementById("sup-reason");
     const supportMessage = document.getElementById("sup-message");
     const supportEnableBtn = document.getElementById("sup-enable-btn");
     const supportDisableBtn = document.getElementById("sup-disable-btn");
-    const supportCopyUrlBtn = document.getElementById("sup-copy-url-btn");
     const supportAuditBtn = document.getElementById("sup-audit-btn");
     const supportAuditOutput = document.getElementById("sup-audit-output");
     const rtBackend = document.getElementById("rt-backend");
@@ -714,7 +712,6 @@
     let redirectHandle = null;
     let lastOnboarding = null;
     let lastRuntime = null;
-    let lastSupportUrl = "";
     let lastSuggestionsHtml = "";
     let lastHealthHtml = "";
     let lastRuntimeSignature = "";
@@ -726,7 +723,7 @@
     let redirectDeadlineMs = 0;
     let actionInFlight = 0;
     let supportBusy = false;
-    let supportRules = { enable: false, disable: false, copy: false, audit: false };
+    let supportRules = { enable: false, disable: false, audit: false };
     let opBusy = false;
     let opCanLogout = false;
     let logoutConfirmUntilMs = 0;
@@ -962,7 +959,6 @@
     function renderSupportButtons() {
       setUiDisabled(supportEnableBtn, supportBusy || !supportRules.enable);
       setUiDisabled(supportDisableBtn, supportBusy || !supportRules.disable);
-      setUiDisabled(supportCopyUrlBtn, supportBusy || !supportRules.copy);
       setUiDisabled(supportAuditBtn, supportBusy || !supportRules.audit);
     }
 
@@ -983,9 +979,9 @@
       const match = Boolean(runtime?.support_tailnet_match ?? runtime?.tailnet_match);
       const eligible = Boolean(runtime?.support_eligible ?? runtime?.eligible);
       const active = Boolean(runtime?.support_active ?? runtime?.active);
-      const url = String(runtime?.support_url || runtime?.url || "");
       const expiresAt = String(runtime?.support_expires_at || runtime?.expires_at || "");
       const reason = String(runtime?.support_reason || runtime?.reason || "");
+      const supportUserValue = String(runtime?.support_user || "Nodalia");
       const targetDns = String(runtime?.support_tailnet_dns_suffix || runtime?.support_target_dns_suffix || "");
       const targetId = String(runtime?.support_tailnet_id || runtime?.support_target_id || "");
       supportEnabled.textContent = enabled ? "true" : "false";
@@ -993,14 +989,12 @@
       supportMatch.textContent = match ? "true" : "false";
       supportEligible.textContent = eligible ? "true" : "false";
       supportActive.textContent = active ? "true" : "false";
-      supportUrl.textContent = url || "-";
+      supportUser.textContent = supportUserValue || "-";
       supportExpires.textContent = expiresAt || "-";
       supportReason.textContent = reason || "-";
-      lastSupportUrl = url;
       supportRules = {
         enable: enabled && eligible,
         disable: active,
-        copy: Boolean(url),
         audit: enabled,
       };
       renderSupportButtons();
@@ -1073,7 +1067,7 @@
         data?.support_tailnet_match,
         data?.support_eligible,
         data?.support_active,
-        data?.support_url,
+        data?.support_user,
         data?.support_reason,
         data?.support_expires_at,
         data?.direct_webui_url
@@ -1512,10 +1506,16 @@
         suggestions.push("DNS tailnet degradado: si persiste, prueba accept_dns=false o revisa DNS en admin de Tailscale.");
       }
       if (lastRuntime?.support_enabled && !lastRuntime?.support_tailnet_match) {
-        suggestions.push("Soporte remoto bloqueado: el DNS de esta instancia no coincide con el DNS objetivo de soporte.");
+        suggestions.push("Acceso de soporte bloqueado: el DNS de esta instancia no coincide con el DNS objetivo de soporte.");
+      }
+      if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_enable_service")) {
+        suggestions.push("Configura support_enable_service (dominio.servicio) para que el botón de soporte ejecute una acción real en Home Assistant.");
+      }
+      if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_disable_service")) {
+        suggestions.push("Revisa support_disable_service: el formato debe ser dominio.servicio o dejarse vacío.");
       }
       if (!lastRuntime?.support_enabled) {
-        suggestions.push("Soporte remoto desactivado en configuracion: activa support_tunnel_enabled si lo necesitas.");
+        suggestions.push("Acceso de soporte desactivado en configuracion: activa support_tunnel_enabled si lo necesitas.");
       }
       if (suggestions.length === 0) {
         suggestions.push("Estado estable: sin acciones pendientes.");
@@ -1676,10 +1676,10 @@
         supportMatch.textContent = "n/a";
         supportEligible.textContent = "n/a";
         supportActive.textContent = "n/a";
-        supportUrl.textContent = "n/a";
+        supportUser.textContent = "n/a";
         supportExpires.textContent = "n/a";
         supportReason.textContent = "runtime unavailable";
-        supportRules = { enable: false, disable: false, copy: false, audit: false };
+        supportRules = { enable: false, disable: false, audit: false };
         renderSupportButtons();
         opCanLogout = false;
         renderOpButtons();
@@ -1749,15 +1749,13 @@
       }
       beginUiAction();
       setSupportButtonState(true);
-      supportMessage.textContent = "Activando tunel de soporte...";
+      supportMessage.textContent = "Habilitando acceso temporal para soporte...";
       try {
-        const data = await callSupportApi("enable", "POST", true);
-        supportMessage.textContent = data.url
-          ? "Tunel activo. URL temporal lista."
-          : "Tunel activado, esperando URL temporal...";
+        await callSupportApi("enable", "POST", true);
+        supportMessage.textContent = "Acceso de soporte habilitado.";
         await refreshRuntime(1500);
       } catch (error) {
-        supportMessage.textContent = "No se pudo activar el tunel: " + error.message;
+        supportMessage.textContent = "No se pudo habilitar el acceso: " + error.message;
       } finally {
         setSupportButtonState(false);
         endUiAction();
@@ -1769,23 +1767,17 @@
       }
       beginUiAction();
       setSupportButtonState(true);
-      supportMessage.textContent = "Desactivando tunel de soporte...";
+      supportMessage.textContent = "Revocando acceso de soporte...";
       try {
         await callSupportApi("disable", "POST", true);
-        supportMessage.textContent = "Tunel de soporte desactivado.";
+        supportMessage.textContent = "Acceso de soporte revocado.";
         await refreshRuntime(1500);
       } catch (error) {
-        supportMessage.textContent = "No se pudo desactivar el tunel: " + error.message;
+        supportMessage.textContent = "No se pudo revocar el acceso: " + error.message;
       } finally {
         setSupportButtonState(false);
         endUiAction();
       }
-    });
-    supportCopyUrlBtn.addEventListener("click", async () => {
-      if (isUiDisabled(supportCopyUrlBtn) || !lastSupportUrl) {
-        return;
-      }
-      await copyText(lastSupportUrl, supportCopyUrlBtn, "URL copiada", "Copiar URL soporte");
     });
     supportAuditBtn.addEventListener("click", async () => {
       if (isUiDisabled(supportAuditBtn)) {

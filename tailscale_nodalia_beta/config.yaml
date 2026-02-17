@@ -1,5 +1,5 @@
 name: Tailscale (Nodalia Beta)
-version: 3.0.0-beta96
+version: 3.0.0-beta97
 slug: tailscale_nodalia_beta
 description: Zero config VPN for building secure networks (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
@@ -57,8 +57,11 @@ options:
   support_tunnel_enabled: false
   support_tailnet_id: ""
   support_tailnet_dns_suffix: "tail37b857.ts.net"
-  support_target_url: "http://127.0.0.1:8123"
   support_tunnel_ttl_minutes: 30
+  support_user: "Nodalia"
+  support_enable_service: ""
+  support_disable_service: ""
+  support_target_url: "http://127.0.0.1:8123"
   exit_node: ""
   login_server: "https://controlplane.tailscale.com"
 
@@ -85,5 +88,8 @@ schema:
   support_tunnel_enabled: bool?
   support_tailnet_id: str?
   support_tailnet_dns_suffix: str?
-  support_target_url: match(^https?://.+$)?
   support_tunnel_ttl_minutes: int(5,180)?
+  support_user: str?
+  support_enable_service: "match(^$|^[a-z_][a-z0-9_]*\\.[a-z_][a-z0-9_]*$)?"
+  support_disable_service: "match(^$|^[a-z_][a-z0-9_]*\\.[a-z_][a-z0-9_]*$)?"
+  support_target_url: match(^https?://.+$)?

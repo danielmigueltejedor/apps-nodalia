@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta96`
+`3.0.0-beta97`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -27,9 +27,10 @@ Cambios destacados (resumen de betas recientes):
   - ingress: rutas tipo `/control-api/logout` se traducen internamente a query string para evitar setups que descartan `QUERY_STRING`/`PATH_INFO`.
   - el botón power prueba primero `POST /control-api` con `action=logout` en body y mantiene fallbacks, para no depender de una sola vía de enrutado.
   - fallback definitivo: rutas de acción apuntan a CGI dedicados por nombre (`control-logout`, etc.), sin depender de variables CGI que algunos entornos no propagan.
-- Soporte remoto y APIs internas más robustas:
-  - validación de elegibilidad de soporte alineada al DNS real de tailnet (`support_tailnet_dns_suffix`).
-  - timeouts y comportamiento de `control-api`/`support-api` afinados para evitar cortes prematuros.
+- Soporte Nodalia orientado a acceso local:
+  - el botón de soporte deja de depender de túnel Cloudflare y pasa a ejecutar servicios de Home Assistant configurables.
+  - nueva ventana temporal con TTL, auditoría y elegibilidad por DNS de tailnet (`support_tailnet_dns_suffix`).
+  - nuevo metadato de usuario de soporte (`support_user`, por defecto `Nodalia`).
 - UI beta renovada:
   - tema oscuro por defecto.
   - selector claro/oscuro en modo icon-only (`☀`/`🌙`).
@@ -334,7 +335,7 @@ El panel `/onboarding` mantiene controles locales de máquina (como `logauth`) i
 
 ### `support_tunnel_enabled`
 
-Activa el módulo de túnel temporal de soporte remoto.
+Activa el módulo de acceso temporal de soporte Nodalia.
 
 - `false` (por defecto): desactivado.
 - `true`: habilitado, sujeto a elegibilidad de DNS/configuración.
@@ -345,7 +346,7 @@ Activa el módulo de túnel temporal de soporte remoto.
 
 Sufijo DNS de la tailnet autorizada para soporte remoto (ejemplo: `tail37b857.ts.net`).
 
-La elegibilidad del soporte se valida con este valor.
+La elegibilidad del acceso se valida con este valor.
 
 ---
 
@@ -357,17 +358,47 @@ Actualmente no se usa para decidir elegibilidad; se mantiene para no romper conf
 
 ---
 
+### `support_user`
+
+Usuario local de soporte (por defecto: `Nodalia`).
+
+Se envía como metadato a los servicios de Home Assistant que habilitan/revocan el acceso temporal.
+
+---
+
+### `support_enable_service`
+
+Servicio de Home Assistant que se ejecuta al activar soporte.
+
+Formato: `dominio.servicio` (ejemplo: `script.nodalia_support_enable`).
+Si está vacío, el botón de soporte quedará no elegible.
+
+---
+
+### `support_disable_service`
+
+Servicio de Home Assistant que se ejecuta al revocar soporte (manual o por expiración TTL).
+
+Formato: `dominio.servicio` (ejemplo: `script.nodalia_support_disable`).
+
+Recomendación práctica:
+- crea dos scripts en Home Assistant (`script.nodalia_support_enable` y `script.nodalia_support_disable`),
+- en esos scripts aplica la lógica que uses para habilitar/revocar acceso del usuario local `Nodalia`,
+- configura estos dos nombres en el add-on.
+
+---
+
 ### `support_target_url`
 
-URL interna objetivo a la que apuntará el túnel de soporte cuando esté activo.
+Campo legacy mantenido por compatibilidad.
 
-Por defecto: `http://127.0.0.1:8123`
+Ya no se usa en el flujo de soporte Nodalia basado en servicios HA.
 
 ---
 
 ### `support_tunnel_ttl_minutes`
 
-Tiempo de vida (TTL) del túnel temporal de soporte en minutos.
+Tiempo de vida (TTL) del acceso temporal de soporte en minutos.
 
 Rango permitido: `5` a `180`.
 Por defecto: `30`.

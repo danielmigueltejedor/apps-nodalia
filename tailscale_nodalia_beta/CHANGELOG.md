@@ -4,6 +4,29 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta97 - 2026-02-17
+### Changed
+- Soporte remoto refactorizado a `acceso soporte Nodalia`:
+  - `support-tunnel` deja de lanzar `cloudflared` y pasa a gestionar una ventana temporal de soporte con TTL/auditoría.
+  - `enable/disable` ahora disparan servicios de Home Assistant configurables (`support_enable_service`, `support_disable_service`), enviando metadatos como `support_user`.
+  - se mantiene validación de elegibilidad por DNS (`support_tailnet_dns_suffix`) y estado backend.
+- Onboarding:
+  - sección de soporte renombrada y simplificada (sin URL de túnel/copy URL).
+  - nuevo campo visible `Usuario soporte`.
+  - textos y mensajes actualizados al modelo de acceso temporal.
+- Marcador visual actualizado a `UI build: 3.0.0-beta97`.
+- Runtime telemetry:
+  - `runtime.json` añade `support_user`.
+
+### Added
+- Nuevas opciones de configuración:
+  - `support_user` (default `Nodalia`),
+  - `support_enable_service`,
+  - `support_disable_service`.
+
+### Deprecated
+- `support_target_url` pasa a legacy (se conserva por compatibilidad, sin uso en el nuevo flujo).
+
 ## 3.0.0-beta96 - 2026-02-16
 ### Changed
 - Botón `Logauth` ahora detecta estados ya desconectados (`NeedsLogin`, `NeedsMachineAuth`, `NoState`, `Stopped`) y muestra mensaje de `ya desconectado` sin volver a ejecutar reset.
