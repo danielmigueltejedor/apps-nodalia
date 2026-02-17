@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta116 - 2026-02-17
+### Fixed
+- Soporte: corrección del fallo `enable_verify_failed_derived_username` cuando el usuario existe en `/auth/list` sin `id` pero ya está activo.
+  - `enable` ahora es idempotente en ese escenario (`already_true_known`) y no bloquea la activación del acceso temporal.
+- `support-api/debug` estabilizado en modo `log_level: debug`:
+  - el CGI ya no mezcla `stderr` con el payload JSON.
+  - si el backend devuelve salida no JSON, el CGI normaliza respuesta estructurada (`support_api_payload_invalid`) para que la UI siempre pueda parsearla.
+  - fallback adicional en `support-tunnel debug` para devolver JSON aunque falle el comando interno.
+- Marcador visual actualizado a `UI build: 3.0.0-beta116`.
+
 ## 3.0.0-beta115 - 2026-02-17
 ### Fixed
 - Soporte: diagnóstico real cuando falla `Habilitar acceso soporte`.

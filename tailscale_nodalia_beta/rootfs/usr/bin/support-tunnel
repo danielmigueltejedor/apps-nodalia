@@ -364,6 +364,12 @@ set_support_user_active() {
   core_reason="${USER_OP_REASON:-core_user_patch_failed}"
 
   if [[ "${desired}" == "true" ]]; then
+    # If lookup already confirms the user is active, treat enable as idempotent success
+    # even when the API doesn't expose a stable user id for patching.
+    if [[ "${SUPPORT_USER_ACTIVE_KNOWN}" == "true" && "${SUPPORT_USER_ACTIVE}" == "true" ]]; then
+      USER_OP_REASON="already_true_known"
+      return 0
+    fi
     enable_password="$(resolve_support_enable_password)"
     if [[ -n "${SUPPORT_USER_PASSWORD:-}" ]]; then
       password_source="env"
@@ -932,7 +938,13 @@ case "${1:-status}" in
     audit_cmd
     ;;
   debug)
-    debug_cmd
+    if ! debug_cmd; then
+      jq -nc \
+        --arg error "support_debug_failed" \
+        --arg output "${API_LAST_OUTPUT:-}" \
+        '{ok:false,action:"debug",error:$error,output:$output}'
+      exit 0
+    fi
     ;;
   *)
     echo "Usage: support-tunnel [status|enable|disable|audit|debug]" >&2

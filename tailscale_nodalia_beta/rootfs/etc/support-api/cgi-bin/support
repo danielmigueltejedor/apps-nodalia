@@ -105,13 +105,23 @@ if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${REQUEST_METHOD:-GET}" != "G
 fi
 
 set +e
-payload="$(/usr/bin/support-tunnel "${action}" 2>&1)"
+payload="$(/usr/bin/support-tunnel "${action}")"
 rc=$?
 set -e
 
 content_type="application/json"
 if [[ "${action}" == "audit" ]]; then
   content_type="text/plain; charset=utf-8"
+fi
+
+if [[ "${content_type}" == "application/json" ]]; then
+  if ! jq -e . >/dev/null 2>&1 <<< "${payload}"; then
+    payload="$(jq -nc \
+      --arg error "support_api_payload_invalid" \
+      --arg action "${action}" \
+      --arg output "$(printf '%s' "${payload:-empty_response}" | tail -c 1800)" \
+      '{ok:false,error:$error,action:$action,output:$output}')"
+  fi
 fi
 
 if (( rc == 0 )); then

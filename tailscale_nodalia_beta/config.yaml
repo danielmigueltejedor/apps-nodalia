@@ -1,5 +1,5 @@
 name: Nodalia Connect (BETA)
-version: 3.0.0-beta115
+version: 3.0.0-beta116
 slug: tailscale_nodalia_beta
 description: Zero config VPN for building secure networks (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
