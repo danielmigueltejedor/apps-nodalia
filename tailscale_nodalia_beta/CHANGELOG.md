@@ -4,7 +4,7 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## 3.0.0-beta124 - 2026-02-17
+## 3.0.0-beta125 - 2026-02-17
 ### Added
 - Modo de soporte temporal completo (`support_temp_account_mode`):
   - al habilitar soporte crea usuario+password temporales vía servicio HA.
@@ -36,7 +36,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - nuevo campo `Modo soporte`.
   - al habilitar soporte temporal muestra credenciales generadas (usuario/password).
   - sugerencias nuevas para causas de error específicas del modo temporal.
-  - marcador visual actualizado a `UI build: 3.0.0-beta124`.
+  - marcador visual actualizado a `UI build: 3.0.0-beta125`.
 
 ## 3.0.0-beta121 - 2026-02-17
 ### Fixed
