@@ -83,12 +83,13 @@ unwrap_supervisor_data() {
 }
 
 lookup_support_user() {
-  local users_raw users_data candidate needle active owner
+  local users_raw users_data candidate needle owner
 
   SUPPORT_USER_EXISTS="false"
   SUPPORT_USER_ACTIVE="false"
   SUPPORT_USER_IS_OWNER="false"
   SUPPORT_USER_ID=""
+  SUPPORT_USER_LOGIN_NAME=""
   USER_LOOKUP_REASON=""
 
   if [[ -z "${SUPPORT_USER:-}" ]]; then
@@ -96,7 +97,7 @@ lookup_support_user() {
     return 1
   fi
 
-  if ! api_call GET "/core/api/config/users"; then
+  if ! api_call GET "/auth/list"; then
     USER_LOOKUP_REASON="ha_users_api_error"
     return 1
   fi
@@ -105,8 +106,20 @@ lookup_support_user() {
   users_data="$(unwrap_supervisor_data "${users_raw}")"
   needle="$(normalize_lc "${SUPPORT_USER}")"
   candidate="$(jq -c --arg needle "${needle}" '
-    if type=="array" then
-      map(select(((.name // "" | ascii_downcase)==$needle) or ((.id // "" | ascii_downcase)==$needle)))
+    if type=="object" and (.users? | type=="array") then
+      .users
+      | map(select(
+          ((.username // "" | ascii_downcase)==$needle) or
+          ((.name // "" | ascii_downcase)==$needle) or
+          ((.id // "" | ascii_downcase)==$needle)
+        ))
+      | .[0] // empty
+    elif type=="array" then
+      map(select(
+          ((.username // "" | ascii_downcase)==$needle) or
+          ((.name // "" | ascii_downcase)==$needle) or
+          ((.id // "" | ascii_downcase)==$needle)
+        ))
       | .[0] // empty
     else
       empty
@@ -123,22 +136,50 @@ lookup_support_user() {
     USER_LOOKUP_REASON="support_user_id_vacio"
     return 1
   fi
-
-  active="$(jq -r '.is_active // false' <<< "${candidate}" 2>/dev/null || echo "false")"
+  SUPPORT_USER_LOGIN_NAME="$(jq -r '.username // .name // empty' <<< "${candidate}" 2>/dev/null || true)"
+  if [[ -z "${SUPPORT_USER_LOGIN_NAME}" ]]; then
+    USER_LOOKUP_REASON="support_user_username_vacio"
+    return 1
+  fi
   owner="$(jq -r '.is_owner // false' <<< "${candidate}" 2>/dev/null || echo "false")"
 
   SUPPORT_USER_EXISTS="true"
-  if [[ "${active}" == "true" ]]; then
-    SUPPORT_USER_ACTIVE="true"
-  fi
   if [[ "${owner}" == "true" ]]; then
     SUPPORT_USER_IS_OWNER="true"
   fi
   return 0
 }
 
+auth_user_with_password() {
+  local username password payload
+  username="${1:-}"
+  password="${2:-}"
+  if [[ -z "${username}" || -z "${password}" ]]; then
+    return 1
+  fi
+  payload="$(jq -nc --arg username "${username}" --arg password "${password}" '{username:$username,password:$password}')"
+  if ! api_call POST "/auth" "${payload}"; then
+    return 1
+  fi
+  return 0
+}
+
+reset_user_password() {
+  local username password payload
+  username="${1:-}"
+  password="${2:-}"
+  if [[ -z "${username}" || -z "${password}" ]]; then
+    return 1
+  fi
+  payload="$(jq -nc --arg username "${username}" --arg password "${password}" '{username:$username,password:$password}')"
+  if ! api_call POST "/auth/reset" "${payload}"; then
+    return 1
+  fi
+  return 0
+}
+
 set_support_user_active() {
-  local desired desired_json payload endpoint method
+  local desired random_password
   desired="${1:-false}"
   USER_OP_REASON=""
 
@@ -154,31 +195,41 @@ set_support_user_active() {
     return 1
   fi
 
-  if [[ "${SUPPORT_USER_ACTIVE}" == "${desired}" ]]; then
-    USER_OP_REASON="already_${desired}"
-    return 0
-  fi
-
   if [[ "${desired}" == "true" ]]; then
-    desired_json=true
-  else
-    desired_json=false
+    if [[ -z "${SUPPORT_USER_PASSWORD:-}" ]]; then
+      USER_OP_REASON="support_user_password_vacio"
+      return 1
+    fi
+    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
+      SUPPORT_USER_ACTIVE="true"
+      USER_OP_REASON="already_true"
+      return 0
+    fi
+    if ! reset_user_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
+      USER_OP_REASON="reset_password_failed"
+      return 1
+    fi
+    if auth_user_with_password "${SUPPORT_USER_LOGIN_NAME}" "${SUPPORT_USER_PASSWORD}"; then
+      SUPPORT_USER_ACTIVE="true"
+      USER_OP_REASON="password_set_enable"
+      return 0
+    fi
+    USER_OP_REASON="enable_verify_failed"
+    return 1
   fi
-  payload="$(jq -nc --argjson is_active "${desired_json}" '{is_active:$is_active}')"
 
-  for endpoint in "/core/api/config/users/${SUPPORT_USER_ID}" "/core/api/auth/users/${SUPPORT_USER_ID}"; do
-    for method in PATCH POST; do
-      if api_call "${method}" "${endpoint}" "${payload}"; then
-        if lookup_support_user && [[ "${SUPPORT_USER_ACTIVE}" == "${desired}" ]]; then
-          USER_OP_REASON="updated_${method,,}"
-          return 0
-        fi
-      fi
-    done
-  done
+  random_password="$(head -c 32 /dev/urandom 2>/dev/null | base64 2>/dev/null | tr -dc 'A-Za-z0-9' | head -c 32)"
+  if [[ -z "${random_password}" ]]; then
+    random_password="nodalia$(date +%s)$(od -An -N4 -tx4 /dev/urandom 2>/dev/null | tr -d ' \n' || true)"
+  fi
+  if ! reset_user_password "${SUPPORT_USER_LOGIN_NAME}" "${random_password}"; then
+    USER_OP_REASON="reset_password_failed"
+    return 1
+  fi
+  SUPPORT_USER_ACTIVE="false"
+  USER_OP_REASON="password_rotated_disable"
+  return 0
 
-  USER_OP_REASON="set_user_failed"
-  return 1
 }
 
 audit_event() {
