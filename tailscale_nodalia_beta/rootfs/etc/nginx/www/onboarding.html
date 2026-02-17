@@ -637,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta105</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta106</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -732,11 +732,14 @@
     let logoutHintHideHandle = null;
     let logoutTraceLog = "";
     let liveWebUiReadyStreak = 0;
-    let liveWebUiSeenAtMs = 0;
     let lastWebUiProbeAtMs = 0;
     let lastWebUiProbeOk = false;
     let lastOnboardingFetchAtMs = 0;
+    let lastRuntimeFetchAtMs = 0;
+    let runtimeRequestPromise = null;
+    let loadStateInFlight = false;
     let runningSinceMs = 0;
+    const RUNTIME_FETCH_DEDUPE_MS = 350;
     const RUNTIME_CACHE_KEY = "nodalia_runtime_cache_v1";
     const UI_PREFS_KEY = "nodalia_ui_prefs_v1";
     const aclWebUiSnippet = JSON.stringify({
@@ -1267,7 +1270,7 @@
       }
       updateStateView("Actualizando...", "warn");
       try {
-        await refreshRuntime(1800);
+        await refreshRuntime(1800, true);
         await loadState();
       } finally {
         if (triggerButton) {
@@ -1539,8 +1542,14 @@
 
     async function loadState() {
       let nextDelayMs = 1200;
+      if (loadStateInFlight) {
+        schedulePoll(350);
+        return;
+      }
+      loadStateInFlight = true;
       if (actionInFlight > 0) {
         schedulePoll(nextDelayMs);
+        loadStateInFlight = false;
         return;
       }
       if (isFirstRender) {
@@ -1594,7 +1603,6 @@
         }
 
         if (backendState !== "Running") {
-          liveWebUiSeenAtMs = 0;
           runningSinceMs = 0;
           cancelAutoRedirect();
           liveWebUiReadyStreak = 0;
@@ -1620,7 +1628,6 @@
         const liveWebUiReady = await probeIngressWebUiReady(2200);
         if (liveWebUiReady) {
           liveWebUiReadyStreak += 1;
-          liveWebUiSeenAtMs = Date.now();
         } else {
           liveWebUiReadyStreak = 0;
         }
@@ -1658,47 +1665,66 @@
         renderSuggestions();
         nextDelayMs = 1800;
       } finally {
+        loadStateInFlight = false;
         schedulePoll(nextDelayMs);
       }
     }
 
-    async function refreshRuntime(timeoutMs = 1200) {
-      try {
-        const data = await fetchJsonWithTimeout("runtime.json?_ts=" + Date.now(), timeoutMs);
-        applyRuntimeData(data);
-        return data;
-      } catch (_) {
-        rtBackend.textContent = "n/a";
-        rtWebUi.textContent = "n/a";
-        rtWebUiStreak.textContent = "n/a";
-        rtWebUiProbe.textContent = "n/a";
-        rtOnline.textContent = "n/a";
-        rtDnsResolvers.textContent = "n/a";
-        rtDnsWarning.textContent = "n/a";
-        rtHostName.textContent = "n/a";
-        rtIpv4.textContent = "n/a";
-        rtIpv6.textContent = "n/a";
-        rtUptime.textContent = "n/a";
-        rtUpdated.textContent = "n/a";
-        supportEnabled.textContent = "n/a";
-        supportTailnet.textContent = "n/a";
-        supportMatch.textContent = "n/a";
-        supportEligible.textContent = "n/a";
-        supportActive.textContent = "n/a";
-        supportUser.textContent = "n/a";
-        supportExpires.textContent = "n/a";
-        supportReason.textContent = "runtime unavailable";
-        supportRules = { enable: false, disable: false, audit: false };
-        renderSupportButtons();
-        opCanLogout = false;
-        renderOpButtons();
-        healthScorePill.textContent = "\u2764 --";
-        healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
-        if (lastHealthHtml !== "") {
-          healthChecks.innerHTML = "";
-          lastHealthHtml = "";
+    async function refreshRuntime(timeoutMs = 1200, force = false) {
+      const now = Date.now();
+      if (runtimeRequestPromise) {
+        return runtimeRequestPromise;
+      }
+      if (!force && lastRuntime && (now - lastRuntimeFetchAtMs) < RUNTIME_FETCH_DEDUPE_MS) {
+        return lastRuntime;
+      }
+      const request = (async () => {
+        try {
+          const data = await fetchJsonWithTimeout("runtime.json?_ts=" + Date.now(), timeoutMs);
+          applyRuntimeData(data);
+          lastRuntimeFetchAtMs = Date.now();
+          return data;
+        } catch (_) {
+          rtBackend.textContent = "n/a";
+          rtWebUi.textContent = "n/a";
+          rtWebUiStreak.textContent = "n/a";
+          rtWebUiProbe.textContent = "n/a";
+          rtOnline.textContent = "n/a";
+          rtDnsResolvers.textContent = "n/a";
+          rtDnsWarning.textContent = "n/a";
+          rtHostName.textContent = "n/a";
+          rtIpv4.textContent = "n/a";
+          rtIpv6.textContent = "n/a";
+          rtUptime.textContent = "n/a";
+          rtUpdated.textContent = "n/a";
+          supportEnabled.textContent = "n/a";
+          supportTailnet.textContent = "n/a";
+          supportMatch.textContent = "n/a";
+          supportEligible.textContent = "n/a";
+          supportActive.textContent = "n/a";
+          supportUser.textContent = "n/a";
+          supportExpires.textContent = "n/a";
+          supportReason.textContent = "runtime unavailable";
+          supportRules = { enable: false, disable: false, audit: false };
+          renderSupportButtons();
+          opCanLogout = false;
+          renderOpButtons();
+          healthScorePill.textContent = "\u2764 --";
+          healthScorePill.classList.remove("score-ok", "score-warn", "score-bad");
+          if (lastHealthHtml !== "") {
+            healthChecks.innerHTML = "";
+            lastHealthHtml = "";
+          }
+          return null;
         }
-        return null;
+      })();
+      runtimeRequestPromise = request;
+      try {
+        return await request;
+      } finally {
+        if (runtimeRequestPromise === request) {
+          runtimeRequestPromise = null;
+        }
       }
     }
 
@@ -1762,7 +1788,7 @@
       try {
         await callSupportApi("enable", "POST", true);
         supportMessage.textContent = "Acceso de soporte habilitado.";
-        await refreshRuntime(1500);
+        await refreshRuntime(1500, true);
       } catch (error) {
         supportMessage.textContent = "No se pudo habilitar el acceso: " + error.message;
       } finally {
@@ -1780,7 +1806,7 @@
       try {
         await callSupportApi("disable", "POST", true);
         supportMessage.textContent = "Acceso de soporte revocado.";
-        await refreshRuntime(1500);
+        await refreshRuntime(1500, true);
       } catch (error) {
         supportMessage.textContent = "No se pudo revocar el acceso: " + error.message;
       } finally {
@@ -1926,7 +1952,7 @@
             logoutFailed = true;
           }
         }
-        await refreshRuntime(1800);
+        await refreshRuntime(1800, true);
         await loadState();
         clearLogoutConfirm();
         setOpButtonsBusy(false);

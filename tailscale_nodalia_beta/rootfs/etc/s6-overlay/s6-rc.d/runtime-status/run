@@ -9,6 +9,8 @@ readonly RUNTIME_STATE_FILE="/data/tailscale-runtime.json"
 readonly POLL_INTERVAL=3
 readonly LOG_HEARTBEAT_EVERY_LOOPS=20
 readonly DNS_RESOLVERS_REFRESH_EVERY_LOOPS=20
+readonly SUPPORT_STATUS_TIMEOUT_SEC=6
+readonly SUPPORT_STATUS_STALE_MAX_SEC=30
 
 declare status_json
 declare backend_state
@@ -55,6 +57,8 @@ declare support_fallback_dns
 declare support_fallback_user
 declare support_fallback_enabled
 declare support_reason_fallback
+declare last_support_json=""
+declare -i last_support_json_epoch=0
 
 declare -i ready_streak=0
 declare -i start_epoch
@@ -68,6 +72,18 @@ declare prev_dns_degraded="__init__"
 declare prev_dns_warning="__init__"
 declare prev_support_eligible="__init__"
 declare prev_support_active="__init__"
+
+write_runtime_state() {
+  local payload tmp_file
+  payload="${1:-{}}"
+  tmp_file="$(mktemp "/data/.tailscale-runtime.json.tmp.XXXXXX" 2>/dev/null || true)"
+  if [[ -z "${tmp_file}" ]]; then
+    printf '%s\n' "${payload}" > "${RUNTIME_STATE_FILE}"
+    return
+  fi
+  printf '%s\n' "${payload}" > "${tmp_file}"
+  mv -f "${tmp_file}" "${RUNTIME_STATE_FILE}"
+}
 
 start_epoch=$(date +%s)
 setup_profile=$(bashio::config "setup_profile" "custom")
@@ -125,7 +141,11 @@ do
   direct_webui_url=""
 
   set +e
-  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status)"
+  if command -v timeout > /dev/null 2>&1; then
+    support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" timeout "${SUPPORT_STATUS_TIMEOUT_SEC}" /usr/bin/support-tunnel status 2>/dev/null)"
+  else
+    support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status 2>/dev/null)"
+  fi
   support_cmd_rc=$?
   set -e
   support_cmd_last_line="$(printf '%s\n' "${support_cmd_output}" | awk 'NF{line=$0} END{print line}')"
@@ -136,6 +156,8 @@ do
     support_json="${support_cmd_last_line}"
   elif [[ -f /data/support-tunnel.json ]] && support_cached_json="$(cat /data/support-tunnel.json 2>/dev/null)" && jq -e . > /dev/null 2>&1 <<< "${support_cached_json}"; then
     support_json="${support_cached_json}"
+  elif [[ -n "${last_support_json:-}" ]] && (( $(date +%s) - last_support_json_epoch <= SUPPORT_STATUS_STALE_MAX_SEC )); then
+    support_json="${last_support_json}"
   else
     support_fallback_dns="$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")"
     support_fallback_user="$(bashio::config "support_user" "Nodalia")"
@@ -153,6 +175,10 @@ do
       --arg reason "${support_reason_fallback}" \
       --arg support_enabled "${support_fallback_enabled}" \
       '{support_enabled:($support_enabled=="true"),support_target_dns_suffix:$support_target_dns_suffix,tailnet_match:false,eligible:false,active:false,reason:$reason,support_user:$support_user}')"
+  fi
+  if jq -e . > /dev/null 2>&1 <<< "${support_json}"; then
+    last_support_json="${support_json}"
+    last_support_json_epoch="$(date +%s)"
   fi
   support_enabled="$(jq -r '.support_enabled // false' <<< "${support_json}" 2>/dev/null || echo "false")"
   support_target_id="$(jq -r '.support_target_id // empty' <<< "${support_json}" 2>/dev/null || true)"
@@ -251,7 +277,7 @@ do
       ipv6: ($ipv6 | fromjson? // [])
     }')
 
-  printf '%s\n' "${runtime_payload}" > "${RUNTIME_STATE_FILE}"
+  write_runtime_state "${runtime_payload}"
   loop_count=$((loop_count + 1))
 
   if [[ "${backend_state}" != "${prev_backend_state}" ]] || \

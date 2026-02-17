@@ -4,6 +4,20 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta106 - 2026-02-17
+### Changed
+- Pasada de estabilidad/rendimiento general en runtime y UI:
+  - `runtime-status` ahora protege la consulta a `support-tunnel status` con timeout (`6s`) para evitar bloqueos del bucle principal.
+  - `runtime-status` usa fallback temporal de último estado de soporte válido (`30s`) cuando hay fallo/transitorio en soporte, reduciendo flapping en onboarding.
+  - escritura de `runtime.json` pasa a modo atómico (tmp + `mv`) para evitar lecturas parciales.
+- `support-tunnel` endurecido:
+  - escritura atómica de `support-tunnel.json` y `support-tunnel-meta.json`, reduciendo estados corruptos/intermedios.
+- Onboarding más fluido:
+  - anti-solapamiento en `loadState()` para evitar polling concurrente bajo latencia.
+  - deduplicación de `refreshRuntime()` (reutiliza petición en vuelo + ventana corta de caché) para bajar carga de red/DOM.
+  - acciones manuales críticas (`refresh`, `enable/disable soporte`, `logout`) fuerzan refresh real para no mostrar estado viejo.
+- Marcador visual actualizado a `UI build: 3.0.0-beta106`.
+
 ## 3.0.0-beta105 - 2026-02-17
 ### Fixed
 - Soporte: nuevo intento para resolver `ha_users_api_error`.

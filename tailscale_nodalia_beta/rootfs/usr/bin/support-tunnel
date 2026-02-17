@@ -55,6 +55,24 @@ sanitize_uint() {
   fi
 }
 
+write_json_atomic() {
+  local target payload tmp_file target_dir target_name
+  target="${1:-}"
+  payload="${2:-{}}"
+  if [[ -z "${target}" ]]; then
+    return 1
+  fi
+  target_dir="$(dirname "${target}")"
+  target_name="$(basename "${target}")"
+  tmp_file="$(mktemp "${target_dir}/.${target_name}.tmp.XXXXXX" 2>/dev/null || true)"
+  if [[ -z "${tmp_file}" ]]; then
+    printf '%s\n' "${payload}" > "${target}"
+    return 0
+  fi
+  printf '%s\n' "${payload}" > "${tmp_file}"
+  mv -f "${tmp_file}" "${target}"
+}
+
 api_call() {
   local method path payload response rc
   method="${1:-GET}"
@@ -380,13 +398,15 @@ prepare_meta() {
 }
 
 write_meta() {
-  jq -nc \
+  local payload
+  payload="$(jq -nc \
     --arg created_at "${META_NEW_CREATED_AT}" \
     --arg expires_at "${META_NEW_EXPIRES_AT}" \
     --arg support_user "${SUPPORT_USER}" \
     --argjson expires_epoch "${META_NEW_EXPIRES_EPOCH}" \
     --argjson ttl_minutes "${META_NEW_TTL_MIN}" \
-    '{created_at:$created_at,expires_at:$expires_at,expires_epoch:$expires_epoch,ttl_minutes:$ttl_minutes,support_user:$support_user}' > "${META_FILE}"
+    '{created_at:$created_at,expires_at:$expires_at,expires_epoch:$expires_epoch,ttl_minutes:$ttl_minutes,support_user:$support_user}')"
+  write_json_atomic "${META_FILE}" "${payload}"
 }
 
 clear_meta() {
@@ -471,12 +491,13 @@ build_eligibility() {
 
 write_state() {
   local active eligible now
+  local payload
   active="${1:-false}"
   eligible="${2:-false}"
   now="$(now_utc)"
   read_meta
 
-  jq -nc \
+  payload="$(jq -nc \
     --arg updated_at "${now}" \
     --arg support_target_id "${SUPPORT_TARGET_ID}" \
     --arg support_target_dns_suffix "${SUPPORT_TARGET_DNS_SUFFIX}" \
@@ -516,7 +537,8 @@ write_state() {
       expires_at:$expires_at,
       expires_epoch:$expires_epoch,
       ttl_minutes:$ttl_minutes
-    }' > "${STATE_FILE}"
+    }')"
+  write_json_atomic "${STATE_FILE}" "${payload}"
 }
 
 disable_running_access() {
