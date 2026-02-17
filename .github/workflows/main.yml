@@ -35,19 +35,33 @@ jobs:
             exit 1
           fi
 
-      - name: Get latest stable Tailscale version (GitHub Releases)
+      # ✅ USAR EL CANAL STABLE REAL DE LINUX (el que siguen Debian/Proxmox si instalas desde pkgs.tailscale.com)
+      - name: Get latest stable Tailscale version (pkgs.tailscale.com)
         id: ts
         shell: bash
         run: |
           set -euo pipefail
-          LATEST_TAG=$(curl -fsSL https://api.github.com/repos/tailscale/tailscale/releases/latest | jq -r .tag_name)
-          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
-            echo "No pude obtener tag_name de Tailscale."
+
+          JSON=$(curl -fsSL "https://pkgs.tailscale.com/stable/?mode=json")
+
+          # La clave suele ser "Version". Añadimos fallbacks por si cambia el formato.
+          LATEST=$(
+            echo "$JSON" | jq -r '
+              .Version // .version // .Linux // .linux // empty
+            '
+          )
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "null" ]; then
+            echo "No pude obtener version desde pkgs.tailscale.com/stable/?mode=json"
+            echo "Primeros 2000 chars del JSON para depurar:"
+            echo "$JSON" | head -c 2000 || true
+            echo
             exit 1
           fi
-          LATEST="${LATEST_TAG#v}"
+
+          LATEST="${LATEST#v}"
           echo "latest=${LATEST}" >> "$GITHUB_OUTPUT"
-          echo "latest_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "latest_tag=v${LATEST}" >> "$GITHUB_OUTPUT"
 
       - name: Read current TAILSCALE_VERSION from Dockerfile
         id: cur
@@ -61,8 +75,9 @@ jobs:
             exit 1
           fi
 
+          # Si tu Dockerfile tiene varios stages con el mismo ARG, normalmente interesa el ÚLTIMO.
           CURRENT=$(grep -E '^ARG[[:space:]]+TAILSCALE_VERSION=' "${DIR}/Dockerfile" \
-            | head -n 1 \
+            | tail -n 1 \
             | sed -E 's/^ARG[[:space:]]+TAILSCALE_VERSION="?([^"]+)"?/\1/' \
             | tr -d '\r')
 
@@ -79,6 +94,15 @@ jobs:
           else
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
           fi
+
+      # (Opcional pero útil) Debug de qué está comparando
+      - name: Debug versions
+        shell: bash
+        run: |
+          echo "DIR=${{ steps.paths.outputs.dir }}"
+          echo "CURRENT=${{ steps.cur.outputs.current }}"
+          echo "LATEST=${{ steps.ts.outputs.latest }}"
+          echo "NEEDS_UPDATE=${{ steps.check.outputs.needs_update }}"
 
       - name: Update Dockerfile TAILSCALE_VERSION
         if: ${{ steps.check.outputs.needs_update == 'true' }}
@@ -201,7 +225,6 @@ jobs:
           else
             gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE"
           fi
-
 
       - name: No update needed
         if: ${{ steps.check.outputs.needs_update != 'true' }}
