@@ -84,23 +84,39 @@ resolve_support_enable_password() {
 }
 
 api_call() {
-  local method path payload response rc
+  local method path payload response rc err_file stderr_output
   method="${1:-GET}"
   path="${2:-}"
   payload="${3:-__NO_PAYLOAD__}"
+  stderr_output=""
 
-  set +e
-  if [[ "${payload}" == "__NO_PAYLOAD__" ]]; then
-    response="$(bashio::api.supervisor "${method}" "${path}" false 2>&1)"
+  err_file="$(mktemp /tmp/support-api-stderr.XXXXXX 2>/dev/null || true)"
+  if [[ -n "${err_file}" ]]; then
+    set +e
+    if [[ "${payload}" == "__NO_PAYLOAD__" ]]; then
+      response="$(bashio::api.supervisor "${method}" "${path}" false 2>"${err_file}")"
+    else
+      response="$(bashio::api.supervisor "${method}" "${path}" "${payload}" 2>"${err_file}")"
+    fi
+    rc=$?
+    set -e
+    stderr_output="$(cat "${err_file}" 2>/dev/null || true)"
+    rm -f "${err_file}" || true
   else
-    response="$(bashio::api.supervisor "${method}" "${path}" "${payload}" 2>&1)"
+    set +e
+    if [[ "${payload}" == "__NO_PAYLOAD__" ]]; then
+      response="$(bashio::api.supervisor "${method}" "${path}" false 2>&1)"
+    else
+      response="$(bashio::api.supervisor "${method}" "${path}" "${payload}" 2>&1)"
+    fi
+    rc=$?
+    set -e
   fi
-  rc=$?
-  set -e
 
   API_LAST_RC="${rc}"
   API_LAST_JSON="${response}"
-  API_LAST_OUTPUT="$(printf '%s' "${response}" | tail -c 1800)"
+  API_LAST_STDERR="${stderr_output}"
+  API_LAST_OUTPUT="$(printf '%s\n%s\n' "${stderr_output}" "${response}" | tail -n 80)"
   (( rc == 0 ))
 }
 
@@ -818,6 +834,7 @@ debug_cmd() {
     --arg current_tailnet_name "${current_tailnet_name}" \
     --arg api_last_rc "${API_LAST_RC:-}" \
     --arg api_last_output "${API_LAST_OUTPUT:-}" \
+    --arg api_last_stderr "${API_LAST_STDERR:-}" \
     --argjson cfg_enabled "$(json_bool "${cfg_enabled}")" \
     --argjson cfg_password_set "$(json_bool "${cfg_password_set}")" \
     --argjson tailnet_match "$(json_bool "${SUPPORT_TAILNET_MATCH:-false}")" \
@@ -869,6 +886,7 @@ debug_cmd() {
       },
       api_last:{
         rc:$api_last_rc,
+        stderr:$api_last_stderr,
         output:$api_last_output
       },
       state_snapshot:$state_snapshot,

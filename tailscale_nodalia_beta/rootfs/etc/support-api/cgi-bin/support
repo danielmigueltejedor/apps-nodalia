@@ -116,11 +116,22 @@ fi
 
 if [[ "${content_type}" == "application/json" ]]; then
   if ! jq -e . >/dev/null 2>&1 <<< "${payload}"; then
-    payload="$(jq -nc \
-      --arg error "support_api_payload_invalid" \
-      --arg action "${action}" \
-      --arg output "$(printf '%s' "${payload:-empty_response}" | tail -c 1800)" \
-      '{ok:false,error:$error,action:$action,output:$output}')"
+    payload_line=""
+    while IFS= read -r line
+    do
+      if [[ -n "${line}" ]] && jq -e . >/dev/null 2>&1 <<< "${line}"; then
+        payload_line="${line}"
+      fi
+    done <<< "${payload}"
+    if [[ -n "${payload_line}" ]]; then
+      payload="${payload_line}"
+    else
+      payload="$(jq -nc \
+        --arg error "support_api_payload_invalid" \
+        --arg action "${action}" \
+        --arg output "$(printf '%s' "${payload:-empty_response}" | tail -c 1800)" \
+        '{ok:false,error:$error,action:$action,output:$output}')"
+    fi
   fi
 fi
 

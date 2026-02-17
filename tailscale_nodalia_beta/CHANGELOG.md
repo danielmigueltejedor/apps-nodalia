@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta117 - 2026-02-17
+### Fixed
+- Soporte debug robusto con `log_level=debug`:
+  - `support-tunnel` separa `stdout` (JSON API) de `stderr` (trazas) en `api_call`, evitando contaminar parseo de `/auth/list` y `/core/api/config/users`.
+  - `API_LAST_OUTPUT` pasa a snapshot por líneas (`tail -n`) para evitar cortes binarios/UTF-8 que rompían JSON.
+  - `support-tunnel debug` ahora incluye `api_last.stderr` para diagnóstico sin romper la salida estructurada.
+- CGI `support-api` endurecido:
+  - si recibe ruido junto al JSON, intenta rescatar la última línea JSON válida antes de devolver `support_api_payload_invalid`.
+- Marcador visual actualizado a `UI build: 3.0.0-beta117`.
+
 ## 3.0.0-beta116 - 2026-02-17
 ### Fixed
 - Soporte: corrección del fallo `enable_verify_failed_derived_username` cuando el usuario existe en `/auth/list` sin `id` pero ya está activo.
