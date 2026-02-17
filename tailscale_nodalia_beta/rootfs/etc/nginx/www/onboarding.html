@@ -637,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta110</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta111</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -981,7 +981,7 @@
       const active = Boolean(runtime?.support_active ?? runtime?.active);
       const expiresAt = String(runtime?.support_expires_at || runtime?.expires_at || "");
       const reason = String(runtime?.support_reason || runtime?.reason || "");
-      const supportUserValue = String(runtime?.support_user || "Nodalia");
+      const supportUserValue = String(runtime?.support_user || "nodalia");
       const targetDns = String(runtime?.support_tailnet_dns_suffix || runtime?.support_target_dns_suffix || "");
       const targetId = String(runtime?.support_target_id || "");
       supportEnabled.textContent = enabled ? "true" : "false";
@@ -1509,7 +1509,7 @@
         suggestions.push("Acceso de soporte bloqueado: el DNS de esta instancia no coincide con el DNS objetivo de soporte.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_user_no_encontrado")) {
-        suggestions.push("Crea un usuario local con el nombre configurado en support_user (por defecto: Nodalia).");
+        suggestions.push("Crea un usuario local con el nombre configurado en support_user (por defecto: nodalia).");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_user_es_owner_no_permitido")) {
         suggestions.push("El usuario de soporte no puede ser owner/admin principal. Usa un usuario local dedicado.");
@@ -1519,6 +1519,9 @@
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("core_user_patch_failed")) {
         suggestions.push("No se pudo cambiar is_active del usuario de soporte. Revisa permisos del add-on y existencia del usuario local.");
+      }
+      if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_user_id_vacio")) {
+        suggestions.push("La API devolvio usuario sin ID. En beta111 se intenta fallback por login_name; reinicia el add-on y prueba de nuevo.");
       }
       if (String(lastRuntime?.support_reason || "").includes("support_status")) {
         suggestions.push("El backend de soporte devolvio fallo interno. Pulsa Recargar y revisa logs del add-on para ver el error exacto.");

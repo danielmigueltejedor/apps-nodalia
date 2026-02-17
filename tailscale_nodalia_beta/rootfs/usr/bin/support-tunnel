@@ -118,10 +118,6 @@ populate_support_user_from_candidate() {
   fi
 
   SUPPORT_USER_ID="$(jq -r '.id // .user_id // .user.id // .user.user_id // .uuid // .user.uuid // .uid // .user.uid // empty' <<< "${candidate}" 2>/dev/null || true)"
-  if [[ -z "${SUPPORT_USER_ID}" ]]; then
-    USER_LOOKUP_REASON="support_user_id_vacio"
-    return 1
-  fi
 
   login_name="$(jq -r '.username // .user.username // ([.credentials[]? | .data.username?] | map(select(type=="string" and length>0)) | .[0]) // .name // .user.name // empty' <<< "${candidate}" 2>/dev/null || true)"
   if [[ -z "${login_name}" ]]; then
@@ -141,12 +137,16 @@ populate_support_user_from_candidate() {
     SUPPORT_USER_ACTIVE_KNOWN="true"
     SUPPORT_USER_ACTIVE="${active_value}"
   fi
+  if [[ -z "${SUPPORT_USER_ID}" ]]; then
+    USER_LOOKUP_REASON="support_user_id_vacio"
+    return 2
+  fi
   USER_LOOKUP_REASON=""
   return 0
 }
 
 lookup_support_user_core() {
-  local users_raw users_data candidate needle
+  local users_raw users_data candidate needle populate_rc
 
   if ! api_call GET "/core/api/config/users"; then
     USER_LOOKUP_REASON="ha_users_api_error_core"
@@ -156,15 +156,23 @@ lookup_support_user_core() {
   users_data="$(unwrap_supervisor_data "${users_raw}")"
   needle="$(normalize_lc "${SUPPORT_USER}")"
   candidate="$(extract_support_candidate "${users_data}" "${needle}")"
-  if ! populate_support_user_from_candidate "${candidate}"; then
-    return 1
+  set +e
+  populate_support_user_from_candidate "${candidate}"
+  populate_rc=$?
+  set -e
+  if (( populate_rc == 0 )); then
+    USER_LOOKUP_SOURCE="core_api"
+    return 0
   fi
-  USER_LOOKUP_SOURCE="core_api"
-  return 0
+  if (( populate_rc == 2 )); then
+    USER_LOOKUP_SOURCE="core_api_no_id"
+    return 2
+  fi
+  return 1
 }
 
 lookup_support_user_auth() {
-  local users_raw users_data candidate needle
+  local users_raw users_data candidate needle populate_rc
 
   if ! api_call GET "/auth/list"; then
     USER_LOOKUP_REASON="ha_users_api_error_auth"
@@ -174,15 +182,23 @@ lookup_support_user_auth() {
   users_data="$(unwrap_supervisor_data "${users_raw}")"
   needle="$(normalize_lc "${SUPPORT_USER}")"
   candidate="$(extract_support_candidate "${users_data}" "${needle}")"
-  if ! populate_support_user_from_candidate "${candidate}"; then
-    return 1
+  set +e
+  populate_support_user_from_candidate "${candidate}"
+  populate_rc=$?
+  set -e
+  if (( populate_rc == 0 )); then
+    USER_LOOKUP_SOURCE="auth_api"
+    return 0
   fi
-  USER_LOOKUP_SOURCE="auth_api"
-  return 0
+  if (( populate_rc == 2 )); then
+    USER_LOOKUP_SOURCE="auth_api_no_id"
+    return 2
+  fi
+  return 1
 }
 
 lookup_support_user() {
-  local core_reason auth_reason
+  local core_reason auth_reason core_rc auth_rc
 
   SUPPORT_USER_EXISTS="false"
   SUPPORT_USER_ACTIVE="false"
@@ -198,15 +214,30 @@ lookup_support_user() {
     return 1
   fi
 
-  if lookup_support_user_core; then
+  set +e
+  lookup_support_user_core
+  core_rc=$?
+  set -e
+  if (( core_rc == 0 )); then
     return 0
   fi
   core_reason="${USER_LOOKUP_REASON:-ha_users_api_error_core}"
 
-  if lookup_support_user_auth; then
+  set +e
+  lookup_support_user_auth
+  auth_rc=$?
+  set -e
+  if (( auth_rc == 0 )); then
     return 0
   fi
   auth_reason="${USER_LOOKUP_REASON:-ha_users_api_error_auth}"
+
+  # Some Supervisor/Auth responses expose username/name but hide the user ID.
+  # We continue with degraded mode and let the activation path try login-name based patch.
+  if (( core_rc == 2 || auth_rc == 2 )); then
+    USER_LOOKUP_REASON="support_user_id_vacio"
+    return 0
+  fi
 
   if [[ "${core_reason}" == "support_user_no_encontrado" && "${auth_reason}" == "support_user_no_encontrado" ]]; then
     USER_LOOKUP_REASON="support_user_no_encontrado"
@@ -247,22 +278,38 @@ reset_user_password() {
 }
 
 set_support_user_active_via_core() {
-  local desired payload
+  local desired payload target
   desired="${1:-false}"
-  if [[ -z "${SUPPORT_USER_ID:-}" ]]; then
+  payload="$(jq -nc --argjson is_active "$(json_bool "${desired}")" '{is_active:$is_active}')"
+
+  target=""
+  if [[ -n "${SUPPORT_USER_ID:-}" ]]; then
+    target="$(jq -rn --arg v "${SUPPORT_USER_ID}" '$v|@uri' 2>/dev/null || true)"
+  elif [[ -n "${SUPPORT_USER_LOGIN_NAME:-}" ]]; then
+    target="$(jq -rn --arg v "${SUPPORT_USER_LOGIN_NAME}" '$v|@uri' 2>/dev/null || true)"
+  fi
+  if [[ -z "${target}" ]]; then
     USER_OP_REASON="support_user_id_vacio"
     return 1
   fi
-  payload="$(jq -nc --argjson is_active "$(json_bool "${desired}")" '{is_active:$is_active}')"
-  if ! api_call PATCH "/core/api/config/users/${SUPPORT_USER_ID}" "${payload}"; then
-    if ! api_call POST "/core/api/auth/users/${SUPPORT_USER_ID}" "${payload}"; then
-      USER_OP_REASON="core_user_patch_failed"
+
+  if ! api_call PATCH "/core/api/config/users/${target}" "${payload}"; then
+    if ! api_call POST "/core/api/auth/users/${target}" "${payload}"; then
+      if [[ -z "${SUPPORT_USER_ID:-}" ]]; then
+        USER_OP_REASON="core_user_patch_failed_no_id"
+      else
+        USER_OP_REASON="core_user_patch_failed"
+      fi
       return 1
     fi
   fi
   SUPPORT_USER_ACTIVE_KNOWN="true"
   SUPPORT_USER_ACTIVE="${desired}"
-  USER_OP_REASON="core_user_patch_ok"
+  if [[ -z "${SUPPORT_USER_ID:-}" ]]; then
+    USER_OP_REASON="core_user_patch_by_login_ok"
+  else
+    USER_OP_REASON="core_user_patch_ok"
+  fi
   return 0
 }
 
@@ -418,7 +465,7 @@ build_eligibility() {
   SUPPORT_BACKEND="${backend}"
   SUPPORT_REASON=""
   SUPPORT_TAILNET_MATCH="false"
-  SUPPORT_USER="$(bashio::config "support_user" "Nodalia")"
+  SUPPORT_USER="$(bashio::config "support_user" "nodalia")"
 
   SUPPORT_USER_EXISTS="false"
   SUPPORT_USER_ACTIVE="false"
@@ -646,7 +693,7 @@ fallback_status_json() {
   fi
   cfg_user="$(bashio::config "support_user" 2>/dev/null || true)"
   if [[ -z "${cfg_user}" ]]; then
-    cfg_user="Nodalia"
+    cfg_user="nodalia"
   fi
   cfg_enabled=false
   if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then

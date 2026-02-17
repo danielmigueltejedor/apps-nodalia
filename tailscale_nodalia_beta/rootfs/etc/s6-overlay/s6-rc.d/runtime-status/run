@@ -138,7 +138,7 @@ do
     support_json="${support_cached_json}"
   else
     support_fallback_dns="$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")"
-    support_fallback_user="$(bashio::config "support_user" "Nodalia")"
+    support_fallback_user="$(bashio::config "support_user" "nodalia")"
     support_fallback_enabled="false"
     if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
       support_fallback_enabled="true"

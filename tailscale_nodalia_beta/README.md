@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta110`
+`3.0.0-beta111`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -32,7 +32,7 @@ Cambios destacados (resumen de betas recientes):
   - lookup de usuario endurecido (primero `core/api/config/users`, fallback `auth/list`) para evitar falsos `ha_users_api_error`.
   - activación/revocación prioriza `is_active` por API de Home Assistant y solo cae a reset de password como último recurso.
   - nueva ventana temporal con TTL, auditoría y elegibilidad por DNS de tailnet (`support_tailnet_dns_suffix`).
-  - el usuario de soporte se define en `support_user` (por defecto `Nodalia`).
+  - el usuario de soporte se define en `support_user` (por defecto `nodalia`).
 - UI beta renovada:
   - tema oscuro por defecto.
   - selector claro/oscuro en modo icon-only (`☀`/`🌙`).
@@ -363,7 +363,7 @@ La elegibilidad del acceso se valida con este valor.
 
 ### `support_user`
 
-Usuario local de soporte (por defecto: `Nodalia`).
+Usuario local de soporte (por defecto: `nodalia`).
 
 El add-on habilita/revoca este usuario directamente desde la API interna de Home Assistant.
 Recomendación: que sea un usuario local dedicado de soporte (no owner).
