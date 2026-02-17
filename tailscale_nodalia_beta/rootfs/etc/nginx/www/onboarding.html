@@ -203,6 +203,20 @@
       white-space: nowrap;
       border-color: #3d628f;
     }
+    .support-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+    .support-icon circle,
+    .support-icon path,
+    .support-icon rect {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
     .support-btn.support-on {
       border-color: #4b8bca;
       color: #dbefff;
@@ -532,7 +546,16 @@
         <div class="hero-actions">
           <span id="logout-hint" class="logout-hint" hidden></span>
           <button id="op-logout-btn" type="button" class="power-btn" aria-label="Logauth y reset de identidad local" title="Logauth (reset tailnet)">&#x23FB;</button>
-          <button id="support-nav-btn" type="button" class="ghost support-btn" aria-label="Abrir modo soporte" title="Abrir modo soporte">&#x260E;</button>
+          <button id="support-nav-btn" type="button" class="ghost support-btn" aria-label="Abrir modo soporte" title="Abrir modo soporte">
+            <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="8.2" r="2.7"></circle>
+              <path d="M4.8 11.6a7.2 7.2 0 0 1 14.4 0"></path>
+              <rect x="4.2" y="12" width="3.1" height="4.8" rx="1.2"></rect>
+              <rect x="16.7" y="12" width="3.1" height="4.8" rx="1.2"></rect>
+              <path d="M9 18.1h6"></path>
+              <path d="M10.4 20.2h3.2"></path>
+            </svg>
+          </button>
           <button id="theme-toggle-btn" type="button" class="ghost theme-toggle" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">☀</button>
         </div>
       </div>
