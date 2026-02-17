@@ -637,7 +637,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta112</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta113</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1146,6 +1146,16 @@
       };
     }
 
+    function extractApiError(data, fallback = "api_failed") {
+      return String(
+        data?.error ||
+        data?.reason ||
+        data?.output ||
+        data?.message ||
+        fallback
+      );
+    }
+
     async function callSupportApi(action, method = "GET", allowGetFallback = false) {
       const request = async (httpMethod) => {
         try {
@@ -1172,18 +1182,18 @@
       );
       if (shouldRetryAsGet) {
         const second = await request("GET");
-        if (second.response?.ok) {
+        if (second.response?.ok && second.data?.ok !== false) {
           return second.data;
         }
         throw new Error(
-          String(second.data?.error || second.error?.message || "support_api_failed")
+          extractApiError(second.data, second.error?.message || "support_api_failed")
         );
       }
-      if (first.response?.ok) {
+      if (first.response?.ok && first.data?.ok !== false) {
         return first.data;
       }
       throw new Error(
-        String(first.data?.error || first.data?.reason || first.data?.output || first.error?.message || "support_api_failed")
+        extractApiError(first.data, first.error?.message || "support_api_failed")
       );
     }
 
@@ -1213,18 +1223,18 @@
       );
       if (shouldRetryAsGet) {
         const second = await request("GET");
-        if (second.response?.ok) {
+        if (second.response?.ok && second.data?.ok !== false) {
           return second.data;
         }
         throw new Error(
-          String(second.data?.output || second.data?.error || second.error?.message || "control_api_failed")
+          extractApiError(second.data, second.error?.message || "control_api_failed")
         );
       }
-      if (first.response?.ok) {
+      if (first.response?.ok && first.data?.ok !== false) {
         return first.data;
       }
       throw new Error(
-        String(first.data?.output || first.data?.error || first.error?.message || "control_api_failed")
+        extractApiError(first.data, first.error?.message || "control_api_failed")
       );
     }
 
@@ -1531,7 +1541,7 @@
         suggestions.push("No se pudo cambiar is_active del usuario de soporte. Revisa permisos del add-on y existencia del usuario local.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_user_id_vacio")) {
-        suggestions.push("La API devolvio usuario sin ID. En beta112 se intenta fallback por login_name; reinicia el add-on y prueba de nuevo.");
+        suggestions.push("La API devolvio usuario sin ID. En beta113 se intenta fallback por login_name; reinicia el add-on y prueba de nuevo.");
       }
       if (String(lastRuntime?.support_reason || "").includes("support_status")) {
         suggestions.push("El backend de soporte devolvio fallo interno. Pulsa Recargar y revisa logs del add-on para ver el error exacto.");

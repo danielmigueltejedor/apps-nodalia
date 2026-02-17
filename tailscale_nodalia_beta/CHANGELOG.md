@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta113 - 2026-02-17
+### Fixed
+- Onboarding: se elimina el falso genérico `support_api_failed` en rutas de fallback de soporte.
+  - `callSupportApi` y `callControlApi` ahora tratan como error respuestas `HTTP 200` con `{"ok":false}`.
+  - la extracción de error se unifica (`error`, `reason`, `output`, `message`) para mostrar causa real del backend.
+  - la ruta de retry `POST -> GET` ya no pierde el detalle de error cuando el backend no usa `error` y responde con `reason/output`.
+- Marcador visual actualizado a `UI build: 3.0.0-beta113`.
+
 ## 3.0.0-beta112 - 2026-02-17
 ### Fixed
 - Onboarding: corrección de errores genéricos `support_api_failed` al activar/revocar soporte:
