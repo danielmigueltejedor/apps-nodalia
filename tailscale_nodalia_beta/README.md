@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta125`
+`3.0.0-beta126`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -489,6 +489,9 @@ Ejemplo: `https://homeassistant.getnodalia.com`
 
 Si está vacío, el aplicación intentará construirla automáticamente como:
 `https://<hostname>.<support_target_domain_suffix>`.
+
+Nota:
+- Si defines una URL local (`http://127.0.0.1`, `http://localhost`, `http://0.0.0.0`), se ignora automáticamente para evitar enlaces no accesibles desde soporte externo.
 
 ---
 

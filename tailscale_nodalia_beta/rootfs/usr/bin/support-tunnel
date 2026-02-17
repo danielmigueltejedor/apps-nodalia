@@ -9,6 +9,7 @@ set -euo pipefail
 readonly STATE_FILE="/data/support-tunnel.json"
 readonly META_FILE="/data/support-tunnel-meta.json"
 readonly AUDIT_FILE="/data/support-tunnel-audit.log"
+readonly NOTIFY_FILE="/data/support-notify.json"
 
 now_utc() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -52,6 +53,17 @@ normalize_base_url() {
   printf '%s' "${value}"
 }
 
+is_local_base_url() {
+  local value host
+  value="$(normalize_base_url "${1:-}")"
+  if [[ -z "${value}" ]]; then
+    return 0
+  fi
+  host="$(printf '%s' "${value}" | sed -E 's#^https?://\[?([^]/:]+)\]?.*$#\1#')"
+  host="$(normalize_lc "${host}")"
+  [[ "${host}" == "localhost" || "${host}" == "0.0.0.0" || "${host}" == "::1" || "${host}" == "127."* ]]
+}
+
 build_absolute_url() {
   local base path
   base="$(normalize_base_url "${1:-}")"
@@ -90,11 +102,13 @@ telegram_notify_enabled() {
 }
 
 send_support_notification_telegram() {
-  local bot_token chat_id login_url host_label ttl_minutes token_name message payload response rc
+  local bot_token chat_id login_url host_label ttl_minutes token_name message payload
+  local response_with_status response_body http_status rc
   SUPPORT_NOTIFY_STATUS="disabled"
   SUPPORT_NOTIFY_REASON=""
 
   if ! telegram_notify_enabled; then
+    write_notify_state "disabled" "" "${SUPPORT_VK_TOKEN_NAME:-}" "${SUPPORT_VK_LOGIN_URL:-}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 0
   fi
 
@@ -105,6 +119,7 @@ send_support_notification_telegram() {
   if [[ -z "${bot_token}" || -z "${chat_id}" ]]; then
     SUPPORT_NOTIFY_STATUS="error"
     SUPPORT_NOTIFY_REASON="support_notify_telegram_config_incomplete"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${SUPPORT_VK_LOGIN_URL:-}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
 
@@ -115,12 +130,14 @@ send_support_notification_telegram() {
   if [[ -z "${login_url}" ]]; then
     SUPPORT_NOTIFY_STATUS="error"
     SUPPORT_NOTIFY_REASON="support_notify_login_url_empty"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${SUPPORT_VK_LOGIN_URL:-}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
 
   if ! command -v curl >/dev/null 2>&1; then
     SUPPORT_NOTIFY_STATUS="error"
     SUPPORT_NOTIFY_REASON="support_notify_curl_missing"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${SUPPORT_VK_LOGIN_URL:-}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
 
@@ -144,9 +161,10 @@ EOF
     '{chat_id:$chat_id,text:$text,disable_web_page_preview:true}')"
 
   set +e
-  response="$(curl -fsS --connect-timeout 5 --max-time 15 \
+  response_with_status="$(curl -sS --connect-timeout 5 --max-time 15 \
     -H "Content-Type: application/json" \
     -d "${payload}" \
+    -w '\n%{http_code}' \
     "https://api.telegram.org/bot${bot_token}/sendMessage" 2>&1)"
   rc=$?
   set -e
@@ -154,17 +172,62 @@ EOF
   if (( rc != 0 )); then
     SUPPORT_NOTIFY_STATUS="error"
     SUPPORT_NOTIFY_REASON="support_notify_telegram_request_failed"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${login_url}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
-  if ! jq -e '.ok == true' >/dev/null 2>&1 <<< "${response}"; then
+  http_status="${response_with_status##*$'\n'}"
+  response_body="${response_with_status%$'\n'*}"
+  if [[ "${http_status}" =~ ^[0-9]{3}$ ]] && [[ "${http_status}" != 2* ]]; then
+    SUPPORT_NOTIFY_STATUS="error"
+    SUPPORT_NOTIFY_REASON="support_notify_telegram_http_${http_status}"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${login_url}" "${SUPPORT_SELF_HOST_NAME:-}"
+    return 1
+  fi
+  if ! jq -e '.ok == true' >/dev/null 2>&1 <<< "${response_body}"; then
     SUPPORT_NOTIFY_STATUS="error"
     SUPPORT_NOTIFY_REASON="support_notify_telegram_api_failed"
+    write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${login_url}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
 
   SUPPORT_NOTIFY_STATUS="sent"
   SUPPORT_NOTIFY_REASON=""
+  write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${login_url}" "${SUPPORT_SELF_HOST_NAME:-}"
   return 0
+}
+
+write_notify_state() {
+  local status reason token_name login_url host
+  status="${1:-disabled}"
+  reason="${2:-}"
+  token_name="${3:-}"
+  login_url="${4:-}"
+  host="${5:-}"
+  jq -nc \
+    --arg updated_at "$(now_utc)" \
+    --arg status "${status}" \
+    --arg reason "${reason}" \
+    --arg token_name "${token_name}" \
+    --arg login_url "${login_url}" \
+    --arg host "${host}" \
+    '{updated_at:$updated_at,status:$status,reason:$reason,token_name:$token_name,login_url:$login_url,host:$host}' > "${NOTIFY_FILE}"
+}
+
+read_notify_state() {
+  SUPPORT_NOTIFY_LAST_STATUS="disabled"
+  SUPPORT_NOTIFY_LAST_REASON=""
+  SUPPORT_NOTIFY_LAST_UPDATED_AT=""
+  SUPPORT_NOTIFY_LAST_TOKEN_NAME=""
+  SUPPORT_NOTIFY_LAST_LOGIN_URL=""
+  SUPPORT_NOTIFY_LAST_HOST=""
+  if [[ -f "${NOTIFY_FILE}" ]]; then
+    SUPPORT_NOTIFY_LAST_STATUS="$(jq -r '.status // "disabled"' "${NOTIFY_FILE}" 2>/dev/null || echo "disabled")"
+    SUPPORT_NOTIFY_LAST_REASON="$(jq -r '.reason // empty' "${NOTIFY_FILE}" 2>/dev/null || true)"
+    SUPPORT_NOTIFY_LAST_UPDATED_AT="$(jq -r '.updated_at // empty' "${NOTIFY_FILE}" 2>/dev/null || true)"
+    SUPPORT_NOTIFY_LAST_TOKEN_NAME="$(jq -r '.token_name // empty' "${NOTIFY_FILE}" 2>/dev/null || true)"
+    SUPPORT_NOTIFY_LAST_LOGIN_URL="$(jq -r '.login_url // empty' "${NOTIFY_FILE}" 2>/dev/null || true)"
+    SUPPORT_NOTIFY_LAST_HOST="$(jq -r '.host // empty' "${NOTIFY_FILE}" 2>/dev/null || true)"
+  fi
 }
 
 dns_matches_suffix() {
@@ -1297,6 +1360,9 @@ build_eligibility() {
   candidate_strings="$(jq -r '[.CurrentTailnet.Name,.CurrentTailnet.MagicDNSSuffix,.CurrentTailnet.Tailnet,.Self.DNSName,.Self.HostName,.Self.Tailnet] | map(select(type=="string" and length>0)) | .[]' <<< "${status_json}" 2>/dev/null || true)"
 
   target_url_cfg="$(normalize_base_url "$(bashio::config "support_target_url" "" 2>/dev/null || true)")"
+  if is_local_base_url "${target_url_cfg}"; then
+    target_url_cfg=""
+  fi
   target_domain_suffix="$(normalize_dns_value "$(bashio::config "support_target_domain_suffix" "getnodalia.com" 2>/dev/null || true)")"
   if [[ -z "${target_url_cfg}" && -n "${support_host_label}" && -n "${target_domain_suffix}" ]]; then
     target_url_cfg="https://${support_host_label}.${target_domain_suffix}"
@@ -1451,6 +1517,7 @@ write_state() {
   eligible="${2:-false}"
   now="$(now_utc)"
   read_meta
+  read_notify_state
 
   jq -nc \
     --arg updated_at "${now}" \
@@ -1464,6 +1531,9 @@ write_state() {
     --arg support_user_id "${SUPPORT_USER_ID}" \
     --arg support_mode "${SUPPORT_MODE:-static_user}" \
     --arg support_token_name "${SUPPORT_VK_TOKEN_NAME:-${META_SUPPORT_TOKEN_NAME:-}}" \
+    --arg support_notify_status "${SUPPORT_NOTIFY_LAST_STATUS:-disabled}" \
+    --arg support_notify_reason "${SUPPORT_NOTIFY_LAST_REASON:-}" \
+    --arg support_notify_updated_at "${SUPPORT_NOTIFY_LAST_UPDATED_AT:-}" \
     --argjson support_token_count "$(sanitize_uint "${SUPPORT_VK_TOKEN_COUNT:-0}")" \
     --argjson expires_epoch "${META_EXPIRES_EPOCH}" \
     --argjson ttl_minutes "${META_TTL_MIN}" \
@@ -1490,6 +1560,9 @@ write_state() {
       support_mode:$support_mode,
       support_token_name:$support_token_name,
       support_token_count:$support_token_count,
+      support_notify_status:$support_notify_status,
+      support_notify_reason:$support_notify_reason,
+      support_notify_updated_at:$support_notify_updated_at,
       support_user_exists:$support_user_exists,
       support_user_active:$support_user_active,
       support_user_active_known:$support_user_active_known,
@@ -1770,7 +1843,7 @@ debug_cmd() {
   local status_json self_dns_name self_host_name magic_dns_suffix current_tailnet_name
   local lookup_forced lookup_rc lookup_hint
   local debug_eligible now_epoch debug_active
-  local state_snapshot meta_snapshot
+  local state_snapshot meta_snapshot notify_snapshot
 
   cfg_enabled=false
   if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
@@ -1869,6 +1942,7 @@ debug_cmd() {
 
   state_snapshot="$(read_json_file_or_empty "${STATE_FILE}")"
   meta_snapshot="$(read_json_file_or_empty "${META_FILE}")"
+  notify_snapshot="$(read_json_file_or_empty "${NOTIFY_FILE}")"
 
   jq -nc \
     --arg generated_at "$(now_utc)" \
@@ -1924,6 +1998,7 @@ debug_cmd() {
     --argjson lookup_forced "$(json_bool "${lookup_forced}")" \
     --argjson state_snapshot "${state_snapshot}" \
     --argjson meta_snapshot "${meta_snapshot}" \
+    --argjson notify_snapshot "${notify_snapshot}" \
     '{
       ok:true,
       action:"debug",
@@ -1991,7 +2066,8 @@ debug_cmd() {
         output:$api_last_output
       },
       state_snapshot:$state_snapshot,
-      meta_snapshot:$meta_snapshot
+      meta_snapshot:$meta_snapshot,
+      notify_snapshot:$notify_snapshot
     }'
 }
 
@@ -2040,6 +2116,9 @@ fallback_status_json() {
       support_mode:$support_mode,
       support_token_name:"",
       support_token_count:0,
+      support_notify_status:"disabled",
+      support_notify_reason:"",
+      support_notify_updated_at:"",
       support_user_id:"",
       support_user_exists:false,
       support_user_active:false,

@@ -17,6 +17,7 @@ RUN \
     iproute2 \
     iptables \
     nginx \
+    curl \
     coreutils \
     networkmanager \
     python3 \

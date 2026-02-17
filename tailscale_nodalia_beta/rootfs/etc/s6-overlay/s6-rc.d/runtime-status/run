@@ -182,6 +182,9 @@ do
   support_user="$(jq -r '.support_user // empty' <<< "${support_json}" 2>/dev/null || true)"
   support_token_name="$(jq -r '.support_token_name // empty' <<< "${support_json}" 2>/dev/null || true)"
   support_token_count="$(jq -r '.support_token_count // 0' <<< "${support_json}" 2>/dev/null || echo "0")"
+  support_notify_status="$(jq -r '.support_notify_status // "disabled"' <<< "${support_json}" 2>/dev/null || echo "disabled")"
+  support_notify_reason="$(jq -r '.support_notify_reason // empty' <<< "${support_json}" 2>/dev/null || true)"
+  support_notify_updated_at="$(jq -r '.support_notify_updated_at // empty' <<< "${support_json}" 2>/dev/null || true)"
   if (( loop_count == 0 || loop_count % DNS_RESOLVERS_REFRESH_EVERY_LOOPS == 0 )); then
     dns_resolvers="$(awk '/^[[:space:]]*nameserver[[:space:]]+/ {print $2}' /etc/resolv.conf 2>/dev/null | jq -Rsc 'split("\n") | map(select(length>0))' || echo '[]')"
   fi
@@ -232,6 +235,9 @@ do
     --arg support_user "${support_user}" \
     --arg support_token_name "${support_token_name}" \
     --arg support_token_count "${support_token_count}" \
+    --arg support_notify_status "${support_notify_status}" \
+    --arg support_notify_reason "${support_notify_reason}" \
+    --arg support_notify_updated_at "${support_notify_updated_at}" \
     --arg dns_warning "${dns_warning}" \
     --arg dns_degraded "${dns_degraded}" \
     --arg dns_resolvers "${dns_resolvers}" \
@@ -266,6 +272,9 @@ do
       support_user:$support_user,
       support_token_name:$support_token_name,
       support_token_count:($support_token_count | tonumber? // 0),
+      support_notify_status:$support_notify_status,
+      support_notify_reason:$support_notify_reason,
+      support_notify_updated_at:$support_notify_updated_at,
       dns_warning:$dns_warning,
       dns_degraded:($dns_degraded == "true"),
       dns_resolvers: ($dns_resolvers | fromjson? // []),

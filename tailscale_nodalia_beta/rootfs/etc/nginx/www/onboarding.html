@@ -603,6 +603,8 @@
         <div>Acceso activo:</div><div><code id="sup-active">-</code></div>
         <div>Usuario soporte:</div><div><code id="sup-user">-</code></div>
         <div>Token soporte:</div><div><code id="sup-token-name">-</code></div>
+        <div>Notificacion Telegram:</div><div><code id="sup-notify-status">-</code></div>
+        <div>Motivo notificacion:</div><div><code id="sup-notify-reason">-</code></div>
         <div>Expira en:</div><div><code id="sup-expires">-</code></div>
         <div>Motivo:</div><div><code id="sup-reason">-</code></div>
       </div>
@@ -640,7 +642,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta125</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta126</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -675,6 +677,8 @@
     const supportActive = document.getElementById("sup-active");
     const supportUser = document.getElementById("sup-user");
     const supportTokenName = document.getElementById("sup-token-name");
+    const supportNotifyStatus = document.getElementById("sup-notify-status");
+    const supportNotifyReason = document.getElementById("sup-notify-reason");
     const supportExpires = document.getElementById("sup-expires");
     const supportReason = document.getElementById("sup-reason");
     const supportMessage = document.getElementById("sup-message");
@@ -992,6 +996,8 @@
       const reason = String(runtime?.support_reason || runtime?.reason || "");
       const supportUserValue = String(runtime?.support_user || "nodalia");
       const tokenNameValue = String(runtime?.support_token_name || "");
+      const notifyStatusValue = String(runtime?.support_notify_status || "disabled");
+      const notifyReasonValue = String(runtime?.support_notify_reason || "");
       const targetDns = String(runtime?.support_tailnet_dns_suffix || runtime?.support_target_dns_suffix || "");
       const targetId = String(runtime?.support_target_id || "");
       supportEnabled.textContent = enabled ? "true" : "false";
@@ -1002,6 +1008,8 @@
       supportActive.textContent = active ? "true" : "false";
       supportUser.textContent = supportUserValue || "-";
       supportTokenName.textContent = tokenNameValue || "-";
+      supportNotifyStatus.textContent = notifyStatusValue || "-";
+      supportNotifyReason.textContent = notifyReasonValue || "-";
       supportExpires.textContent = expiresAt || "-";
       supportReason.textContent = reason || "-";
       supportRules = {
@@ -1676,6 +1684,27 @@
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("support_virtual_keys_token_not_found")) {
         suggestions.push("La sesión/token temporal ya no existe en virtual-keys. Puedes habilitar soporte de nuevo.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_config_incomplete")) {
+        suggestions.push("Telegram incompleto: define bot token y chat id para enviar el enlace temporal.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_login_url_empty")) {
+        suggestions.push("No se pudo construir URL de acceso para soporte. Revisa support_target_url o support_target_domain_suffix.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_curl_missing")) {
+        suggestions.push("Falta curl en la imagen de la aplicación. Actualiza a la beta mas reciente.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_request_failed")) {
+        suggestions.push("Fallo de red al enviar Telegram. Verifica salida a internet desde la aplicación.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_http_401")) {
+        suggestions.push("Telegram devolvio 401: bot token invalido o revocado.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_http_403")) {
+        suggestions.push("Telegram devolvio 403: el bot no tiene permiso en ese chat o no has iniciado chat con el bot.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_api_failed")) {
+        suggestions.push("Telegram devolvio payload invalido/no esperado. Pulsa Debug soporte para ver api_last.");
       }
       if (String(lastRuntime?.support_reason || "").includes("support_status")) {
         suggestions.push("El backend de soporte devolvio fallo interno. Pulsa Recargar y revisa logs del aplicación para ver el error exacto.");
