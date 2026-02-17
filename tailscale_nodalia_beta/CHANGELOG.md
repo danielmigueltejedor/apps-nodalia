@@ -4,7 +4,7 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
-## 3.0.0-beta126 - 2026-02-17
+## 3.0.0-beta127 - 2026-02-17
 ### Added
 - Modo de soporte temporal completo (`support_temp_account_mode`):
   - al habilitar soporte crea usuario+password temporales vía servicio HA.
@@ -27,9 +27,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - `support_notify_reason` ahora distingue fallo de red vs error HTTP de Telegram (`support_notify_telegram_http_401`, `..._403`, etc.).
   - el estado de notificación queda persistido y expuesto en runtime/debug (`support_notify_status`, `support_notify_reason`, `support_notify_updated_at`).
   - si `support_target_url` apunta a local (`127.0.0.1`/`localhost`), se ignora y se usa URL pública por hostname.
+  - mejora de compatibilidad en envío `sendMessage` usando `application/x-www-form-urlencoded` para evitar errores 400 por payload.
+  - en `HTTP 400` ahora se mapea motivo más útil (`support_notify_telegram_chat_not_found`, `..._bot_blocked`, `..._not_enough_rights`, etc.).
 - UI onboarding (soporte):
+  - nuevo botón de acceso rápido a modo soporte en cabecera (entre power y tema claro/oscuro), con scroll/foco al panel de soporte.
   - nuevos campos visibles para estado/motivo de notificación Telegram.
-  - nuevas sugerencias inteligentes para errores de configuración/red/API de Telegram.
+  - nuevas sugerencias inteligentes para errores de configuración/red/API de Telegram (incluyendo casos de `HTTP 400`).
 - Elegibilidad de soporte temporal más estricta:
   - valida servicios de creación/revocación antes de permitir habilitar.
   - evita activar soporte temporal cuando no hay camino de revocación.
@@ -43,7 +46,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
   - nuevo campo `Modo soporte`.
   - al habilitar soporte temporal muestra credenciales generadas (usuario/password).
   - sugerencias nuevas para causas de error específicas del modo temporal.
-  - marcador visual actualizado a `UI build: 3.0.0-beta126`.
+  - marcador visual actualizado a `UI build: 3.0.0-beta127`.
 
 ## 3.0.0-beta121 - 2026-02-17
 ### Fixed

@@ -190,6 +190,29 @@
       text-align: center;
       white-space: nowrap;
     }
+    .support-btn {
+      min-width: 48px;
+      width: 48px;
+      padding: 10px 0;
+      font-size: 1.05rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      white-space: nowrap;
+      border-color: #3d628f;
+    }
+    .support-btn.support-on {
+      border-color: #4b8bca;
+      color: #dbefff;
+      box-shadow: 0 8px 18px rgba(17, 65, 126, 0.32);
+    }
+    .support-btn.support-active {
+      border-color: #39b883;
+      color: #deffef;
+      box-shadow: 0 8px 18px rgba(18, 88, 57, 0.35);
+    }
     .power-btn {
       min-width: 48px;
       width: 48px;
@@ -339,6 +362,11 @@
       margin-top: 14px;
       background: linear-gradient(180deg, var(--panel-grad-top), var(--panel-grad-bottom));
       box-shadow: 0 6px 18px rgba(11, 28, 52, 0.05);
+      scroll-margin-top: 18px;
+    }
+    .panel-focus {
+      border-color: #5f98d9;
+      box-shadow: 0 0 0 3px rgba(93, 143, 209, 0.2), 0 10px 24px rgba(11, 28, 52, 0.22);
     }
     .panel h2 {
       margin: 0 0 8px;
@@ -486,6 +514,7 @@
       .actions { display: grid; grid-template-columns: 1fr; }
       .hero-head { align-items: center; }
       .theme-toggle { width: 48px; min-width: 48px; }
+      .support-btn { width: 48px; min-width: 48px; }
       .hero-actions { width: 100%; }
       .power-btn { min-width: 0; }
       .logout-hint { width: 100%; justify-content: center; }
@@ -503,6 +532,7 @@
         <div class="hero-actions">
           <span id="logout-hint" class="logout-hint" hidden></span>
           <button id="op-logout-btn" type="button" class="power-btn" aria-label="Logauth y reset de identidad local" title="Logauth (reset tailnet)">&#x23FB;</button>
+          <button id="support-nav-btn" type="button" class="ghost support-btn" aria-label="Abrir modo soporte" title="Abrir modo soporte">&#x260E;</button>
           <button id="theme-toggle-btn" type="button" class="ghost theme-toggle" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">☀</button>
         </div>
       </div>
@@ -591,7 +621,7 @@
         <button id="copy-tagowners-btn" type="button" class="ghost">Copiar bloque tagOwners</button>
       </div>
     </section>
-    <section class="panel advanced-only">
+    <section id="support-panel" class="panel advanced-only">
       <h2>Acceso soporte Nodalia</h2>
       <p class="small">Disponible solo si el DNS de esta instancia coincide con el DNS de soporte configurado.</p>
       <div class="kv">
@@ -642,7 +672,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta126</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code>3.0.0-beta127</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -657,6 +687,8 @@
     const hardRefreshBtn = document.getElementById("hard-refresh-btn");
     const toggleAdvancedBtn = document.getElementById("toggle-advanced-btn");
     const themeToggleBtn = document.getElementById("theme-toggle-btn");
+    const supportNavBtn = document.getElementById("support-nav-btn");
+    const supportPanel = document.getElementById("support-panel");
     const logoutHint = document.getElementById("logout-hint");
     const refreshBtn = document.getElementById("refresh-btn");
     const refreshOkBtn = document.getElementById("refresh-ok-btn");
@@ -934,6 +966,20 @@
       syncLogoutTraceVisibility();
     }
 
+    function openSupportMode() {
+      if (!advancedModeEnabled) {
+        advancedModeEnabled = true;
+        renderAdvancedMode();
+        saveUiPrefs();
+      }
+      if (supportPanel) {
+        supportPanel.classList.remove("panel-focus");
+        supportPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => supportPanel.classList.add("panel-focus"), 60);
+        setTimeout(() => supportPanel.classList.remove("panel-focus"), 980);
+      }
+    }
+
     function setUiDisabled(element, disabled) {
       if (!element) {
         return;
@@ -1012,6 +1058,10 @@
       supportNotifyReason.textContent = notifyReasonValue || "-";
       supportExpires.textContent = expiresAt || "-";
       supportReason.textContent = reason || "-";
+      if (supportNavBtn) {
+        supportNavBtn.classList.toggle("support-on", enabled);
+        supportNavBtn.classList.toggle("support-active", active);
+      }
       supportRules = {
         enable: enabled && eligible && !active,
         disable: active,
@@ -1697,6 +1747,24 @@
       if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_request_failed")) {
         suggestions.push("Fallo de red al enviar Telegram. Verifica salida a internet desde la aplicación.");
       }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_chat_not_found")) {
+        suggestions.push("Telegram indica chat no encontrado: revisa support_notify_telegram_chat_id y que el bot haya iniciado conversación en ese chat.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_bot_blocked")) {
+        suggestions.push("El bot está bloqueado por el usuario/chat de destino. Desbloquéalo y vuelve a habilitar soporte.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_not_enough_rights")) {
+        suggestions.push("El bot no tiene permisos suficientes en el chat/canal. Concede permisos de envío de mensajes.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_chat_id_empty")) {
+        suggestions.push("El chat_id de Telegram está vacío o inválido.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_parse_error")) {
+        suggestions.push("Telegram no pudo parsear el mensaje. Reintenta y revisa configuración de notificación.");
+      }
+      if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_http_400")) {
+        suggestions.push("Telegram devolvió 400 (Bad Request). Revisa chat_id y permisos del bot en el destino.");
+      }
       if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_http_401")) {
         suggestions.push("Telegram devolvio 401: bot token invalido o revocado.");
       }
@@ -1874,9 +1942,14 @@
         supportActive.textContent = "n/a";
         supportUser.textContent = "n/a";
         supportTokenName.textContent = "n/a";
+        supportNotifyStatus.textContent = "n/a";
+        supportNotifyReason.textContent = "n/a";
         supportExpires.textContent = "n/a";
         supportReason.textContent = "runtime unavailable";
         supportRules = { enable: false, disable: false, audit: false, debug: true };
+        if (supportNavBtn) {
+          supportNavBtn.classList.remove("support-on", "support-active");
+        }
         renderSupportButtons();
         opCanLogout = false;
         renderOpButtons();
@@ -1931,6 +2004,9 @@
     });
     copyProfileSubnet.addEventListener("click", async () => {
       await copyText("setup_profile: subnet_router", copyProfileSubnet, "Copiado", "Copiar");
+    });
+    supportNavBtn.addEventListener("click", () => {
+      openSupportMode();
     });
     sessionDiagBtn.addEventListener("click", runDiagnostics);
     sessionDownloadBtn.addEventListener("click", downloadDiagnostics);

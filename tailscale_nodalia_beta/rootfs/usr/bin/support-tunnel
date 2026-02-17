@@ -94,6 +94,72 @@ sanitize_hostname_label() {
   printf '%s' "${value}"
 }
 
+sanitize_reason_token() {
+  local value
+  value="$(normalize_lc "$(trim_spaces "${1:-}")")"
+  value="$(printf '%s' "${value}" | sed -E 's/[^a-z0-9]+/_/g; s/_+/_/g; s/^_+//; s/_+$//')"
+  if [[ "${#value}" -gt 52 ]]; then
+    value="${value:0:52}"
+    value="${value%_}"
+  fi
+  printf '%s' "${value}"
+}
+
+telegram_http_reason() {
+  local http_status response_body description desc_token reason
+  http_status="${1:-000}"
+  response_body="${2:-}"
+  description="$(jq -r '.description // empty' <<< "${response_body}" 2>/dev/null || true)"
+  description="$(normalize_lc "$(trim_spaces "${description}")")"
+  case "${description}" in
+    bad\ request:*)
+      description="${description#bad request:}"
+      description="$(trim_spaces "${description}")"
+      ;;
+    unauthorized:*)
+      description="${description#unauthorized:}"
+      description="$(trim_spaces "${description}")"
+      ;;
+    forbidden:*)
+      description="${description#forbidden:}"
+      description="$(trim_spaces "${description}")"
+      ;;
+  esac
+
+  case "${description}" in
+    *chat\ not\ found*)
+      reason="support_notify_telegram_chat_not_found"
+      ;;
+    *bot\ was\ blocked\ by\ the\ user*)
+      reason="support_notify_telegram_bot_blocked"
+      ;;
+    *user\ is\ deactivated*)
+      reason="support_notify_telegram_user_deactivated"
+      ;;
+    *not\ enough\ rights*)
+      reason="support_notify_telegram_not_enough_rights"
+      ;;
+    *have\ no\ rights\ to\ send\ a\ message*)
+      reason="support_notify_telegram_not_enough_rights"
+      ;;
+    *chat_id\ is\ empty*)
+      reason="support_notify_telegram_chat_id_empty"
+      ;;
+    *parse\ entities*)
+      reason="support_notify_telegram_parse_error"
+      ;;
+    *)
+      desc_token="$(sanitize_reason_token "${description}")"
+      if [[ -n "${desc_token}" ]]; then
+        reason="support_notify_telegram_http_${http_status}_${desc_token}"
+      else
+        reason="support_notify_telegram_http_${http_status}"
+      fi
+      ;;
+  esac
+  printf '%s' "${reason}"
+}
+
 telegram_notify_enabled() {
   if bashio::config.has_value "support_notify_telegram_enabled" && bashio::config.true "support_notify_telegram_enabled"; then
     return 0
@@ -102,7 +168,7 @@ telegram_notify_enabled() {
 }
 
 send_support_notification_telegram() {
-  local bot_token chat_id login_url host_label ttl_minutes token_name message payload
+  local bot_token chat_id login_url host_label ttl_minutes token_name message
   local response_with_status response_body http_status rc
   SUPPORT_NOTIFY_STATUS="disabled"
   SUPPORT_NOTIFY_REASON=""
@@ -155,15 +221,10 @@ Login URL: ${login_url}
 EOF
   )
 
-  payload="$(jq -nc \
-    --arg chat_id "${chat_id}" \
-    --arg text "${message}" \
-    '{chat_id:$chat_id,text:$text,disable_web_page_preview:true}')"
-
   set +e
   response_with_status="$(curl -sS --connect-timeout 5 --max-time 15 \
-    -H "Content-Type: application/json" \
-    -d "${payload}" \
+    --data-urlencode "chat_id=${chat_id}" \
+    --data-urlencode "text=${message}" \
     -w '\n%{http_code}' \
     "https://api.telegram.org/bot${bot_token}/sendMessage" 2>&1)"
   rc=$?
@@ -179,7 +240,7 @@ EOF
   response_body="${response_with_status%$'\n'*}"
   if [[ "${http_status}" =~ ^[0-9]{3}$ ]] && [[ "${http_status}" != 2* ]]; then
     SUPPORT_NOTIFY_STATUS="error"
-    SUPPORT_NOTIFY_REASON="support_notify_telegram_http_${http_status}"
+    SUPPORT_NOTIFY_REASON="$(telegram_http_reason "${http_status}" "${response_body}")"
     write_notify_state "${SUPPORT_NOTIFY_STATUS}" "${SUPPORT_NOTIFY_REASON}" "${SUPPORT_VK_TOKEN_NAME:-}" "${login_url}" "${SUPPORT_SELF_HOST_NAME:-}"
     return 1
   fi
