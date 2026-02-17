@@ -122,7 +122,7 @@ do
   direct_webui_url=""
 
   set +e
-  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" support-tunnel status)"
+  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status)"
   support_cmd_rc=$?
   set -e
   if (( support_cmd_rc == 0 )) && jq -e . > /dev/null 2>&1 <<< "${support_cmd_output}"; then
@@ -137,7 +137,7 @@ do
     support_json="$(jq -nc \
       --arg support_target_dns_suffix "${support_fallback_dns}" \
       --arg support_user "${support_fallback_user}" \
-      --arg reason "support_status_failed" \
+      --arg reason "support_status_failed_rc_${support_cmd_rc}" \
       --arg support_enabled "${support_fallback_enabled}" \
       '{support_enabled:($support_enabled=="true"),support_target_dns_suffix:$support_target_dns_suffix,tailnet_match:false,eligible:false,active:false,reason:$reason,support_user:$support_user}')"
   fi

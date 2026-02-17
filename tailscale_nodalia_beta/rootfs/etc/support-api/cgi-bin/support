@@ -102,7 +102,7 @@ if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${REQUEST_METHOD:-GET}" != "G
 fi
 
 set +e
-payload="$(support-tunnel "${action}" 2>&1)"
+payload="$(/usr/bin/support-tunnel "${action}" 2>&1)"
 rc=$?
 set -e
 

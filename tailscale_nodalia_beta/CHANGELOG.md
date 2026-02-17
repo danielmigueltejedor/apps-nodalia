@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta101 - 2026-02-17
+### Fixed
+- `support_status_failed` persistente en algunos entornos por resolución de binario:
+  - `runtime-status` ahora invoca soporte con ruta absoluta (`/usr/bin/support-tunnel`) en lugar de depender de `PATH`.
+  - `support-api` CGI también usa ruta absoluta para `support-tunnel`.
+- El motivo de fallback de soporte ahora incluye código de retorno (`support_status_failed_rc_<n>`) para diagnóstico más directo.
+- Marcador visual actualizado a `UI build: 3.0.0-beta101`.
+
 ## 3.0.0-beta100 - 2026-02-17
 ### Fixed
 - Corrección del estado de soporte cuando el backend interno fallaba:
