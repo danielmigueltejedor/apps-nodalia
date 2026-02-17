@@ -51,6 +51,7 @@ declare support_cmd_output
 declare support_cmd_rc
 declare support_fallback_dns
 declare support_fallback_user
+declare support_fallback_enabled
 
 declare -i ready_streak=0
 declare -i start_epoch
@@ -121,7 +122,7 @@ do
   direct_webui_url=""
 
   set +e
-  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" support-tunnel status 2>&1)"
+  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" support-tunnel status)"
   support_cmd_rc=$?
   set -e
   if (( support_cmd_rc == 0 )) && jq -e . > /dev/null 2>&1 <<< "${support_cmd_output}"; then
@@ -129,11 +130,16 @@ do
   else
     support_fallback_dns="$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")"
     support_fallback_user="$(bashio::config "support_user" "Nodalia")"
+    support_fallback_enabled="false"
+    if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
+      support_fallback_enabled="true"
+    fi
     support_json="$(jq -nc \
       --arg support_target_dns_suffix "${support_fallback_dns}" \
       --arg support_user "${support_fallback_user}" \
       --arg reason "support_status_failed" \
-      '{support_enabled:false,support_target_dns_suffix:$support_target_dns_suffix,tailnet_match:false,eligible:false,active:false,reason:$reason,support_user:$support_user}')"
+      --arg support_enabled "${support_fallback_enabled}" \
+      '{support_enabled:($support_enabled=="true"),support_target_dns_suffix:$support_target_dns_suffix,tailnet_match:false,eligible:false,active:false,reason:$reason,support_user:$support_user}')"
   fi
   support_enabled="$(jq -r '.support_enabled // false' <<< "${support_json}" 2>/dev/null || echo "false")"
   support_tailnet_id="$(jq -r '.support_target_id // empty' <<< "${support_json}" 2>/dev/null || true)"

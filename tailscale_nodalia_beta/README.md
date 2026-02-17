@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta99`
+`3.0.0-beta100`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -365,23 +365,6 @@ Usuario local de soporte (por defecto: `Nodalia`).
 El add-on habilita/revoca este usuario directamente desde la API interna de Home Assistant.
 Recomendación: que sea un usuario local dedicado de soporte (no owner).
 Para crearlo: `Ajustes -> Personas -> Usuarios -> Añadir usuario`.
-
----
-
-### `support_enable_service`
-
-Hook opcional de Home Assistant que se ejecuta al activar soporte.
-
-Formato: `dominio.servicio` (ejemplo: `script.nodalia_support_enable`).
-Si está vacío, no pasa nada: el control real del usuario igualmente se ejecuta.
-
----
-
-### `support_disable_service`
-
-Hook opcional de Home Assistant que se ejecuta al revocar soporte (manual o por expiración TTL).
-
-Formato: `dominio.servicio` (ejemplo: `script.nodalia_support_disable`).
 
 ---
 

@@ -4,6 +4,20 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta100 - 2026-02-17
+### Fixed
+- Corrección del estado de soporte cuando el backend interno fallaba:
+  - `runtime-status` ahora consume la salida JSON limpia de `support-tunnel status` (sin mezclar `stderr`), evitando falsos `support_status_failed`.
+  - `support-tunnel` sanitiza `expires_epoch`/`ttl_minutes` al leer metadatos para evitar caídas por valores no numéricos.
+  - se mantiene JSON de fallback explícito si `status` falla de forma real.
+- Marcador visual actualizado a `UI build: 3.0.0-beta100`.
+
+### Changed
+- Eliminadas opciones de configuración opcionales de hooks de soporte:
+  - `support_enable_service`
+  - `support_disable_service`
+- Si una instalación antigua todavía conserva esas claves en opciones guardadas, elimínalas del panel de configuración antes de arrancar.
+
 ## 3.0.0-beta99 - 2026-02-17
 ### Fixed
 - Estado de soporte endurecido para evitar paneles con datos vacíos (`-`) cuando falla internamente `support-tunnel status`:

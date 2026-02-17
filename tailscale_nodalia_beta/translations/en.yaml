@@ -141,17 +141,6 @@ configuration:
     description: >-
       Home Assistant local username enabled/revoked for support access (for example `Nodalia`).
       It should be a dedicated support user and not an owner account.
-  support_enable_service:
-    name: HA hook on support enable (optional)
-    description: >-
-      Optional Home Assistant service called when support access is enabled.
-      Format: `domain.service` (example `script.nodalia_support_enable`).
-  support_disable_service:
-    name: HA hook on support revoke (optional)
-    description: >-
-      Optional Home Assistant service called when support access is revoked
-      or when the TTL expires.
-      Format: `domain.service` (example `script.nodalia_support_disable`).
   support_target_url:
     name: Support tunnel target URL (legacy)
     description: >-

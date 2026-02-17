@@ -45,21 +45,14 @@ dns_matches_suffix() {
   [[ "${value}" == "${suffix}" || "${value}" == *."${suffix}" ]]
 }
 
-is_valid_service_ref() {
-  local ref
-  ref="${1:-}"
-  [[ "${ref}" =~ ^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$ ]]
-}
-
-split_service_ref() {
-  local ref
-  ref="${1:-}"
-  if ! is_valid_service_ref "${ref}"; then
-    return 1
+sanitize_uint() {
+  local value
+  value="${1:-0}"
+  if [[ "${value}" =~ ^[0-9]+$ ]]; then
+    printf '%s' "${value}"
+  else
+    printf '0'
   fi
-  SERVICE_DOMAIN="${ref%%.*}"
-  SERVICE_NAME="${ref#*.}"
-  return 0
 }
 
 api_call() {
@@ -188,44 +181,6 @@ set_support_user_active() {
   return 1
 }
 
-call_optional_hook() {
-  local service_ref action_reason ttl_minutes expires_at payload
-  service_ref="${1:-}"
-  action_reason="${2:-manual}"
-  ttl_minutes="${3:-0}"
-  expires_at="${4:-}"
-  HOOK_LAST_DETAIL=""
-
-  if [[ -z "${service_ref}" ]]; then
-    HOOK_LAST_DETAIL="hook_skip"
-    return 0
-  fi
-
-  if ! split_service_ref "${service_ref}"; then
-    HOOK_LAST_DETAIL="hook_service_ref_invalido"
-    return 1
-  fi
-
-  payload="$(jq -nc \
-    --arg source "tailscale_nodalia_beta" \
-    --arg action_reason "${action_reason}" \
-    --arg support_user "${SUPPORT_USER}" \
-    --arg support_user_id "${SUPPORT_USER_ID}" \
-    --arg backend_state "${SUPPORT_BACKEND}" \
-    --arg target_dns_suffix "${SUPPORT_TARGET_DNS_SUFFIX}" \
-    --arg expires_at "${expires_at}" \
-    --argjson ttl_minutes "${ttl_minutes}" \
-    '{source:$source,action_reason:$action_reason,support_user:$support_user,support_user_id:$support_user_id,backend_state:$backend_state,target_dns_suffix:$target_dns_suffix,expires_at:$expires_at,ttl_minutes:$ttl_minutes}')"
-
-  if ! api_call POST "/core/api/services/${SERVICE_DOMAIN}/${SERVICE_NAME}" "${payload}"; then
-    HOOK_LAST_DETAIL="hook_api_error"
-    return 1
-  fi
-
-  HOOK_LAST_DETAIL="hook_ok"
-  return 0
-}
-
 audit_event() {
   local action reason details now
   action="${1:-unknown}"
@@ -247,14 +202,17 @@ audit_event() {
 }
 
 read_meta() {
+  local raw_epoch raw_ttl
   META_EXPIRES_EPOCH=0
   META_EXPIRES_AT=""
   META_TTL_MIN=0
   META_SUPPORT_USER=""
   if [[ -f "${META_FILE}" ]]; then
-    META_EXPIRES_EPOCH="$(jq -r '.expires_epoch // 0' "${META_FILE}" 2>/dev/null || echo "0")"
+    raw_epoch="$(jq -r '.expires_epoch // 0' "${META_FILE}" 2>/dev/null || echo "0")"
+    META_EXPIRES_EPOCH="$(sanitize_uint "${raw_epoch}")"
     META_EXPIRES_AT="$(jq -r '.expires_at // empty' "${META_FILE}" 2>/dev/null || true)"
-    META_TTL_MIN="$(jq -r '.ttl_minutes // 0' "${META_FILE}" 2>/dev/null || echo "0")"
+    raw_ttl="$(jq -r '.ttl_minutes // 0' "${META_FILE}" 2>/dev/null || echo "0")"
+    META_TTL_MIN="$(sanitize_uint "${raw_ttl}")"
     META_SUPPORT_USER="$(jq -r '.support_user // empty' "${META_FILE}" 2>/dev/null || true)"
   fi
 }
@@ -316,8 +274,6 @@ build_eligibility() {
   SUPPORT_REASON=""
   SUPPORT_TAILNET_MATCH="false"
   SUPPORT_USER="$(bashio::config "support_user" "Nodalia")"
-  SUPPORT_ENABLE_SERVICE="$(bashio::config "support_enable_service" "")"
-  SUPPORT_DISABLE_SERVICE="$(bashio::config "support_disable_service" "")"
 
   SUPPORT_USER_EXISTS="false"
   SUPPORT_USER_ACTIVE="false"
@@ -383,8 +339,6 @@ write_state() {
     --arg expires_at "${META_EXPIRES_AT}" \
     --arg support_user "${SUPPORT_USER}" \
     --arg support_user_id "${SUPPORT_USER_ID}" \
-    --arg support_enable_service "${SUPPORT_ENABLE_SERVICE}" \
-    --arg support_disable_service "${SUPPORT_DISABLE_SERVICE}" \
     --argjson expires_epoch "${META_EXPIRES_EPOCH}" \
     --argjson ttl_minutes "${META_TTL_MIN}" \
     --argjson support_enabled "$(json_bool "${SUPPORT_ENABLED}")" \
@@ -408,8 +362,6 @@ write_state() {
       support_user_exists:$support_user_exists,
       support_user_active:$support_user_active,
       support_user_is_owner:$support_user_is_owner,
-      support_enable_service:$support_enable_service,
-      support_disable_service:$support_disable_service,
       pid:"",
       url:"",
       reason:$reason,
@@ -420,28 +372,16 @@ write_state() {
 }
 
 disable_running_access() {
-  local reason details ttl expires_at rc
+  local reason details rc
   reason="${1:-manual_disable}"
   details=""
   rc=0
-
-  read_meta
-  ttl="${META_TTL_MIN:-0}"
-  expires_at="${META_EXPIRES_AT:-}"
 
   if ! set_support_user_active false; then
     details="user_disable_error:${USER_OP_REASON}"
     rc=1
   else
     details="user_disable_ok:${USER_OP_REASON}"
-  fi
-
-  if [[ -n "${SUPPORT_DISABLE_SERVICE}" ]]; then
-    if call_optional_hook "${SUPPORT_DISABLE_SERVICE}" "${reason}" "${ttl}" "${expires_at}"; then
-      details="${details};${HOOK_LAST_DETAIL}"
-    else
-      details="${details};${HOOK_LAST_DETAIL}"
-    fi
   fi
 
   clear_meta
@@ -518,14 +458,6 @@ enable_cmd() {
   write_meta
 
   details="user_enable_ok:${USER_OP_REASON}"
-  if [[ -n "${SUPPORT_ENABLE_SERVICE}" ]]; then
-    if call_optional_hook "${SUPPORT_ENABLE_SERVICE}" "enable" "${META_NEW_TTL_MIN}" "${META_NEW_EXPIRES_AT}"; then
-      details="${details};${HOOK_LAST_DETAIL}"
-    else
-      details="${details};${HOOK_LAST_DETAIL}"
-    fi
-  fi
-
   audit_event "enabled" "ok" "${details}"
   write_state true true
   cat "${STATE_FILE}"
@@ -589,8 +521,6 @@ fallback_status_json() {
       support_user_exists:false,
       support_user_active:false,
       support_user_is_owner:false,
-      support_enable_service:"",
-      support_disable_service:"",
       pid:"",
       url:"",
       reason:$reason,
