@@ -5,7 +5,7 @@ FROM ${BUILD_FROM}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG BUILD_ARCH=amd64
-ARG TAILSCALE_VERSION="1.94.1"
+ARG TAILSCALE_VERSION="1.94.2"
 ARG TAILSCALE_REPO="https://pkgs.tailscale.com/stable"
 
 RUN \
