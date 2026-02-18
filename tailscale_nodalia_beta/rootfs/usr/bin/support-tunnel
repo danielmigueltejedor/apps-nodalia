@@ -12,6 +12,8 @@ readonly AUDIT_FILE="/data/support-tunnel-audit.log"
 readonly NOTIFY_FILE="/data/support-notify.json"
 readonly TELEGRAM_DEBUG_FILE="/data/support-telegram-debug.json"
 readonly TTL_DISABLE_RETRY_BACKOFF_SEC=30
+readonly TELEGRAM_API_HOST="api.telegram.org"
+readonly TELEGRAM_API_FALLBACK_IPS="149.154.167.220 149.154.167.91 149.154.167.50 149.154.167.51"
 
 now_utc() {
   date -u +"%Y-%m-%dT%H:%M:%SZ"
@@ -197,6 +199,8 @@ reset_telegram_debug_context() {
   TELEGRAM_ATTEMPTED_CHAT_IDS=""
   TELEGRAM_FINAL_CHAT_ID=""
   TELEGRAM_LAST_DESCRIPTION=""
+  TELEGRAM_CURL_ATTEMPTS=""
+  TELEGRAM_CURL_FALLBACK_IP=""
   TELEGRAM_DISCOVERY_HINT=""
   TELEGRAM_DISCOVERY_HTTP_STATUS=""
   TELEGRAM_DISCOVERY_RESULT_COUNT="0"
@@ -240,6 +244,8 @@ write_telegram_debug_state() {
     --arg send_http_status "${TELEGRAM_LAST_HTTP_STATUS:-}" \
     --arg send_description "${TELEGRAM_LAST_DESCRIPTION:-}" \
     --arg send_response_body_preview "$(printf '%s' "${TELEGRAM_LAST_RESPONSE_BODY:-}" | head -c 500)" \
+    --arg send_transport_attempts "${TELEGRAM_CURL_ATTEMPTS:-}" \
+    --arg send_transport_fallback_ip "${TELEGRAM_CURL_FALLBACK_IP:-}" \
     --arg discovery_hint "${TELEGRAM_DISCOVERY_HINT:-}" \
     --arg discovery_http_status "${TELEGRAM_DISCOVERY_HTTP_STATUS:-}" \
     --arg discovery_result_count "${TELEGRAM_DISCOVERY_RESULT_COUNT:-0}" \
@@ -259,7 +265,9 @@ write_telegram_debug_state() {
         last_reason:$send_reason,
         last_http_status:$send_http_status,
         last_description:$send_description,
-        last_response_body_preview:$send_response_body_preview
+        last_response_body_preview:$send_response_body_preview,
+        transport_attempts:($send_transport_attempts|split(",")|map(select(length>0))),
+        transport_fallback_ip:$send_transport_fallback_ip
       },
       discovery:{
         hint:$discovery_hint,
@@ -270,6 +278,45 @@ write_telegram_debug_state() {
         reason:$discovery_reason
       }
     }' > "${TELEGRAM_DEBUG_FILE}"
+}
+
+telegram_curl_with_dns_fallback() {
+  local bot_token output rc ip
+  local -a cmd
+  bot_token="${1:-}"
+  shift || true
+  cmd=("$@")
+
+  TELEGRAM_CURL_ATTEMPTS="direct"
+  TELEGRAM_CURL_FALLBACK_IP=""
+
+  set +e
+  output="$("${cmd[@]}" 2>&1)"
+  rc=$?
+  set -e
+  if (( rc == 0 )); then
+    printf '%s' "${output}"
+    return 0
+  fi
+
+  for ip in ${TELEGRAM_API_FALLBACK_IPS}; do
+    TELEGRAM_CURL_ATTEMPTS="${TELEGRAM_CURL_ATTEMPTS},${ip}"
+    set +e
+    output="$("${cmd[@]}" --resolve "${TELEGRAM_API_HOST}:443:${ip}" 2>&1)"
+    rc=$?
+    set -e
+    if (( rc == 0 )); then
+      TELEGRAM_CURL_FALLBACK_IP="${ip}"
+      printf '%s' "${output}"
+      return 0
+    fi
+  done
+
+  if [[ -n "${bot_token}" ]]; then
+    output="${output//${bot_token}/[redacted]}"
+  fi
+  printf '%s' "${output}"
+  return "${rc}"
 }
 
 telegram_send_message_once() {
@@ -284,12 +331,13 @@ telegram_send_message_once() {
   TELEGRAM_LAST_CHAT_ID="${chat_id}"
 
   set +e
-  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 15 \
+  response_with_status="$(telegram_curl_with_dns_fallback "${bot_token}" \
+    curl -4 -sS --connect-timeout 5 --max-time 15 \
     --data-urlencode "chat_id=${chat_id}" \
     --data-urlencode "text=${message}" \
     --data-urlencode "disable_web_page_preview=true" \
     -w '\n%{http_code}' \
-    "https://api.telegram.org/bot${bot_token}/sendMessage" 2>&1)"
+    "https://api.telegram.org/bot${bot_token}/sendMessage")"
   rc=$?
   set -e
 
@@ -337,9 +385,10 @@ telegram_discover_chat_id_from_updates() {
   TELEGRAM_DISCOVERY_REASON=""
 
   set +e
-  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 15 \
+  response_with_status="$(telegram_curl_with_dns_fallback "${bot_token}" \
+    curl -4 -sS --connect-timeout 5 --max-time 15 \
     -w '\n%{http_code}' \
-    "https://api.telegram.org/bot${bot_token}/getUpdates?limit=100" 2>&1)"
+    "https://api.telegram.org/bot${bot_token}/getUpdates?limit=100")"
   rc=$?
   set -e
 
@@ -512,9 +561,10 @@ telegram_probe_bot_identity() {
   fi
 
   set +e
-  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 \
+  response_with_status="$(telegram_curl_with_dns_fallback "${bot_token}" \
+    curl -4 -sS --connect-timeout 5 --max-time 12 \
     -w '\n%{http_code}' \
-    "https://api.telegram.org/bot${bot_token}/getMe" 2>&1)"
+    "https://api.telegram.org/bot${bot_token}/getMe")"
   rc=$?
   set -e
 
@@ -583,10 +633,11 @@ telegram_probe_chat_access() {
   TELEGRAM_CHAT_PROBE_ATTEMPTED_IDS="${TELEGRAM_ATTEMPTED_CHAT_IDS:-}"
 
   set +e
-  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 --get \
+  response_with_status="$(telegram_curl_with_dns_fallback "${bot_token}" \
+    curl -4 -sS --connect-timeout 5 --max-time 12 --get \
     --data-urlencode "chat_id=${chat_id}" \
     -w '\n%{http_code}' \
-    "https://api.telegram.org/bot${bot_token}/getChat" 2>&1)"
+    "https://api.telegram.org/bot${bot_token}/getChat")"
   rc=$?
   set -e
   if (( rc != 0 )); then
@@ -610,10 +661,11 @@ telegram_probe_chat_access() {
       TELEGRAM_CHAT_PROBE_ATTEMPTED_IDS="${TELEGRAM_ATTEMPTED_CHAT_IDS:-}"
 
       set +e
-      response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 --get \
+      response_with_status="$(telegram_curl_with_dns_fallback "${bot_token}" \
+        curl -4 -sS --connect-timeout 5 --max-time 12 --get \
         --data-urlencode "chat_id=${alt_chat_id}" \
         -w '\n%{http_code}' \
-        "https://api.telegram.org/bot${bot_token}/getChat" 2>&1)"
+        "https://api.telegram.org/bot${bot_token}/getChat")"
       rc=$?
       set -e
       if (( rc != 0 )); then

@@ -4,6 +4,13 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.1-beta1 - 2026-02-18
+### Fixed
+- Telegram en soporte temporal:
+  - se añade fallback de red cuando falla DNS con `accept_dns=true`.
+  - las llamadas `sendMessage`, `getMe`, `getChat` y `getUpdates` ahora reintentan por IP directa de Telegram usando `curl --resolve api.telegram.org:443:<ip>`.
+  - `debug` de Telegram incluye trazas de transporte (`transport_attempts`, `transport_fallback_ip`) para confirmar cuándo entró el fallback.
+
 ## 3.0.0-rc3 - 2026-02-18
 ### Changed
 - Onboarding UI:
