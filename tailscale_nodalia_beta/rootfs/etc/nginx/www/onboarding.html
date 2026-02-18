@@ -533,13 +533,7 @@
         <a id="open-webui-btn" class="btn disabled" href="#" title="Abrir iframe Tailscale por ingress">Iframe Tailscale</a>
         <a id="open-direct-btn" class="btn ghost disabled" href="#" target="_blank" rel="noopener noreferrer">Acceso directo tailnet (no disponible en esta app)</a>
         <button id="refresh-ok-btn" type="button" class="ghost" title="Actualizar estado">Actualizar ↻</button>
-        <button id="cancel-redirect-btn" type="button" class="ghost" hidden>Cancelar auto-entrada</button>
       </div>
-      <label class="check" style="margin-top:10px;">
-        <input id="auto-open-check" type="checkbox">
-        Abrir Web UI automaticamente cuando este lista
-      </label>
-      <p id="redirect-state" class="small"></p>
       <p id="op-message" class="small" aria-live="polite"></p>
       <div id="op-output" class="mono debug-only" hidden></div>
     </div>
@@ -607,7 +601,6 @@
       <div class="actions" style="margin-top:10px;">
         <button id="sup-enable-btn" type="button" class="ghost">Habilitar acceso soporte</button>
         <button id="sup-disable-btn" type="button" class="ghost">Revocar ahora</button>
-        <button id="sup-audit-btn" type="button" class="ghost">Ver auditoria</button>
         <button id="sup-notify-test-btn" type="button" class="ghost advanced-only">Probar Telegram</button>
         <button id="sup-debug-btn" type="button" class="ghost advanced-only debug-only">Debug soporte</button>
       </div>
@@ -659,9 +652,6 @@
     const logoutHint = document.getElementById("logout-hint");
     const refreshBtn = document.getElementById("refresh-btn");
     const refreshOkBtn = document.getElementById("refresh-ok-btn");
-    const cancelRedirectBtn = document.getElementById("cancel-redirect-btn");
-    const autoOpenCheck = document.getElementById("auto-open-check");
-    const redirectState = document.getElementById("redirect-state");
     const diagBtn = document.getElementById("diag-btn");
     const copyReportBtn = document.getElementById("copy-report-btn");
     const diagList = document.getElementById("diag-list");
@@ -684,7 +674,6 @@
     const supportEnableBtn = document.getElementById("sup-enable-btn");
     const supportDisableBtn = document.getElementById("sup-disable-btn");
     const supportNotifyTestBtn = document.getElementById("sup-notify-test-btn");
-    const supportAuditBtn = document.getElementById("sup-audit-btn");
     const supportDebugBtn = document.getElementById("sup-debug-btn");
     const supportAuditOutput = document.getElementById("sup-audit-output");
     const rtBackend = document.getElementById("rt-backend");
@@ -720,7 +709,6 @@
     const healthChecks = document.getElementById("health-checks");
     const healthScorePill = document.getElementById("health-score-pill");
     let pollHandle = null;
-    let redirectHandle = null;
     let lastOnboarding = null;
     let lastRuntime = null;
     let lastSuggestionsHtml = "";
@@ -730,10 +718,9 @@
     let lastStateClass = "";
     let isFirstRender = true;
     let advancedModeEnabled = true;
-    let redirectDeadlineMs = 0;
     let actionInFlight = 0;
     let supportBusy = false;
-    let supportRules = { enable: false, disable: false, notify_test: true, audit: false, debug: true };
+    let supportRules = { enable: false, disable: false, notify_test: true, debug: true };
     let opBusy = false;
     let opCanLogout = false;
     let logoutConfirmUntilMs = 0;
@@ -891,13 +878,11 @@
 
     function loadUiPrefs() {
       advancedModeEnabled = true;
-      autoOpenCheck.checked = false;
       try {
         const raw = localStorage.getItem(UI_PREFS_KEY);
         if (raw) {
           const prefs = JSON.parse(raw);
           advancedModeEnabled = prefs?.advanced_mode !== false;
-          autoOpenCheck.checked = prefs?.auto_open === true;
         }
       } catch (_) {
       }
@@ -908,7 +893,6 @@
       try {
         localStorage.setItem(UI_PREFS_KEY, JSON.stringify({
           advanced_mode: advancedModeEnabled,
-          auto_open: autoOpenCheck.checked,
         }));
       } catch (_) {
       }
@@ -975,7 +959,6 @@
       setUiDisabled(supportEnableBtn, supportBusy || !supportRules.enable);
       setUiDisabled(supportDisableBtn, supportBusy || !supportRules.disable);
       setUiDisabled(supportNotifyTestBtn, supportBusy || !supportRules.notify_test);
-      setUiDisabled(supportAuditBtn, supportBusy || !supportRules.audit);
       setUiDisabled(supportDebugBtn, supportBusy || !supportRules.debug);
     }
 
@@ -1032,7 +1015,6 @@
         enable: enabled && eligible && !active,
         disable: active,
         notify_test: true,
-        audit: enabled,
         debug: true,
       };
       renderSupportButtons();
@@ -1380,7 +1362,6 @@
       if (pollHandle) {
         clearTimeout(pollHandle);
       }
-      cancelAutoRedirect();
       const previousText = triggerButton?.textContent || idleLabel;
       if (triggerButton) {
         triggerButton.disabled = true;
@@ -1556,42 +1537,6 @@
       }, windowMs + 100);
     }
 
-    function cancelAutoRedirect() {
-      if (redirectHandle) {
-        clearTimeout(redirectHandle);
-        redirectHandle = null;
-      }
-      redirectDeadlineMs = 0;
-      cancelRedirectBtn.hidden = true;
-      redirectState.textContent = "";
-    }
-
-    function startAutoRedirect() {
-      if (!autoOpenCheck.checked || isUiDisabled(openWebuiBtn)) {
-        cancelAutoRedirect();
-        return;
-      }
-      if (redirectHandle && redirectDeadlineMs > Date.now()) {
-        return;
-      }
-      redirectDeadlineMs = Date.now() + 3000;
-      cancelRedirectBtn.hidden = false;
-      const tick = () => {
-        if (isUiDisabled(openWebuiBtn)) {
-          cancelAutoRedirect();
-          return;
-        }
-        const remaining = Math.max(0, Math.ceil((redirectDeadlineMs - Date.now()) / 1000));
-        redirectState.textContent = "Redireccion automatica en " + remaining + "s...";
-        if (remaining <= 0) {
-          window.location.replace(ingressRootUrl());
-          return;
-        }
-        redirectHandle = setTimeout(tick, 200);
-      };
-      tick();
-    }
-
     function setActiveStep(step) {
       stepAuth.classList.remove("active");
       stepWarmup.classList.remove("active");
@@ -1761,7 +1706,6 @@
         const authUrl = String(lastRuntime?.auth_url || data?.auth_url || "");
 
         if (needsLogin) {
-          cancelAutoRedirect();
           liveWebUiReadyStreak = 0;
           setStepsVisible(true);
           setActiveStep("auth");
@@ -1786,7 +1730,6 @@
         if (backendState !== "Running") {
           liveWebUiSeenAtMs = 0;
           runningSinceMs = 0;
-          cancelAutoRedirect();
           liveWebUiReadyStreak = 0;
           setStepsVisible(true);
           setActiveStep("warmup");
@@ -1825,10 +1768,8 @@
           setActiveStep("access");
           updateStateView("Conectado. Web UI lista.", "good");
           setUiDisabled(openWebuiBtn, false);
-          startAutoRedirect();
           nextDelayMs = 2200;
         } else {
-          cancelAutoRedirect();
           setActiveStep("warmup");
           setUiDisabled(openWebuiBtn, !allowManualOpen);
           if (runtimeStable || liveWebUiReady) {
@@ -1891,7 +1832,7 @@
         supportNotifyReason.textContent = "n/a";
         supportExpires.textContent = "n/a";
         supportReason.textContent = "runtime unavailable";
-        supportRules = { enable: false, disable: false, notify_test: false, audit: false, debug: true };
+        supportRules = { enable: false, disable: false, notify_test: false, debug: true };
         if (supportNavBtn) {
           supportNavBtn.classList.remove("support-on", "support-active");
         }
@@ -2035,26 +1976,6 @@
         supportMessage.textContent = "No se pudo enviar prueba Telegram: " + error.message;
       } finally {
         setSupportButtonState(false);
-        endUiAction();
-      }
-    });
-    supportAuditBtn.addEventListener("click", async () => {
-      if (isUiDisabled(supportAuditBtn)) {
-        return;
-      }
-      beginUiAction();
-      supportAuditOutput.hidden = false;
-      supportAuditOutput.textContent = "Cargando auditoria...";
-      try {
-        const response = await fetch(ingressUrl("support-api/audit"), {
-          cache: "no-store",
-          headers: { "X-Nodalia-Action": "audit" },
-        });
-        const text = await response.text();
-        supportAuditOutput.textContent = text.trim() || "Sin eventos de auditoria todavia.";
-      } catch (error) {
-        supportAuditOutput.textContent = "No se pudo cargar auditoria: " + error.message;
-      } finally {
         endUiAction();
       }
     });
@@ -2309,27 +2230,12 @@
     refreshOkBtn.addEventListener("click", async () => {
       await handleManualRefresh(refreshOkBtn, "Actualizar ↻");
     });
-    cancelRedirectBtn.addEventListener("click", () => {
-      autoOpenCheck.checked = false;
-      cancelAutoRedirect();
-      redirectState.textContent = "Auto-entrada desactivada.";
-      saveUiPrefs();
-    });
-    autoOpenCheck.addEventListener("change", () => {
-      if (!autoOpenCheck.checked) {
-        cancelAutoRedirect();
-      } else if (!isUiDisabled(openWebuiBtn)) {
-        startAutoRedirect();
-      }
-      saveUiPrefs();
-    });
     openWebuiBtn.addEventListener("click", async (event) => {
       if (isUiDisabled(openWebuiBtn)) {
         event.preventDefault();
         return;
       }
       event.preventDefault();
-      cancelAutoRedirect();
       beginUiAction();
       try {
         updateStateView("Comprobando disponibilidad de Web UI...", "warn");
