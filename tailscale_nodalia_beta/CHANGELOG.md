@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-rc2 - 2026-02-18
+### Fixed
+- Onboarding:
+  - se corrige la visibilidad del bloque de pasos (`Paso 1/2/3`) para que se oculte correctamente cuando la instancia ya está conectada.
+- Logout/Power:
+  - tras `logauth` aceptado por backend, el panel ahora se recarga automáticamente aunque la transición de estado tarde en reflejarse.
+- Soporte:
+  - se añade contador visible de tiempo restante del acceso temporal.
+  - al pulsar `Revocar ahora`, el contador se limpia al instante.
+
 ## 3.0.0-rc1 - 2026-02-18
 ### Changed
 - Release candidate 1 de Nodalia Connect (canal beta).
