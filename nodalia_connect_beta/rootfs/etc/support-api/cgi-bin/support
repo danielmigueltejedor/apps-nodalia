@@ -110,6 +110,19 @@ if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${REQUEST_METHOD:-GET}" != "G
   exit 0
 fi
 
+if [[ "${action}" == "enable" || "${action}" == "disable" || "${action}" == "notifytest" ]] && [[ "${REQUEST_METHOD:-GET}" != "POST" ]]; then
+  echo "Status: 405 Method Not Allowed"
+  echo "Content-Type: application/json"
+  echo "Cache-Control: no-store"
+  echo
+  jq -nc \
+    --arg action "${action}" \
+    --arg error "method_not_allowed" \
+    --arg reason "post_required_for_action" \
+    '{ok:false,action:$action,error:$error,reason:$reason}'
+  exit 0
+fi
+
 set +e
 payload="$(/usr/bin/support-tunnel "${action}")"
 rc=$?

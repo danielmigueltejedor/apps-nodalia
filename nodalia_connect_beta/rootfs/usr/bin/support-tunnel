@@ -881,6 +881,59 @@ read_json_file_or_empty() {
   fi
 }
 
+mask_secret_value() {
+  local value len
+  value="$(trim_spaces "${1:-}")"
+  len=${#value}
+  if (( len == 0 )); then
+    printf ''
+    return 0
+  fi
+  if (( len <= 6 )); then
+    printf '***'
+    return 0
+  fi
+  printf '%s***%s' "${value:0:3}" "${value:len-3:3}"
+}
+
+redact_url_tokens() {
+  local value
+  value="${1:-}"
+  if [[ -z "${value}" ]]; then
+    printf ''
+    return 0
+  fi
+  printf '%s' "${value}" | sed -E 's#([?&]token=)[^&[:space:]]+#\1[redacted]#g'
+}
+
+sanitize_api_last_output_for_debug() {
+  local value
+  value="${1:-}"
+  if [[ -z "${value}" ]]; then
+    printf ''
+    return 0
+  fi
+  value="$(redact_url_tokens "${value}")"
+  value="$(printf '%s' "${value}" | sed -E 's#(\\\"jwt_token\\\"[[:space:]]*:[[:space:]]*\\\")[^\\\"]*#\1[redacted]#g')"
+  value="$(printf '%s' "${value}" | sed -E 's#(\\\"token\\\"[[:space:]]*:[[:space:]]*\\\")[^\\\"]*#\1[redacted]#g')"
+  value="$(printf '%s' "${value}" | sed -E 's#(\"jwt_token\"[[:space:]]*:[[:space:]]*\")[^\"]*#\1[redacted]#g')"
+  value="$(printf '%s' "${value}" | sed -E 's#(\"token\"[[:space:]]*:[[:space:]]*\")[^\"]*#\1[redacted]#g')"
+  value="$(printf '%s' "${value}" | sed -E 's#(Authorization:[[:space:]]*Bearer[[:space:]])[^[:space:]]+#\1[redacted]#g')"
+  printf '%s' "${value}"
+}
+
+sanitize_json_tokens_for_debug() {
+  local value
+  value="${1:-{}}"
+  if ! jq -e . >/dev/null 2>&1 <<< "${value}"; then
+    printf '{}'
+    return 0
+  fi
+  jq -c \
+    '(.. | select(type=="string")) |= gsub("([?&]token=)[^&[:space:]]+";"\\1[redacted]")' \
+    <<< "${value}" 2>/dev/null || echo '{}'
+}
+
 resolve_support_enable_password() {
   local configured_password
   if [[ -n "${SUPPORT_USER_PASSWORD:-}" ]]; then
@@ -1488,166 +1541,6 @@ delete_virtual_keys_token() {
   return 1
 }
 
-resolve_service_endpoint() {
-  local service_cfg service_domain service_name
-  service_cfg="$(trim_spaces "${1:-}")"
-  if [[ -z "${service_cfg}" ]]; then
-    return 1
-  fi
-  if ! [[ "${service_cfg}" =~ ^[a-zA-Z0-9_]+\.[a-zA-Z0-9_]+$ ]]; then
-    return 2
-  fi
-  service_domain="${service_cfg%%.*}"
-  service_name="${service_cfg#*.}"
-  printf '/core/api/services/%s/%s' "${service_domain}" "${service_name}"
-  return 0
-}
-
-resolve_temp_delete_service_cfg() {
-  local disable_cfg enable_cfg
-  disable_cfg="$(trim_spaces "$(bashio::config "support_disable_service" "" 2>/dev/null || true)")"
-  if [[ -n "${disable_cfg}" ]]; then
-    printf '%s' "${disable_cfg}"
-    return 0
-  fi
-  enable_cfg="$(trim_spaces "$(bashio::config "support_enable_service" "" 2>/dev/null || true)")"
-  if [[ -n "${enable_cfg}" ]]; then
-    printf '%s' "${enable_cfg}"
-    return 0
-  fi
-  return 1
-}
-
-generate_temp_support_username() {
-  local prefix suffix
-  prefix="$(sanitize_username "$(bashio::config "support_temp_user_prefix" "nodalia_support")")"
-  suffix="$(random_alnum 8 | tr '[:upper:]' '[:lower:]')"
-  printf '%s_%s' "${prefix}" "${suffix}"
-}
-
-generate_temp_support_password() {
-  local length
-  length="$(sanitize_uint_range "$(bashio::config "support_temp_password_length" "20")" 12 64)"
-  random_alnum "${length}"
-}
-
-create_temp_support_account() {
-  local service_cfg path path_rc ttl_minutes payload created_username created_password verify_rc
-  ttl_minutes="$(sanitize_uint_range "${1:-30}" 5 180)"
-  service_cfg="$(trim_spaces "$(bashio::config "support_enable_service" "" 2>/dev/null || true)")"
-  path_rc=0
-  path="$(resolve_service_endpoint "${service_cfg}")" || path_rc=$?
-  if (( path_rc == 1 )); then
-    USER_OP_REASON="support_temp_create_service_not_configured"
-    return 2
-  fi
-  if (( path_rc == 2 )); then
-    USER_OP_REASON="support_temp_create_service_invalid"
-    return 1
-  fi
-
-  created_username="$(generate_temp_support_username)"
-  created_password="$(generate_temp_support_password)"
-  payload="$(jq -nc \
-    --arg action "create" \
-    --arg support_mode "temp_account" \
-    --arg support_user "${created_username}" \
-    --arg support_password "${created_password}" \
-    --arg support_target_dns_suffix "${SUPPORT_TARGET_DNS_SUFFIX:-}" \
-    --argjson ttl_minutes "${ttl_minutes}" \
-    '{action:$action,support_mode:$support_mode,support_user:$support_user,support_password:$support_password,support_target_dns_suffix:$support_target_dns_suffix,ttl_minutes:$ttl_minutes}')"
-
-  USER_OP_PATH="POST:${path}"
-  if ! api_call POST "${path}" "${payload}"; then
-    USER_OP_REASON="support_temp_create_service_api_failed"
-    return 1
-  fi
-
-  SUPPORT_USER="${created_username}"
-  SUPPORT_USER_LOGIN_NAME="${created_username}"
-  set +e
-  lookup_support_user
-  verify_rc=$?
-  set -e
-  if (( verify_rc != 0 )); then
-    USER_OP_REASON="support_temp_create_service_no_effect:${USER_LOOKUP_REASON:-lookup_failed}"
-    return 1
-  fi
-  if [[ "${SUPPORT_USER_IS_OWNER}" == "true" ]]; then
-    USER_OP_REASON="support_temp_user_owner_invalid"
-    return 1
-  fi
-  if [[ "${SUPPORT_USER_ACTIVE_KNOWN}" == "true" && "${SUPPORT_USER_ACTIVE}" != "true" ]]; then
-    USER_OP_REASON="support_temp_user_created_but_inactive"
-    return 1
-  fi
-  SUPPORT_USER_ACTIVE_KNOWN="true"
-  SUPPORT_USER_ACTIVE="true"
-  SUPPORT_TEMP_USERNAME="${created_username}"
-  SUPPORT_TEMP_PASSWORD="${created_password}"
-  USER_OP_REASON="support_temp_create_service_ok"
-  return 0
-}
-
-delete_temp_support_account() {
-  local service_cfg path path_rc payload target_username verify_rc
-  target_username="${META_SUPPORT_USER:-${SUPPORT_USER:-}}"
-  if [[ -z "${target_username}" ]]; then
-    USER_OP_REASON="support_temp_user_missing_in_meta"
-    return 1
-  fi
-
-  service_cfg="$(resolve_temp_delete_service_cfg 2>/dev/null || true)"
-  path_rc=0
-  path="$(resolve_service_endpoint "${service_cfg}")" || path_rc=$?
-  if (( path_rc == 1 )); then
-    USER_OP_REASON="support_temp_delete_service_not_configured"
-    return 2
-  fi
-  if (( path_rc == 2 )); then
-    USER_OP_REASON="support_temp_delete_service_invalid"
-    return 1
-  fi
-
-  payload="$(jq -nc \
-    --arg action "delete" \
-    --arg support_mode "temp_account" \
-    --arg support_user "${target_username}" \
-    --arg support_target_dns_suffix "${SUPPORT_TARGET_DNS_SUFFIX:-}" \
-    '{action:$action,support_mode:$support_mode,support_user:$support_user,support_target_dns_suffix:$support_target_dns_suffix}')"
-
-  USER_OP_PATH="POST:${path}"
-  if ! api_call POST "${path}" "${payload}"; then
-    USER_OP_REASON="support_temp_delete_service_api_failed"
-    return 1
-  fi
-
-  SUPPORT_USER="${target_username}"
-  SUPPORT_USER_LOGIN_NAME="${target_username}"
-  set +e
-  lookup_support_user
-  verify_rc=$?
-  set -e
-  if (( verify_rc != 0 )); then
-    if [[ "${USER_LOOKUP_REASON:-}" == "support_user_no_encontrado" ]]; then
-      USER_OP_REASON="support_temp_delete_service_ok"
-      SUPPORT_USER_EXISTS="false"
-      SUPPORT_USER_ACTIVE="false"
-      SUPPORT_USER_ACTIVE_KNOWN="true"
-      return 0
-    fi
-    USER_OP_REASON="support_temp_delete_verify_failed:${USER_LOOKUP_REASON:-lookup_failed}"
-    return 1
-  fi
-
-  if [[ "${SUPPORT_USER_ACTIVE_KNOWN}" == "true" && "${SUPPORT_USER_ACTIVE}" == "false" ]]; then
-    USER_OP_REASON="support_temp_delete_service_ok"
-    return 0
-  fi
-  USER_OP_REASON="support_temp_delete_service_no_effect"
-  return 1
-}
-
 set_support_user_active_via_auth() {
   local desired target method path payload
   local payload_base payload_username payload_name
@@ -1694,8 +1587,6 @@ set_support_user_active() {
   desired="${1:-false}"
   USER_OP_REASON=""
   USER_OP_PATH=""
-  SUPPORT_TEMP_USERNAME=""
-  SUPPORT_TEMP_PASSWORD=""
   SUPPORT_VK_TOKEN_NAME=""
   SUPPORT_VK_TOKEN_ID=""
   SUPPORT_VK_TOKEN_VALUE=""
@@ -1714,27 +1605,6 @@ set_support_user_active() {
       return 1
     fi
     if delete_virtual_keys_token; then
-      return 0
-    fi
-    return 1
-  fi
-
-  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" ]]; then
-    if [[ "${desired}" == "true" ]]; then
-      set +e
-      create_temp_support_account "$(bashio::config "support_tunnel_ttl_minutes" "30")"
-      service_rc=$?
-      set -e
-      if (( service_rc == 0 )); then
-        return 0
-      fi
-      return 1
-    fi
-    set +e
-    delete_temp_support_account
-    service_rc=$?
-    set -e
-    if (( service_rc == 0 )); then
       return 0
     fi
     return 1
@@ -1937,15 +1807,13 @@ build_eligibility() {
   local status_json support_enabled target_dns_suffix backend candidate_strings
   local self_dns_name self_host_name magic_dns_suffix token_lc
   local target_url_cfg target_domain_suffix support_host_label
-  local temp_create_service_cfg temp_delete_service_cfg
-  local create_path_rc delete_path_rc
   support_enabled=false
   if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
     support_enabled=true
   fi
 
   read_meta
-  target_dns_suffix="$(normalize_dns_value "$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")")"
+  target_dns_suffix="$(normalize_dns_value "$(bashio::config "support_tailnet_dns_suffix" "")")"
   status_json="${SUPPORT_STATUS_JSON:-}"
   if [[ -z "${status_json}" ]]; then
     status_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
@@ -2029,34 +1897,6 @@ build_eligibility() {
     return
   fi
 
-  if [[ "${SUPPORT_MODE}" == "temp_account" && -z "${META_SUPPORT_USER:-}" ]]; then
-    temp_create_service_cfg="$(trim_spaces "$(bashio::config "support_enable_service" "" 2>/dev/null || true)")"
-    if [[ -z "${temp_create_service_cfg}" ]]; then
-      SUPPORT_REASON="support_temp_create_service_not_configured"
-      return
-    fi
-    create_path_rc=0
-    resolve_service_endpoint "${temp_create_service_cfg}" >/dev/null || create_path_rc=$?
-    if (( create_path_rc == 2 )); then
-      SUPPORT_REASON="support_temp_create_service_invalid"
-      return
-    fi
-    temp_delete_service_cfg="$(resolve_temp_delete_service_cfg 2>/dev/null || true)"
-    if [[ -z "${temp_delete_service_cfg}" ]]; then
-      SUPPORT_REASON="support_temp_delete_service_not_configured"
-      return
-    fi
-    delete_path_rc=0
-    resolve_service_endpoint "${temp_delete_service_cfg}" >/dev/null || delete_path_rc=$?
-    if (( delete_path_rc == 2 )); then
-      SUPPORT_REASON="support_temp_delete_service_invalid"
-      return
-    fi
-    # No temp user exists yet; this state is still eligible for "enable/create".
-    SUPPORT_REASON=""
-    return
-  fi
-
   if [[ "${SUPPORT_MODE}" == "virtual_keys_token" ]]; then
     if ! virtual_keys_status_lookup; then
       SUPPORT_REASON="support_virtual_keys_status_failed:${VK_LAST_REASON:-virtual_keys_failed}"
@@ -2079,21 +1919,6 @@ build_eligibility() {
       SUPPORT_VK_TOKEN_ID="${META_SUPPORT_TOKEN_ID}"
     fi
     SUPPORT_REASON=""
-    return
-  fi
-
-  if ! lookup_support_user; then
-    if [[ "${SUPPORT_MODE}" == "temp_account" && "${USER_LOOKUP_REASON:-}" == "support_user_no_encontrado" ]]; then
-      clear_meta
-      SUPPORT_REASON=""
-      return
-    fi
-    SUPPORT_REASON="${USER_LOOKUP_REASON:-support_user_lookup_failed}"
-    return
-  fi
-
-  if [[ "${SUPPORT_USER_IS_OWNER}" == "true" ]]; then
-    SUPPORT_REASON="support_user_es_owner_no_permitido"
     return
   fi
 }
@@ -2169,14 +1994,7 @@ disable_running_access() {
   details=""
   rc=0
 
-  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" ]]; then
-    if ! delete_temp_support_account; then
-      details="temp_user_delete_error:${USER_OP_REASON}"
-      rc=1
-    else
-      details="temp_user_delete_ok:${USER_OP_REASON}"
-    fi
-  elif [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
+  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
     if ! set_support_user_active false; then
       details="virtual_keys_delete_error:${USER_OP_REASON}"
       rc=1
@@ -2235,36 +2053,26 @@ status_cmd() {
         SUPPORT_REASON="support_user_no_encontrado"
         active=false
       fi
-    elif [[ "${SUPPORT_USER_EXISTS}" == "true" ]]; then
-      if [[ "${SUPPORT_USER_ACTIVE_KNOWN}" != "true" ]]; then
-        active=true
-      elif [[ "${SUPPORT_USER_ACTIVE}" == "true" ]]; then
-        active=true
-      else
-        clear_meta
-        SUPPORT_REASON="support_user_inactivo_sin_sesion"
-        active=false
-      fi
-    else
-      if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" ]]; then
-        clear_meta
-        SUPPORT_REASON="support_temp_user_not_found"
-        active=false
-      else
-        # If support user lookup couldn't run in this cycle (e.g. backend state gate),
-        # preserve the active window until we can verify user state again.
-        active=true
-      fi
-    fi
-  fi
+	    elif [[ "${SUPPORT_USER_EXISTS}" == "true" ]]; then
+	      if [[ "${SUPPORT_USER_ACTIVE_KNOWN}" != "true" ]]; then
+	        active=true
+	      elif [[ "${SUPPORT_USER_ACTIVE}" == "true" ]]; then
+	        active=true
+	      else
+	        clear_meta
+	        SUPPORT_REASON="support_user_inactivo_sin_sesion"
+	        active=false
+	      fi
+	    else
+	      # If support user lookup couldn't run in this cycle (e.g. backend state gate),
+	      # preserve the active window until we can verify user state again.
+	      active=true
+	    fi
+	  fi
 
   eligible=false
   if [[ "${SUPPORT_ENABLED}" == "true" && "${SUPPORT_TAILNET_MATCH}" == "true" && "${SUPPORT_BACKEND}" == "Running" ]]; then
-    if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" ]]; then
-      if [[ -z "${SUPPORT_REASON:-}" ]]; then
-        eligible=true
-      fi
-    elif [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
+    if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
       if [[ "${SUPPORT_USER_EXISTS}" == "true" && "${SUPPORT_USER_IS_OWNER}" != "true" ]]; then
         case "${SUPPORT_REASON:-}" in
           ""|support_virtual_keys_token_not_found)
@@ -2293,27 +2101,13 @@ enable_cmd() {
       '{ok:false,error:$error,reason:$reason}'
     exit 1
   fi
-  if [[ "${SUPPORT_MODE:-virtual_keys_token}" != "temp_account" ]]; then
-    if [[ "${SUPPORT_USER_EXISTS}" != "true" || "${SUPPORT_USER_IS_OWNER}" == "true" ]]; then
-      write_state false false
-      jq -nc \
-        --arg error "support access no permitido en este estado" \
-        --arg reason "${SUPPORT_REASON:-support_not_eligible}" \
-        '{ok:false,error:$error,reason:$reason}'
-      exit 1
-    fi
-  else
-    if [[ "${SUPPORT_REASON:-}" == "support_temp_create_service_not_configured" || \
-      "${SUPPORT_REASON:-}" == "support_temp_create_service_invalid" || \
-      "${SUPPORT_REASON:-}" == "support_temp_delete_service_not_configured" || \
-      "${SUPPORT_REASON:-}" == "support_temp_delete_service_invalid" ]]; then
-      write_state false false
-      jq -nc \
-        --arg error "servicios de soporte temporal no configurados" \
-        --arg reason "${SUPPORT_REASON}" \
-        '{ok:false,error:$error,reason:$reason}'
-      exit 1
-    fi
+  if [[ "${SUPPORT_USER_EXISTS}" != "true" || "${SUPPORT_USER_IS_OWNER}" == "true" ]]; then
+    write_state false false
+    jq -nc \
+      --arg error "support access no permitido en este estado" \
+      --arg reason "${SUPPORT_REASON:-support_not_eligible}" \
+      '{ok:false,error:$error,reason:$reason}'
+    exit 1
   fi
 
   read_meta
@@ -2364,23 +2158,14 @@ enable_cmd() {
     fi
   fi
 
-  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" ]]; then
-    details="temp_user_enable_ok:${USER_OP_REASON}:${SUPPORT_USER}"
-  elif [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
+  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
     details="virtual_keys_enable_ok:${USER_OP_REASON}:${SUPPORT_USER}:${SUPPORT_VK_TOKEN_NAME:-}:notify=${SUPPORT_NOTIFY_STATUS:-disabled}"
   else
     details="user_enable_ok:${USER_OP_REASON}"
   fi
   audit_event "enabled" "ok" "${details}"
   write_state true true
-  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "temp_account" && -n "${SUPPORT_TEMP_USERNAME:-}" ]]; then
-    jq -c \
-      --arg support_temp_username "${SUPPORT_TEMP_USERNAME:-}" \
-      --arg support_temp_password "${SUPPORT_TEMP_PASSWORD:-}" \
-      --arg support_mode "${SUPPORT_MODE:-temp_account}" \
-      '. + {support_mode:$support_mode,support_temp_username:$support_temp_username,support_temp_password:$support_temp_password}' \
-      "${STATE_FILE}"
-  elif [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
+  if [[ "${SUPPORT_MODE:-virtual_keys_token}" == "virtual_keys_token" ]]; then
     jq -c \
       --arg support_mode "${SUPPORT_MODE:-virtual_keys_token}" \
       --arg support_virtual_keys_token_name "${SUPPORT_VK_TOKEN_NAME:-}" \
@@ -2472,7 +2257,7 @@ audit_cmd() {
 debug_cmd() {
   local cfg_enabled cfg_dns cfg_user
   local cfg_virtual_keys_token_prefix cfg_target_url cfg_target_domain_suffix
-  local cfg_notify_telegram_enabled cfg_notify_telegram_bot_token cfg_notify_telegram_chat_id cfg_notify_telegram_chat_id_normalized
+  local cfg_notify_telegram_enabled cfg_notify_telegram_bot_token cfg_notify_telegram_bot_token_masked cfg_notify_telegram_chat_id cfg_notify_telegram_chat_id_normalized
   local cfg_notify_telegram_bot_probe_status cfg_notify_telegram_bot_probe_reason
   local cfg_notify_telegram_bot_id cfg_notify_telegram_bot_username cfg_notify_telegram_bot_name
   local cfg_notify_telegram_chat_probe_status cfg_notify_telegram_chat_probe_reason
@@ -2485,12 +2270,13 @@ debug_cmd() {
   local lookup_forced lookup_rc lookup_hint
   local debug_eligible now_epoch debug_active
   local state_snapshot meta_snapshot notify_snapshot telegram_debug_snapshot
+  local api_last_output_sanitized
 
   cfg_enabled=false
   if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
     cfg_enabled=true
   fi
-  cfg_dns="$(normalize_dns_value "$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")")"
+  cfg_dns="$(normalize_dns_value "$(bashio::config "support_tailnet_dns_suffix" "")")"
   cfg_user="$(bashio::config "support_user" "nodalia")"
   cfg_virtual_keys_token_prefix="$(virtual_keys_token_prefix)"
   cfg_target_url="$(normalize_base_url "$(bashio::config "support_target_url" "" 2>/dev/null || true)")"
@@ -2500,6 +2286,7 @@ debug_cmd() {
     cfg_notify_telegram_enabled=true
   fi
   cfg_notify_telegram_bot_token="$(trim_spaces "$(bashio::config "support_notify_telegram_bot_token" "" 2>/dev/null || true)")"
+  cfg_notify_telegram_bot_token_masked="$(mask_secret_value "${cfg_notify_telegram_bot_token}")"
   cfg_notify_telegram_chat_id="$(trim_spaces "$(bashio::config "support_notify_telegram_chat_id" "" 2>/dev/null || true)")"
   cfg_notify_telegram_chat_id_normalized="$(normalize_telegram_chat_target "${cfg_notify_telegram_chat_id}")"
   cfg_notify_telegram_bot_token_set=false
@@ -2596,6 +2383,9 @@ debug_cmd() {
   meta_snapshot="$(read_json_file_or_empty "${META_FILE}")"
   notify_snapshot="$(read_json_file_or_empty "${NOTIFY_FILE}")"
   telegram_debug_snapshot="$(read_json_file_or_empty "${TELEGRAM_DEBUG_FILE}")"
+  notify_snapshot="$(sanitize_json_tokens_for_debug "${notify_snapshot}")"
+  telegram_debug_snapshot="$(sanitize_json_tokens_for_debug "${telegram_debug_snapshot}")"
+  api_last_output_sanitized="$(sanitize_api_last_output_for_debug "${API_LAST_OUTPUT:-}")"
 
   jq -nc \
     --arg generated_at "$(now_utc)" \
@@ -2604,7 +2394,7 @@ debug_cmd() {
     --arg cfg_virtual_keys_token_prefix "${cfg_virtual_keys_token_prefix}" \
     --arg cfg_target_url "${cfg_target_url}" \
     --arg cfg_target_domain_suffix "${cfg_target_domain_suffix}" \
-    --arg cfg_notify_telegram_bot_token "${cfg_notify_telegram_bot_token}" \
+    --arg cfg_notify_telegram_bot_token "${cfg_notify_telegram_bot_token_masked}" \
     --arg cfg_notify_telegram_chat_id "${cfg_notify_telegram_chat_id}" \
     --arg cfg_notify_telegram_chat_id_normalized "${cfg_notify_telegram_chat_id_normalized}" \
     --arg cfg_notify_telegram_bot_probe_status "${cfg_notify_telegram_bot_probe_status}" \
@@ -2646,7 +2436,7 @@ debug_cmd() {
     --arg magic_dns_suffix "${magic_dns_suffix}" \
     --arg current_tailnet_name "${current_tailnet_name}" \
     --arg api_last_rc "${API_LAST_RC:-}" \
-    --arg api_last_output "${API_LAST_OUTPUT:-}" \
+    --arg api_last_output "${api_last_output_sanitized}" \
     --arg api_last_stderr "${API_LAST_STDERR:-}" \
     --argjson cfg_enabled "$(json_bool "${cfg_enabled}")" \
     --argjson cfg_notify_telegram_enabled "$(json_bool "${cfg_notify_telegram_enabled}")" \
@@ -2754,10 +2544,7 @@ debug_cmd() {
 fallback_status_json() {
   local reason cfg_dns cfg_user cfg_enabled cfg_mode cfg_target_url
   reason="${1:-support_status_failed}"
-  cfg_dns="$(bashio::config "support_tailnet_dns_suffix" 2>/dev/null || true)"
-  if [[ -z "${cfg_dns}" ]]; then
-    cfg_dns="tail37b857.ts.net"
-  fi
+  cfg_dns="$(normalize_dns_value "$(bashio::config "support_tailnet_dns_suffix" "" 2>/dev/null || true)")"
   cfg_user="$(bashio::config "support_user" 2>/dev/null || true)"
   if [[ -z "${cfg_user}" ]]; then
     cfg_user="nodalia"

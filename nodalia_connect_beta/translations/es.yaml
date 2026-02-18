@@ -132,7 +132,7 @@ configuration:
   support_tailnet_dns_suffix:
     name: DNS de tailnet para soporte
     description: >-
-      Sufijo DNS usado para validar soporte remoto (por ejemplo `tail37b857.ts.net`).
+      Sufijo DNS usado para validar soporte remoto (por ejemplo `example.ts.net`).
       El acceso de soporte solo se habilita cuando el DNS de este nodo coincide con ese sufijo.
   support_user:
     name: Usuario local de soporte

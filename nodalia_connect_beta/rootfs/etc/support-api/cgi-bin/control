@@ -107,6 +107,19 @@ if [[ "${REQUEST_METHOD:-GET}" != "POST" ]] && [[ "${REQUEST_METHOD:-GET}" != "G
   exit 0
 fi
 
+if [[ "${action}" == "reconnect" || "${action}" == "logout" ]] && [[ "${REQUEST_METHOD:-GET}" != "POST" ]]; then
+  echo "Status: 405 Method Not Allowed"
+  echo "Content-Type: application/json"
+  echo "Cache-Control: no-store"
+  echo
+  jq -nc \
+    --arg action "${action}" \
+    --arg error "method_not_allowed" \
+    --arg reason "post_required_for_action" \
+    '{ok:false,action:$action,error:$error,reason:$reason}'
+  exit 0
+fi
+
 run_action() {
   local cmd_output rc
   case "${action}" in
@@ -329,6 +342,13 @@ echo "Content-Type: application/json"
 echo "Cache-Control: no-store"
 echo
 
+include_debug=false
+log_level_cfg="$(bashio::config "log_level" "info" 2>/dev/null || true)"
+log_level_cfg="$(printf '%s' "${log_level_cfg}" | tr '[:upper:]' '[:lower:]')"
+case "${log_level_cfg}" in
+  trace|debug) include_debug=true ;;
+esac
+
 jq -nc \
   --arg action "${action}" \
   --arg request_method "${REQUEST_METHOD:-}" \
@@ -363,25 +383,10 @@ jq -nc \
   --argjson health_score "${health_score}" \
   --argjson rc "${ACTION_RC}" \
   --argjson ok "$(json_bool "${ok}")" \
+  --argjson include_debug "$(json_bool "${include_debug}")" \
   '{
     ok: $ok,
     action: $action,
-    _debug: {
-      request_method: $request_method,
-      request_uri: $request_uri,
-      script_name: $script_name,
-      query_string: $query_string,
-      path_info: $path_info,
-      content_length: $content_length,
-      request_body_preview: $request_body_preview,
-      action_arg: $action_arg,
-      action_script: $action_script,
-      action_qs: $action_qs,
-      action_body: $action_body,
-      action_hdr: $action_hdr,
-      action_path: $action_path,
-      x_nodalia_action: $x_action
-    },
     rc: $rc,
     backend_state: $backend_state,
     auth_url: $auth_url,
@@ -405,4 +410,21 @@ jq -nc \
       resolvers: $dns_resolvers
     },
     output: $output
-  }'
+  } + (if $include_debug then {
+    _debug: {
+      request_method: $request_method,
+      request_uri: $request_uri,
+      script_name: $script_name,
+      query_string: $query_string,
+      path_info: $path_info,
+      content_length: $content_length,
+      request_body_preview: $request_body_preview,
+      action_arg: $action_arg,
+      action_script: $action_script,
+      action_qs: $action_qs,
+      action_body: $action_body,
+      action_hdr: $action_hdr,
+      action_path: $action_path,
+      x_nodalia_action: $x_action
+    }
+  } else {} end)'

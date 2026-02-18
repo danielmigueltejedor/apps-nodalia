@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nodalia Connect Onboarding</title>
   <style>
-    :root {
+	    :root {
       --bg: #0d1628;
       --bg-2: #11233f;
       --bg-3: #0e1c34;
@@ -46,53 +46,9 @@
       --score-pill-bg: #1a2e4c;
       --score-pill-border: #34547f;
       --score-pill-text: #d2e2ff;
-      --button-shadow: 0 8px 18px rgba(14, 67, 148, 0.45);
-      --button-hover-shadow: 0 10px 22px rgba(23, 98, 205, 0.55);
-    }
-    body.theme-light {
-      --bg: #e8eef9;
-      --bg-2: #dbe7fb;
-      --bg-3: #dbe6f7;
-      --bg-glow-1: rgba(255, 255, 255, 0.9);
-      --bg-glow-2: rgba(198, 218, 255, 0.65);
-      --card-grad-top: rgba(255, 255, 255, 0.98);
-      --card-grad-bottom: rgba(250, 253, 255, 0.96);
-      --text: #0b1c34;
-      --muted: #4d6180;
-      --brand: #0a1f3c;
-      --badge-text: #0c4ea6;
-      --badge-bg-top: #ecf3ff;
-      --badge-bg-bottom: #e2eeff;
-      --badge-border: #c2d7fa;
-      --accent: #1262d4;
-      --accent-2: #0b4daa;
-      --ok: #0f7f4f;
-      --warn: #9b3a13;
-      --pending: #b38400;
-      --danger: #c62828;
-      --border: #ccdbf0;
-      --line: rgba(18, 56, 102, 0.08);
-      --shadow: 0 20px 50px rgba(11, 28, 52, 0.13);
-      --input-bg: #f7fbff;
-      --ghost-grad-top: #f5f8fd;
-      --ghost-grad-bottom: #e8eef8;
-      --ghost-border: #cfdbeb;
-      --ghost-text: #142844;
-      --panel-grad-top: #f9fcff;
-      --panel-grad-bottom: #f4f9ff;
-      --step-bg: #f7fafc;
-      --step-active-bg: #e9f2ff;
-      --step-active-border: #78acef;
-      --profile-bg: #ffffff;
-      --mono-bg: #f1f6fd;
-      --mono-border: #d9e6f7;
-      --mono-text: #223d5e;
-      --score-pill-bg: #eaf2ff;
-      --score-pill-border: #ccdbf0;
-      --score-pill-text: #0d2a50;
-      --button-shadow: 0 8px 18px rgba(18, 98, 212, 0.2);
-      --button-hover-shadow: 0 10px 20px rgba(18, 98, 212, 0.27);
-    }
+	      --button-shadow: 0 8px 18px rgba(14, 67, 148, 0.45);
+	      --button-hover-shadow: 0 10px 22px rgba(23, 98, 205, 0.55);
+	    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -147,7 +103,7 @@
       width: fit-content;
     }
     .brand img {
-      width: clamp(150px, 24vw, 220px);
+      width: clamp(160px, 26vw, 260px);
       height: auto;
       object-fit: contain;
       border: 0;
@@ -170,21 +126,9 @@
       border-radius: 999px;
       padding: 5px 11px;
     }
-    .theme-toggle {
-      min-width: 48px;
-      width: 48px;
-      padding: 10px 0;
-      font-size: 1.08rem;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      white-space: nowrap;
-    }
-    .support-btn {
-      min-width: 48px;
-      width: 48px;
+	    .support-btn {
+	      min-width: 48px;
+	      width: 48px;
       padding: 10px 0;
       font-size: 1.05rem;
       line-height: 1;
@@ -215,25 +159,16 @@
       color: #dbefff;
       box-shadow: 0 8px 18px rgba(17, 65, 126, 0.32);
     }
-    .support-btn.support-active {
-      border-color: #39b883;
-      color: #deffef;
-      box-shadow: 0 8px 18px rgba(18, 88, 57, 0.35);
-    }
-    body.theme-light .support-btn {
-      border-color: #c3d5ee;
-      color: #17355b;
-    }
-    body.theme-light .support-btn.support-on {
-      border-color: #5e92cd;
-      color: #0e3f78;
-      box-shadow: 0 8px 18px rgba(23, 84, 161, 0.2);
-    }
-    body.theme-light .support-btn.support-active {
-      border-color: #3f9b6c;
-      color: #0e5c3e;
-      box-shadow: 0 8px 18px rgba(22, 109, 71, 0.2);
-    }
+	    .support-btn.support-active {
+	      border-color: #39b883;
+	      color: #deffef;
+	      box-shadow: 0 8px 18px rgba(18, 88, 57, 0.35);
+	    }
+	    .adv-btn.adv-on {
+	      border-color: #4b8bca;
+	      color: #dbefff;
+	      box-shadow: 0 8px 18px rgba(17, 65, 126, 0.32);
+	    }
     .power-btn {
       min-width: 48px;
       width: 48px;
@@ -365,10 +300,9 @@
       margin-top: 12px;
       line-height: 1.45;
     }
-    .quick {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+    .small.hint-warn {
+      color: var(--warn);
+      font-weight: 600;
     }
     .advanced-only {
       display: block;
@@ -530,32 +464,31 @@
       from { transform: scale(1); }
       to { transform: scale(1.08); }
     }
-    @media (max-width: 640px) {
-      body { padding: 14px; }
-      .card { padding: 14px; border-radius: 14px; }
-      .kv { grid-template-columns: 1fr; }
-      button, a.btn { width: 100%; justify-content: center; text-align: center; }
-      .actions { display: grid; grid-template-columns: 1fr; }
-      .hero-head { align-items: center; }
-      .theme-toggle { width: 48px; min-width: 48px; }
-      .support-btn { width: 48px; min-width: 48px; }
-      .hero-actions { width: 100%; }
-      .power-btn { min-width: 0; }
-      .logout-hint { width: 100%; justify-content: center; }
-    }
+	    @media (max-width: 640px) {
+	      body { padding: 14px; }
+	      .card { padding: 14px; border-radius: 14px; }
+	      .kv { grid-template-columns: 1fr; }
+	      .actions button, .actions a.btn { width: 100%; justify-content: center; text-align: center; }
+	      .actions { display: grid; grid-template-columns: 1fr; }
+	      .hero-head { align-items: center; }
+	      .support-btn { width: 48px; min-width: 48px; }
+	      .hero-actions { width: 100%; }
+	      .power-btn { min-width: 0; }
+	      .logout-hint { width: 100%; justify-content: center; }
+	    }
   </style>
 </head>
-<body class="theme-dark">
-  <main class="card">
-    <section class="hero">
-      <div class="hero-head">
-        <div class="brand">
-          <img id="brand-logo" src="logo.png" alt="Nodalia Connect logo">
-        </div>
-        <div class="hero-actions">
-          <span id="logout-hint" class="logout-hint" hidden></span>
-          <button id="op-logout-btn" type="button" class="power-btn" aria-label="Logauth y reset de identidad local" title="Logauth (reset tailnet)">&#x23FB;</button>
-          <button id="support-nav-btn" type="button" class="ghost support-btn" aria-label="Abrir modo soporte" title="Abrir modo soporte">
+	<body>
+	  <main class="card">
+	    <section class="hero">
+	      <div class="hero-head">
+	        <div class="brand">
+	          <img id="brand-logo" src="logo.png" alt="Nodalia Connect logo">
+	        </div>
+	        <div class="hero-actions">
+	          <span id="logout-hint" class="logout-hint" hidden></span>
+	          <button id="op-logout-btn" type="button" class="power-btn" aria-label="Logauth y reset de identidad local" title="Logauth (reset tailnet)">&#x23FB;</button>
+	          <button id="support-nav-btn" type="button" class="ghost support-btn" aria-label="Abrir modo soporte" title="Abrir modo soporte">
             <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <path d="M4 12a8 8 0 1 1 16 0"></path>
               <rect x="3.5" y="12" width="3.2" height="4.8" rx="1.2"></rect>
@@ -563,19 +496,22 @@
               <circle cx="12" cy="12.3" r="2.6"></circle>
               <path d="M8.8 19c.8-1.1 1.9-1.7 3.2-1.7s2.4.6 3.2 1.7"></path>
               <path d="M20.5 16.8v.4a2.6 2.6 0 0 1-2.6 2.6h-2"></path>
-            </svg>
-          </button>
-          <button id="theme-toggle-btn" type="button" class="ghost theme-toggle" aria-label="Cambiar a modo claro" title="Cambiar a modo claro">☀</button>
-        </div>
-      </div>
-      <span class="badge">Nodalia Control Center</span>
+	            </svg>
+	          </button>
+	          <button id="toggle-advanced-btn" type="button" class="ghost support-btn adv-btn" aria-label="Modo avanzado: OFF" title="Modo avanzado: OFF">
+	            <svg class="support-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+	              <path d="M4 6h16"></path>
+	              <path d="M4 12h16"></path>
+	              <path d="M4 18h16"></path>
+	              <circle cx="9" cy="6" r="2"></circle>
+	              <circle cx="15" cy="12" r="2"></circle>
+	              <circle cx="11" cy="18" r="2"></circle>
+	            </svg>
+	          </button>
+	        </div>
+	      </div>
       <h1>Asistente de inicio de sesion</h1>
       <p>Gestiona Tailscale desde aqui sin depender del iframe, con acceso directo cuando quieras.</p>
-      <div class="quick">
-        <a id="go-status-btn" class="btn ghost" href="#ok-box" title="Ir al bloque de acciones">Ir a acciones</a>
-        <button id="hard-refresh-btn" type="button" class="ghost" title="Recargar panel completo">Recargar ↻</button>
-        <button id="toggle-advanced-btn" type="button" class="ghost">Modo avanzado: ON</button>
-      </div>
       <p class="small">Dentro del iframe veras un boton flotante para volver a este panel.</p>
     </section>
     <div class="steps">
@@ -656,6 +592,7 @@
     <section id="support-panel" class="panel">
       <h2>Acceso soporte Nodalia</h2>
       <p class="small">Disponible solo si el DNS de esta instancia coincide con el DNS de soporte configurado.</p>
+      <p id="sup-vk-hint" class="small hint-warn" hidden></p>
       <div class="kv">
         <div>Soporte habilitado:</div><div><code id="sup-enabled">-</code></div>
         <div class="advanced-only">Modo soporte:</div><div class="advanced-only"><code id="sup-mode">-</code></div>
@@ -673,7 +610,6 @@
       <div class="actions" style="margin-top:10px;">
         <button id="sup-enable-btn" type="button" class="ghost">Habilitar acceso soporte</button>
         <button id="sup-disable-btn" type="button" class="ghost">Revocar ahora</button>
-        <button id="sup-audit-btn" type="button" class="ghost">Ver auditoria</button>
         <button id="sup-notify-test-btn" type="button" class="ghost advanced-only">Probar Telegram</button>
         <button id="sup-debug-btn" type="button" class="ghost advanced-only debug-only">Debug soporte</button>
       </div>
@@ -705,7 +641,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.0-beta140</code>.</p>
+	    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.0-rc2</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -716,13 +652,10 @@
     const openBtn = document.getElementById("open-btn");
     const openWebuiBtn = document.getElementById("open-webui-btn");
     const openDirectBtn = document.getElementById("open-direct-btn");
-    const goStatusBtn = document.getElementById("go-status-btn");
-    const hardRefreshBtn = document.getElementById("hard-refresh-btn");
-    const toggleAdvancedBtn = document.getElementById("toggle-advanced-btn");
-    const themeToggleBtn = document.getElementById("theme-toggle-btn");
-    const uiBuildVersionEl = document.getElementById("ui-build-version");
-    const UI_BUILD_VERSION = String(uiBuildVersionEl?.textContent || "");
-    const UI_IS_BETA = /beta/i.test(UI_BUILD_VERSION);
+	    const toggleAdvancedBtn = document.getElementById("toggle-advanced-btn");
+	    const uiBuildVersionEl = document.getElementById("ui-build-version");
+	    const UI_BUILD_VERSION = String(uiBuildVersionEl?.textContent || "");
+	    const UI_IS_BETA = /(beta|rc)/i.test(UI_BUILD_VERSION);
     const supportNavBtn = document.getElementById("support-nav-btn");
     const supportPanel = document.getElementById("support-panel");
     const logoutHint = document.getElementById("logout-hint");
@@ -749,11 +682,11 @@
     const supportNotifyReason = document.getElementById("sup-notify-reason");
     const supportExpires = document.getElementById("sup-expires");
     const supportReason = document.getElementById("sup-reason");
+    const supportVkHint = document.getElementById("sup-vk-hint");
     const supportMessage = document.getElementById("sup-message");
     const supportEnableBtn = document.getElementById("sup-enable-btn");
     const supportDisableBtn = document.getElementById("sup-disable-btn");
     const supportNotifyTestBtn = document.getElementById("sup-notify-test-btn");
-    const supportAuditBtn = document.getElementById("sup-audit-btn");
     const supportDebugBtn = document.getElementById("sup-debug-btn");
     const supportAuditOutput = document.getElementById("sup-audit-output");
     const rtBackend = document.getElementById("rt-backend");
@@ -795,14 +728,13 @@
     let lastHealthHtml = "";
     let lastRuntimeSignature = "";
     let lastStateMessage = "";
-    let lastStateClass = "";
-    let isFirstRender = true;
-    let advancedModeEnabled = true;
-    let themeMode = "dark";
-    let redirectDeadlineMs = 0;
+	    let lastStateClass = "";
+	    let isFirstRender = true;
+	    let advancedModeEnabled = false;
+	    let redirectDeadlineMs = 0;
     let actionInFlight = 0;
     let supportBusy = false;
-    let supportRules = { enable: false, disable: false, notify_test: true, audit: false, debug: true };
+    let supportRules = { enable: false, disable: false, notify_test: true, debug: true };
     let opBusy = false;
     let opCanLogout = false;
     let logoutConfirmUntilMs = 0;
@@ -953,57 +885,37 @@
       }
     }
 
-    function normalizeTheme(value) {
-      return value === "light" ? "light" : "dark";
-    }
+	    function loadUiPrefs() {
+	      advancedModeEnabled = false;
+	      autoOpenCheck.checked = false;
+	      try {
+	        const raw = localStorage.getItem(UI_PREFS_KEY);
+	        if (raw) {
+	          const prefs = JSON.parse(raw);
+	          advancedModeEnabled = prefs?.advanced_mode === true;
+	          autoOpenCheck.checked = prefs?.auto_open === true;
+	        }
+	      } catch (_) {
+	      }
+	    }
 
-    function applyTheme(theme) {
-      themeMode = normalizeTheme(theme);
-      const isLight = themeMode === "light";
-      document.body.classList.toggle("theme-light", isLight);
-      document.body.classList.toggle("theme-dark", !isLight);
-      if (!themeToggleBtn) {
-        return;
-      }
-      const nextTheme = isLight ? "dark" : "light";
-      const nextLabel = nextTheme === "light" ? "☀" : "🌙";
-      const nextAria = nextTheme === "light" ? "Cambiar a modo claro" : "Cambiar a modo oscuro";
-      themeToggleBtn.textContent = nextLabel;
-      themeToggleBtn.setAttribute("aria-label", nextAria);
-      themeToggleBtn.title = nextAria;
-    }
-
-    function loadUiPrefs() {
-      advancedModeEnabled = true;
-      autoOpenCheck.checked = false;
-      themeMode = "dark";
-      try {
-        const raw = localStorage.getItem(UI_PREFS_KEY);
-        if (raw) {
-          const prefs = JSON.parse(raw);
-          advancedModeEnabled = prefs?.advanced_mode !== false;
-          autoOpenCheck.checked = prefs?.auto_open === true;
-          themeMode = normalizeTheme(prefs?.theme);
-        }
-      } catch (_) {
-      }
-      applyTheme(themeMode);
-    }
-
-    function saveUiPrefs() {
-      try {
-        localStorage.setItem(UI_PREFS_KEY, JSON.stringify({
-          advanced_mode: advancedModeEnabled,
-          auto_open: autoOpenCheck.checked,
-          theme: themeMode,
-        }));
-      } catch (_) {
-      }
-    }
+	    function saveUiPrefs() {
+	      try {
+	        localStorage.setItem(UI_PREFS_KEY, JSON.stringify({
+	          advanced_mode: advancedModeEnabled,
+	          auto_open: autoOpenCheck.checked,
+	        }));
+	      } catch (_) {
+	      }
+	    }
 
     function renderAdvancedMode() {
       document.body.classList.toggle("advanced-hidden", !advancedModeEnabled);
-      toggleAdvancedBtn.textContent = advancedModeEnabled ? "Modo avanzado: ON" : "Modo avanzado: OFF";
+      if (toggleAdvancedBtn) {
+        toggleAdvancedBtn.classList.toggle("adv-on", advancedModeEnabled);
+        toggleAdvancedBtn.setAttribute("title", advancedModeEnabled ? "Modo avanzado: ON" : "Modo avanzado: OFF");
+        toggleAdvancedBtn.setAttribute("aria-label", advancedModeEnabled ? "Modo avanzado: ON" : "Modo avanzado: OFF");
+      }
       syncLogoutTraceVisibility();
     }
 
@@ -1056,7 +968,6 @@
       setUiDisabled(supportEnableBtn, supportBusy || !supportRules.enable);
       setUiDisabled(supportDisableBtn, supportBusy || !supportRules.disable);
       setUiDisabled(supportNotifyTestBtn, supportBusy || !supportRules.notify_test);
-      setUiDisabled(supportAuditBtn, supportBusy || !supportRules.audit);
       setUiDisabled(supportDebugBtn, supportBusy || !supportRules.debug);
     }
 
@@ -1099,6 +1010,24 @@
       supportNotifyReason.textContent = notifyReasonValue || "-";
       supportExpires.textContent = expiresAt || "-";
       supportReason.textContent = reason || "-";
+      if (supportVkHint) {
+        const reasonNorm = reason.toLowerCase();
+        if (reasonNorm.includes("support_virtual_keys_status_failed")) {
+          let hint = "No se pudo usar virtual-keys. Instala y configura la integracion virtual-keys en Home Assistant para activar soporte.";
+          if (reasonNorm.includes("virtual_keys_helper_missing")) {
+            hint = "virtual-keys no esta disponible en esta instalacion. Instala la integracion virtual-keys en Home Assistant para usar soporte.";
+          } else if (reasonNorm.includes("virtual_keys_ws_connect_failed")) {
+            hint = "No se pudo conectar con virtual-keys. Verifica que la integracion virtual-keys este instalada, cargada y operativa en Home Assistant.";
+          } else if (reasonNorm.includes("virtual_keys_auth_failed")) {
+            hint = "virtual-keys esta instalado pero no pudo autenticarse. Revisa su integracion y vuelve a intentar.";
+          }
+          supportVkHint.textContent = hint;
+          supportVkHint.hidden = false;
+        } else {
+          supportVkHint.hidden = true;
+          supportVkHint.textContent = "";
+        }
+      }
       if (supportNavBtn) {
         supportNavBtn.classList.toggle("support-on", enabled);
         supportNavBtn.classList.toggle("support-active", active);
@@ -1107,7 +1036,6 @@
         enable: enabled && eligible && !active,
         disable: active,
         notify_test: true,
-        audit: enabled,
         debug: true,
       };
       renderSupportButtons();
@@ -1945,7 +1873,11 @@
         supportNotifyReason.textContent = "n/a";
         supportExpires.textContent = "n/a";
         supportReason.textContent = "runtime unavailable";
-        supportRules = { enable: false, disable: false, notify_test: false, audit: false, debug: true };
+        if (supportVkHint) {
+          supportVkHint.hidden = true;
+          supportVkHint.textContent = "";
+        }
+        supportRules = { enable: false, disable: false, notify_test: false, debug: true };
         if (supportNavBtn) {
           supportNavBtn.classList.remove("support-on", "support-active");
         }
@@ -2023,7 +1955,7 @@
       setSupportButtonState(true);
       supportMessage.textContent = "Habilitando acceso temporal para soporte...";
       try {
-        const payload = await callSupportApi("enable", "POST", true);
+        const payload = await callSupportApi("enable", "POST", false);
         const activationInfo = formatSupportActivationInfo(payload);
         if (activationInfo) {
           supportMessage.textContent = "Acceso de soporte habilitado.";
@@ -2052,7 +1984,7 @@
       setSupportButtonState(true);
       supportMessage.textContent = "Revocando acceso de soporte...";
       try {
-        await callSupportApi("disable", "POST", true);
+        await callSupportApi("disable", "POST", false);
         supportMessage.textContent = "Acceso de soporte revocado.";
         supportAuditOutput.hidden = true;
         supportAuditOutput.textContent = "";
@@ -2066,15 +1998,15 @@
         endUiAction();
       }
     });
-    supportNotifyTestBtn.addEventListener("click", async () => {
-      if (isUiDisabled(supportNotifyTestBtn)) {
-        return;
-      }
+	    supportNotifyTestBtn.addEventListener("click", async () => {
+	      if (isUiDisabled(supportNotifyTestBtn)) {
+	        return;
+	      }
       beginUiAction();
       setSupportButtonState(true);
       supportMessage.textContent = "Enviando prueba de Telegram...";
       try {
-        const payload = await callSupportApi("notify-test", "POST", true);
+        const payload = await callSupportApi("notify-test", "POST", false);
         const status = String(payload?.status || payload?.support_notify_status || "");
         const reason = String(payload?.reason || payload?.support_notify_reason || "");
         if (payload?.ok) {
@@ -2090,32 +2022,12 @@
       } finally {
         setSupportButtonState(false);
         endUiAction();
-      }
-    });
-    supportAuditBtn.addEventListener("click", async () => {
-      if (isUiDisabled(supportAuditBtn)) {
-        return;
-      }
-      beginUiAction();
-      supportAuditOutput.hidden = false;
-      supportAuditOutput.textContent = "Cargando auditoria...";
-      try {
-        const response = await fetch(ingressUrl("support-api/audit"), {
-          cache: "no-store",
-          headers: { "X-Nodalia-Action": "audit" },
-        });
-        const text = await response.text();
-        supportAuditOutput.textContent = text.trim() || "Sin eventos de auditoria todavia.";
-      } catch (error) {
-        supportAuditOutput.textContent = "No se pudo cargar auditoria: " + error.message;
-      } finally {
-        endUiAction();
-      }
-    });
-    supportDebugBtn.addEventListener("click", async () => {
-      if (isUiDisabled(supportDebugBtn)) {
-        return;
-      }
+	      }
+	    });
+	    supportDebugBtn.addEventListener("click", async () => {
+	      if (isUiDisabled(supportDebugBtn)) {
+	        return;
+	      }
       beginUiAction();
       setSupportButtonState(true);
       supportAuditOutput.hidden = false;
@@ -2172,7 +2084,6 @@
       try {
         const endpointBase = ingressUrl("control-api");
         const endpointPath = ingressUrl("control-api/logout");
-        const endpointQuery = ingressUrl("control-api?action=logout");
         let response = null;
         let payload = "";
         let data = null;
@@ -2205,8 +2116,6 @@
         const attempts = [
           { method: "POST", url: endpointBase, useBodyAction: true },
           { method: "POST", url: endpointPath, useBodyAction: false },
-          { method: "GET", url: endpointQuery, useBodyAction: false },
-          { method: "GET", url: endpointPath, useBodyAction: false },
         ];
         for (const item of attempts) {
           result = await attempt(item.method, item.url, item.useBodyAction);
@@ -2390,33 +2299,15 @@
         endUiAction();
       }
     });
-    goStatusBtn.addEventListener("click", (event) => {
-      event.preventDefault();
-      const target = loginBox.hidden ? (okBox.hidden ? stateEl : okBox) : loginBox;
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    hardRefreshBtn.addEventListener("click", () => {
-      try {
-        localStorage.removeItem(RUNTIME_CACHE_KEY);
-      } catch (_) {
-      }
-      window.location.reload();
-    });
-    toggleAdvancedBtn.addEventListener("click", () => {
-      advancedModeEnabled = !advancedModeEnabled;
-      renderAdvancedMode();
-      saveUiPrefs();
-    });
-    if (themeToggleBtn) {
-      themeToggleBtn.addEventListener("click", () => {
-        applyTheme(themeMode === "dark" ? "light" : "dark");
-        saveUiPrefs();
-      });
-    }
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        if (pollHandle) {
-          clearTimeout(pollHandle);
+	    toggleAdvancedBtn?.addEventListener("click", () => {
+	      advancedModeEnabled = !advancedModeEnabled;
+	      renderAdvancedMode();
+	      saveUiPrefs();
+	    });
+	    document.addEventListener("visibilitychange", () => {
+	      if (document.visibilityState === "visible") {
+	        if (pollHandle) {
+	          clearTimeout(pollHandle);
         }
         loadState();
       }

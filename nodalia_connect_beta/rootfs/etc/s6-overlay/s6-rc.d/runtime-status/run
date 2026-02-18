@@ -9,6 +9,7 @@ readonly RUNTIME_STATE_FILE="/data/tailscale-runtime.json"
 readonly POLL_INTERVAL=3
 readonly LOG_HEARTBEAT_EVERY_LOOPS=20
 readonly DNS_RESOLVERS_REFRESH_EVERY_LOOPS=20
+readonly SUPPORT_STATUS_REFRESH_EVERY_LOOPS=4
 
 declare status_json
 declare backend_state
@@ -54,11 +55,13 @@ declare support_cmd_output
 declare support_cmd_rc
 declare support_cmd_last_line
 declare support_cached_json
+declare support_json_last_good
 declare support_fallback_dns
 declare support_fallback_user
 declare support_fallback_enabled
 declare support_fallback_mode
 declare support_reason_fallback
+declare support_refresh_due
 
 declare -i ready_streak=0
 declare -i start_epoch
@@ -82,6 +85,7 @@ else
 fi
 share_mode=$(bashio::config "share_homeassistant" "disabled")
 dns_resolvers='[]'
+support_json_last_good=""
 
 while true
 do
@@ -128,20 +132,33 @@ do
   # Publishing a direct tailnet :5252 URL causes false expectations on many setups.
   direct_webui_url=""
 
-  set +e
-  support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status)"
-  support_cmd_rc=$?
-  set -e
-  support_cmd_last_line="$(printf '%s\n' "${support_cmd_output}" | awk 'NF{line=$0} END{print line}')"
+  support_cmd_output=""
+  support_cmd_rc=0
+  support_cmd_last_line=""
   support_cached_json=""
-  if (( support_cmd_rc == 0 )) && jq -e . > /dev/null 2>&1 <<< "${support_cmd_output}"; then
+  support_refresh_due=false
+  if (( loop_count == 0 || loop_count % SUPPORT_STATUS_REFRESH_EVERY_LOOPS == 0 )); then
+    support_refresh_due=true
+  fi
+
+  if [[ "${support_refresh_due}" == "true" ]]; then
+    set +e
+    support_cmd_output="$(SUPPORT_STATUS_JSON="${status_json}" /usr/bin/support-tunnel status)"
+    support_cmd_rc=$?
+    set -e
+    support_cmd_last_line="$(printf '%s\n' "${support_cmd_output}" | awk 'NF{line=$0} END{print line}')"
+  fi
+
+  if [[ "${support_refresh_due}" == "true" ]] && (( support_cmd_rc == 0 )) && jq -e . > /dev/null 2>&1 <<< "${support_cmd_output}"; then
     support_json="${support_cmd_output}"
-  elif (( support_cmd_rc == 0 )) && [[ -n "${support_cmd_last_line}" ]] && jq -e . > /dev/null 2>&1 <<< "${support_cmd_last_line}"; then
+  elif [[ "${support_refresh_due}" == "true" ]] && (( support_cmd_rc == 0 )) && [[ -n "${support_cmd_last_line}" ]] && jq -e . > /dev/null 2>&1 <<< "${support_cmd_last_line}"; then
     support_json="${support_cmd_last_line}"
   elif [[ -f /data/support-tunnel.json ]] && support_cached_json="$(cat /data/support-tunnel.json 2>/dev/null)" && jq -e . > /dev/null 2>&1 <<< "${support_cached_json}"; then
     support_json="${support_cached_json}"
+  elif [[ -n "${support_json_last_good:-}" ]] && jq -e . > /dev/null 2>&1 <<< "${support_json_last_good}"; then
+    support_json="${support_json_last_good}"
   else
-    support_fallback_dns="$(bashio::config "support_tailnet_dns_suffix" "tail37b857.ts.net")"
+    support_fallback_dns="$(bashio::config "support_tailnet_dns_suffix" "")"
     support_fallback_target_url="$(bashio::config "support_target_url" "" 2>/dev/null || true)"
     support_fallback_user="$(bashio::config "support_user" "nodalia")"
     support_fallback_enabled="false"
@@ -149,9 +166,13 @@ do
     if bashio::config.has_value "support_tunnel_enabled" && bashio::config.true "support_tunnel_enabled"; then
       support_fallback_enabled="true"
     fi
-    support_reason_fallback="support_status_failed_rc_${support_cmd_rc}"
-    if (( support_cmd_rc == 0 )); then
-      support_reason_fallback="support_status_invalid_json"
+    if [[ "${support_refresh_due}" == "true" ]]; then
+      support_reason_fallback="support_status_failed_rc_${support_cmd_rc}"
+      if (( support_cmd_rc == 0 )); then
+        support_reason_fallback="support_status_invalid_json"
+      fi
+    else
+      support_reason_fallback="support_status_cache_miss"
     fi
     support_json="$(jq -nc \
       --arg support_target_dns_suffix "${support_fallback_dns}" \
@@ -161,6 +182,9 @@ do
       --arg reason "${support_reason_fallback}" \
       --arg support_enabled "${support_fallback_enabled}" \
       '{support_enabled:($support_enabled=="true"),support_mode:$support_mode,support_target_dns_suffix:$support_target_dns_suffix,support_target_url:$support_target_url,tailnet_match:false,eligible:false,active:false,reason:$reason,support_user:$support_user}')"
+  fi
+  if jq -e . > /dev/null 2>&1 <<< "${support_json}"; then
+    support_json_last_good="${support_json}"
   fi
   support_enabled="$(jq -r '.support_enabled // false' <<< "${support_json}" 2>/dev/null || echo "false")"
   support_mode="$(jq -r '.support_mode // "virtual_keys_token"' <<< "${support_json}" 2>/dev/null || echo "virtual_keys_token")"

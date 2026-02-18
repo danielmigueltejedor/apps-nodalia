@@ -135,7 +135,7 @@ configuration:
   support_tailnet_dns_suffix:
     name: Support tailnet DNS suffix
     description: >-
-      DNS suffix used to validate support access (for example `tail37b857.ts.net`).
+      DNS suffix used to validate support access (for example `example.ts.net`).
       Support access is enabled only when this node DNS matches that suffix.
   support_user:
     name: Support local user

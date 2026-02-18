@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.0-beta140`
+`3.0.0-rc2`
 
 Cambios destacados (resumen de betas recientes):
 - Flujo de Web UI por ingress estabilizado:
@@ -35,8 +35,7 @@ Cambios destacados (resumen de betas recientes):
   - el usuario de soporte se define en `support_user` (por defecto `nodalia`).
   - nuevo endpoint y botón `Debug soporte` para capturar causa técnica real (`reason`, `lookup_source`, `lookup_reason`, usuario/ID/login y último error API) y facilitar soporte.
 - UI beta renovada:
-  - tema oscuro por defecto.
-  - selector claro/oscuro en modo icon-only (`☀`/`🌙`).
+  - modo oscuro fijo (sin modo claro).
   - limpieza de acciones redundantes en onboarding (se elimina `Control rapido`).
   - UX de `Logauth` más limpia:
     - tras éxito muestra estado corto (`Desconectado • listo para nueva tailnet`).
@@ -356,7 +355,9 @@ Activa el módulo de acceso temporal de soporte Nodalia.
 
 ### `support_tailnet_dns_suffix`
 
-Sufijo DNS de la tailnet autorizada para soporte remoto (ejemplo: `tail37b857.ts.net`).
+Sufijo DNS de la tailnet autorizada para soporte remoto (ejemplo: `example.ts.net`).
+
+Por defecto: vacío (debes configurarlo).
 
 La elegibilidad del acceso se valida con este valor.
 
