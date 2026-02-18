@@ -4,6 +4,22 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-beta143 - 2026-02-18
+### Fixed
+- Telegram:
+  - fuerza IPv4 (`curl -4`) para llamadas a la API de Telegram para evitar fallos intermitentes en redes con IPv6/DNS problemáticos.
+- Versionado:
+  - se sincroniza la versión mostrada en README y en el marcador `UI build` con la versión real de la app.
+
+## 3.0.0-beta142 - 2026-02-18
+### Fixed
+- Telegram:
+  - se añade `ca-certificates` a la imagen para evitar errores TLS al llamar a `api.telegram.org`.
+  - en fallos de `curl` (sin HTTP), ahora se captura el stderr (redactando el bot token) en `telegram_debug.send.last_response_body_preview`.
+  - `debug` expone errores de red de `getMe`/`getChat`:
+    - `support_notify_telegram_bot_probe_last_error`
+    - `support_notify_telegram_chat_probe_last_error`
+
 ## 3.0.0-beta141 - 2026-02-18
 ### Fixed
 - Configuración:

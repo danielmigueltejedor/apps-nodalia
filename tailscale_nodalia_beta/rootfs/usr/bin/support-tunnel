@@ -284,7 +284,7 @@ telegram_send_message_once() {
   TELEGRAM_LAST_CHAT_ID="${chat_id}"
 
   set +e
-  response_with_status="$(curl -sS --connect-timeout 5 --max-time 15 \
+  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 15 \
     --data-urlencode "chat_id=${chat_id}" \
     --data-urlencode "text=${message}" \
     --data-urlencode "disable_web_page_preview=true" \
@@ -337,7 +337,7 @@ telegram_discover_chat_id_from_updates() {
   TELEGRAM_DISCOVERY_REASON=""
 
   set +e
-  response_with_status="$(curl -sS --connect-timeout 5 --max-time 15 \
+  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 15 \
     -w '\n%{http_code}' \
     "https://api.telegram.org/bot${bot_token}/getUpdates?limit=100" 2>&1)"
   rc=$?
@@ -512,7 +512,7 @@ telegram_probe_bot_identity() {
   fi
 
   set +e
-  response_with_status="$(curl -sS --connect-timeout 5 --max-time 12 \
+  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 \
     -w '\n%{http_code}' \
     "https://api.telegram.org/bot${bot_token}/getMe" 2>&1)"
   rc=$?
@@ -583,7 +583,7 @@ telegram_probe_chat_access() {
   TELEGRAM_CHAT_PROBE_ATTEMPTED_IDS="${TELEGRAM_ATTEMPTED_CHAT_IDS:-}"
 
   set +e
-  response_with_status="$(curl -sS --connect-timeout 5 --max-time 12 --get \
+  response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 --get \
     --data-urlencode "chat_id=${chat_id}" \
     -w '\n%{http_code}' \
     "https://api.telegram.org/bot${bot_token}/getChat" 2>&1)"
@@ -610,7 +610,7 @@ telegram_probe_chat_access() {
       TELEGRAM_CHAT_PROBE_ATTEMPTED_IDS="${TELEGRAM_ATTEMPTED_CHAT_IDS:-}"
 
       set +e
-      response_with_status="$(curl -sS --connect-timeout 5 --max-time 12 --get \
+      response_with_status="$(curl -4 -sS --connect-timeout 5 --max-time 12 --get \
         --data-urlencode "chat_id=${alt_chat_id}" \
         -w '\n%{http_code}' \
         "https://api.telegram.org/bot${bot_token}/getChat" 2>&1)"
