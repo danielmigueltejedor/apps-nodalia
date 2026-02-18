@@ -4,6 +4,14 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-rc1 - 2026-02-18
+### Changed
+- Release candidate 1 de Nodalia Connect (canal beta).
+- Onboarding:
+  - se elimina el botón `Ver auditoria` de soporte.
+  - se elimina la opción `Abrir Web UI automaticamente cuando este lista` y su lógica asociada.
+  - se mantiene `Modo avanzado` como icon-only en cabecera.
+
 ## 3.0.0-beta146 - 2026-02-18
 ### Changed
 - Onboarding UI:
