@@ -490,6 +490,9 @@ telegram_probe_bot_identity() {
   bot_token="${1:-}"
   TELEGRAM_BOT_PROBE_STATUS="not_configured"
   TELEGRAM_BOT_PROBE_REASON=""
+  TELEGRAM_BOT_PROBE_LAST_HTTP_STATUS=""
+  TELEGRAM_BOT_PROBE_LAST_DESCRIPTION=""
+  TELEGRAM_BOT_PROBE_LAST_ERROR=""
   TELEGRAM_BOT_ID=""
   TELEGRAM_BOT_USERNAME=""
   TELEGRAM_BOT_NAME=""
@@ -514,11 +517,15 @@ telegram_probe_bot_identity() {
   if (( rc != 0 )); then
     TELEGRAM_BOT_PROBE_STATUS="error"
     TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_getme_request_failed"
+    TELEGRAM_BOT_PROBE_LAST_ERROR="$(printf '%s' "${response_with_status}" | head -c 600)"
+    TELEGRAM_BOT_PROBE_LAST_ERROR="${TELEGRAM_BOT_PROBE_LAST_ERROR//${bot_token}/[redacted]}"
     return 1
   fi
 
   http_status="${response_with_status##*$'\n'}"
   response_body="${response_with_status%$'\n'*}"
+  TELEGRAM_BOT_PROBE_LAST_HTTP_STATUS="${http_status}"
+  TELEGRAM_BOT_PROBE_LAST_DESCRIPTION="$(jq -r '.description // empty' <<< "${response_body}" 2>/dev/null || true)"
   if [[ "${http_status}" =~ ^[0-9]{3}$ ]] && [[ "${http_status}" != 2* ]]; then
     TELEGRAM_BOT_PROBE_STATUS="error"
     TELEGRAM_BOT_PROBE_REASON="support_notify_telegram_getme_http_${http_status}"
@@ -554,6 +561,7 @@ telegram_probe_chat_access() {
   TELEGRAM_CHAT_PROBE_CHAT_USERNAME=""
   TELEGRAM_CHAT_PROBE_LAST_HTTP_STATUS=""
   TELEGRAM_CHAT_PROBE_LAST_DESCRIPTION=""
+  TELEGRAM_CHAT_PROBE_LAST_ERROR=""
 
   chat_id="${TELEGRAM_CHAT_PROBE_NORMALIZED}"
   if [[ -z "${bot_token}" || -z "${chat_id}" ]]; then
@@ -580,6 +588,8 @@ telegram_probe_chat_access() {
   if (( rc != 0 )); then
     TELEGRAM_CHAT_PROBE_STATUS="error"
     TELEGRAM_CHAT_PROBE_REASON="support_notify_telegram_getchat_request_failed"
+    TELEGRAM_CHAT_PROBE_LAST_ERROR="$(printf '%s' "${response_with_status}" | head -c 600)"
+    TELEGRAM_CHAT_PROBE_LAST_ERROR="${TELEGRAM_CHAT_PROBE_LAST_ERROR//${bot_token}/[redacted]}"
     return 1
   fi
 
@@ -605,6 +615,8 @@ telegram_probe_chat_access() {
       if (( rc != 0 )); then
         TELEGRAM_CHAT_PROBE_STATUS="error"
         TELEGRAM_CHAT_PROBE_REASON="support_notify_telegram_getchat_request_failed"
+        TELEGRAM_CHAT_PROBE_LAST_ERROR="$(printf '%s' "${response_with_status}" | head -c 600)"
+        TELEGRAM_CHAT_PROBE_LAST_ERROR="${TELEGRAM_CHAT_PROBE_LAST_ERROR//${bot_token}/[redacted]}"
         return 1
       fi
       http_status="${response_with_status##*$'\n'}"
@@ -2259,11 +2271,13 @@ debug_cmd() {
   local cfg_virtual_keys_token_prefix cfg_target_url cfg_target_domain_suffix
   local cfg_notify_telegram_enabled cfg_notify_telegram_bot_token cfg_notify_telegram_bot_token_masked cfg_notify_telegram_chat_id cfg_notify_telegram_chat_id_normalized
   local cfg_notify_telegram_bot_probe_status cfg_notify_telegram_bot_probe_reason
+  local cfg_notify_telegram_bot_probe_last_http_status cfg_notify_telegram_bot_probe_last_description cfg_notify_telegram_bot_probe_last_error
   local cfg_notify_telegram_bot_id cfg_notify_telegram_bot_username cfg_notify_telegram_bot_name
   local cfg_notify_telegram_chat_probe_status cfg_notify_telegram_chat_probe_reason
   local cfg_notify_telegram_chat_probe_input cfg_notify_telegram_chat_probe_normalized
   local cfg_notify_telegram_chat_probe_matched_id cfg_notify_telegram_chat_probe_type cfg_notify_telegram_chat_probe_title
   local cfg_notify_telegram_chat_probe_username cfg_notify_telegram_chat_probe_last_http_status cfg_notify_telegram_chat_probe_last_description
+  local cfg_notify_telegram_chat_probe_last_error
   local cfg_notify_telegram_chat_probe_attempted_ids
   local cfg_notify_telegram_bot_token_set cfg_notify_telegram_chat_id_set
   local status_json self_dns_name self_host_name magic_dns_suffix current_tailnet_name
@@ -2299,6 +2313,9 @@ debug_cmd() {
   fi
   cfg_notify_telegram_bot_probe_status="not_configured"
   cfg_notify_telegram_bot_probe_reason=""
+  cfg_notify_telegram_bot_probe_last_http_status=""
+  cfg_notify_telegram_bot_probe_last_description=""
+  cfg_notify_telegram_bot_probe_last_error=""
   cfg_notify_telegram_bot_id=""
   cfg_notify_telegram_bot_username=""
   cfg_notify_telegram_bot_name=""
@@ -2312,11 +2329,15 @@ debug_cmd() {
   cfg_notify_telegram_chat_probe_username=""
   cfg_notify_telegram_chat_probe_last_http_status=""
   cfg_notify_telegram_chat_probe_last_description=""
+  cfg_notify_telegram_chat_probe_last_error=""
   cfg_notify_telegram_chat_probe_attempted_ids=""
   if [[ -n "${cfg_notify_telegram_bot_token}" ]]; then
     telegram_probe_bot_identity "${cfg_notify_telegram_bot_token}" || true
     cfg_notify_telegram_bot_probe_status="${TELEGRAM_BOT_PROBE_STATUS:-error}"
     cfg_notify_telegram_bot_probe_reason="${TELEGRAM_BOT_PROBE_REASON:-}"
+    cfg_notify_telegram_bot_probe_last_http_status="${TELEGRAM_BOT_PROBE_LAST_HTTP_STATUS:-}"
+    cfg_notify_telegram_bot_probe_last_description="${TELEGRAM_BOT_PROBE_LAST_DESCRIPTION:-}"
+    cfg_notify_telegram_bot_probe_last_error="${TELEGRAM_BOT_PROBE_LAST_ERROR:-}"
     cfg_notify_telegram_bot_id="${TELEGRAM_BOT_ID:-}"
     cfg_notify_telegram_bot_username="${TELEGRAM_BOT_USERNAME:-}"
     cfg_notify_telegram_bot_name="${TELEGRAM_BOT_NAME:-}"
@@ -2331,6 +2352,7 @@ debug_cmd() {
     cfg_notify_telegram_chat_probe_username="${TELEGRAM_CHAT_PROBE_CHAT_USERNAME:-}"
     cfg_notify_telegram_chat_probe_last_http_status="${TELEGRAM_CHAT_PROBE_LAST_HTTP_STATUS:-}"
     cfg_notify_telegram_chat_probe_last_description="${TELEGRAM_CHAT_PROBE_LAST_DESCRIPTION:-}"
+    cfg_notify_telegram_chat_probe_last_error="${TELEGRAM_CHAT_PROBE_LAST_ERROR:-}"
     cfg_notify_telegram_chat_probe_attempted_ids="${TELEGRAM_CHAT_PROBE_ATTEMPTED_IDS:-}"
   fi
   status_json=$(/opt/tailscale status --json --self=true --peers=false 2>/dev/null || echo '{}')
@@ -2399,6 +2421,9 @@ debug_cmd() {
     --arg cfg_notify_telegram_chat_id_normalized "${cfg_notify_telegram_chat_id_normalized}" \
     --arg cfg_notify_telegram_bot_probe_status "${cfg_notify_telegram_bot_probe_status}" \
     --arg cfg_notify_telegram_bot_probe_reason "${cfg_notify_telegram_bot_probe_reason}" \
+    --arg cfg_notify_telegram_bot_probe_last_http_status "${cfg_notify_telegram_bot_probe_last_http_status}" \
+    --arg cfg_notify_telegram_bot_probe_last_description "${cfg_notify_telegram_bot_probe_last_description}" \
+    --arg cfg_notify_telegram_bot_probe_last_error "${cfg_notify_telegram_bot_probe_last_error}" \
     --arg cfg_notify_telegram_bot_id "${cfg_notify_telegram_bot_id}" \
     --arg cfg_notify_telegram_bot_username "${cfg_notify_telegram_bot_username}" \
     --arg cfg_notify_telegram_bot_name "${cfg_notify_telegram_bot_name}" \
@@ -2412,6 +2437,7 @@ debug_cmd() {
     --arg cfg_notify_telegram_chat_probe_username "${cfg_notify_telegram_chat_probe_username}" \
     --arg cfg_notify_telegram_chat_probe_last_http_status "${cfg_notify_telegram_chat_probe_last_http_status}" \
     --arg cfg_notify_telegram_chat_probe_last_description "${cfg_notify_telegram_chat_probe_last_description}" \
+    --arg cfg_notify_telegram_chat_probe_last_error "${cfg_notify_telegram_chat_probe_last_error}" \
     --arg cfg_notify_telegram_chat_probe_attempted_ids "${cfg_notify_telegram_chat_probe_attempted_ids}" \
     --arg backend_state "${SUPPORT_BACKEND:-Unknown}" \
     --arg support_reason "${SUPPORT_REASON:-}" \
@@ -2475,6 +2501,9 @@ debug_cmd() {
         support_notify_telegram_chat_id_normalized:$cfg_notify_telegram_chat_id_normalized,
         support_notify_telegram_bot_probe_status:$cfg_notify_telegram_bot_probe_status,
         support_notify_telegram_bot_probe_reason:$cfg_notify_telegram_bot_probe_reason,
+        support_notify_telegram_bot_probe_last_http_status:$cfg_notify_telegram_bot_probe_last_http_status,
+        support_notify_telegram_bot_probe_last_description:$cfg_notify_telegram_bot_probe_last_description,
+        support_notify_telegram_bot_probe_last_error:$cfg_notify_telegram_bot_probe_last_error,
         support_notify_telegram_bot_id:$cfg_notify_telegram_bot_id,
         support_notify_telegram_bot_username:$cfg_notify_telegram_bot_username,
         support_notify_telegram_bot_name:$cfg_notify_telegram_bot_name,
@@ -2488,6 +2517,7 @@ debug_cmd() {
         support_notify_telegram_chat_probe_username:$cfg_notify_telegram_chat_probe_username,
         support_notify_telegram_chat_probe_last_http_status:$cfg_notify_telegram_chat_probe_last_http_status,
         support_notify_telegram_chat_probe_last_description:$cfg_notify_telegram_chat_probe_last_description,
+        support_notify_telegram_chat_probe_last_error:$cfg_notify_telegram_chat_probe_last_error,
         support_notify_telegram_chat_probe_attempted_ids:($cfg_notify_telegram_chat_probe_attempted_ids|split(",")|map(select(length>0)))
       },
       tailscale:{

@@ -641,7 +641,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-	    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.0-rc6</code>.</p>
+	    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.0-rc7</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -1963,7 +1963,7 @@
       setSupportButtonState(true);
       supportMessage.textContent = "Habilitando acceso temporal para soporte...";
       try {
-        const payload = await callSupportApi("enable", "POST", false);
+        const payload = await callSupportApi("enable", "POST", true);
         const activationInfo = formatSupportActivationInfo(payload);
         if (activationInfo) {
           supportMessage.textContent = "Acceso de soporte habilitado.";
@@ -1992,7 +1992,7 @@
       setSupportButtonState(true);
       supportMessage.textContent = "Revocando acceso de soporte...";
       try {
-        await callSupportApi("disable", "POST", false);
+        await callSupportApi("disable", "POST", true);
         supportMessage.textContent = "Acceso de soporte revocado.";
         supportAuditOutput.hidden = true;
         supportAuditOutput.textContent = "";
@@ -2014,7 +2014,7 @@
       setSupportButtonState(true);
       supportMessage.textContent = "Enviando prueba de Telegram...";
       try {
-        const payload = await callSupportApi("notify-test", "POST", false);
+        const payload = await callSupportApi("notify-test", "POST", true);
         const status = String(payload?.status || payload?.support_notify_status || "");
         const reason = String(payload?.reason || payload?.support_notify_reason || "");
         if (payload?.ok) {

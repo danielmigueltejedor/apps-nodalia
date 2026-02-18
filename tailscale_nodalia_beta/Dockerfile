@@ -11,6 +11,7 @@ ARG CLOUDFLARED_REPO="https://github.com/cloudflare/cloudflared/releases/latest/
 
 RUN \
   apk add --no-cache \
+    ca-certificates \
     busybox-extras \
     ethtool \
     ipcalc \

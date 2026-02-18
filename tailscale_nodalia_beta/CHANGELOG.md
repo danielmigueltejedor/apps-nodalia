@@ -4,6 +4,16 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.0-rc7 - 2026-02-18
+### Fixed
+- Soporte (virtual-keys):
+  - el cliente UI ahora reintenta `GET` automáticamente si un `POST` es degradado a `GET` por el proxy (evita 405 `post_required_for_action`).
+- Telegram (diagnóstico):
+  - `support debug` ahora incluye el error real de `curl` cuando fallan los probes `getMe/getChat` (útil para detectar problemas de DNS/TLS/red).
+- Build:
+  - se instala `ca-certificates` para evitar fallos TLS al llamar a `api.telegram.org`.
+- Marcador visual actualizado a `UI build: 3.0.0-rc7`.
+
 ## 3.0.0-rc6 - 2026-02-18
 ### Fixed
 - Soporte (virtual-keys):
