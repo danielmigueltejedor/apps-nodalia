@@ -636,7 +636,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.1-beta2</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.1-rc1</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -796,7 +796,7 @@
         brandLogoEl.src = ingressUrl("nodalia-logo.png");
       };
     }
-    openWebuiBtn.href = ingressUrl("webui");
+    openWebuiBtn.href = ingressRootUrl();
 
     async function fetchJsonWithTimeout(path, timeoutMs = 1200) {
       const controller = new AbortController();
@@ -1713,7 +1713,7 @@
         suggestions.push("El usuario de soporte no puede ser owner/admin principal. Usa un usuario local dedicado.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("ha_users_api_error")) {
-        suggestions.push("La API de usuarios de Home Assistant no responde al aplicación. Actualiza a la beta mas reciente, acepta permisos nuevos y reinicia el aplicación.");
+        suggestions.push("La API de usuarios de Home Assistant no responde al aplicación. Actualiza al release candidate mas reciente, acepta permisos nuevos y reinicia el aplicación.");
       }
       if (lastRuntime?.support_enabled && String(lastRuntime?.support_reason || "").includes("core_user_patch_failed")) {
         suggestions.push("No se pudo cambiar is_active del usuario de soporte. Revisa permisos del aplicación y existencia del usuario local.");
@@ -1743,7 +1743,7 @@
         suggestions.push("No se pudo construir URL de acceso para soporte. Revisa support_target_url o support_target_domain_suffix.");
       }
       if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_curl_missing")) {
-        suggestions.push("Falta curl en la imagen de la aplicación. Actualiza a la beta mas reciente.");
+        suggestions.push("Falta curl en la imagen de la aplicación. Actualiza al release candidate mas reciente.");
       }
       if (String(lastRuntime?.support_notify_reason || "").includes("support_notify_telegram_request_failed")) {
         suggestions.push("Fallo de red al enviar Telegram. Verifica salida a internet desde la aplicación.");
@@ -2376,7 +2376,7 @@
         const preflightOk = await probeIngressWebUiReady(2500, true);
         const runtimeSaysReady = Boolean(lastRuntime?.webui_ready);
         if (preflightOk || runtimeSaysReady) {
-          window.location.replace(ingressUrl("webui?_ts=" + Date.now()));
+          window.location.replace(ingressUrl("?_ts=" + Date.now()));
           return;
         }
         const backendState = String(lastRuntime?.backend_state || lastOnboarding?.backend_state || "Unknown");

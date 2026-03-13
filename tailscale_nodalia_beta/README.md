@@ -9,9 +9,9 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.1-beta2`
+`3.0.1-rc1`
 
-Cambios destacados (resumen de betas recientes):
+Cambios destacados (resumen de cambios recientes):
 - Flujo de Web UI por ingress estabilizado:
   - el botón `Entrar Web UI (ingress)` abre la raíz real del ingress (`.../`) y evita el `Page not found`.
   - normalización de rutas para soportar correctamente URLs con y sin slash final.

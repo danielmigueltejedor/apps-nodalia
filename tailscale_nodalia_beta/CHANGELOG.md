@@ -4,6 +4,18 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.1-rc1 - 2026-03-13
+### Changed
+- Release candidate de `3.0.1` para validación final en el canal beta.
+- Onboarding:
+  - el botón `Iframe Tailscale` abre la raíz real del ingress (`.../`) para mantener el flujo principal del iframe.
+
+### Fixed
+- Onboarding / Web UI:
+  - se corrige la navegación del botón de iframe para evitar rutas secundarias que podían fallar según el enrutado de ingress.
+- Consistencia de versión:
+  - se sincroniza `config.yaml`, README y marcador visual `UI build` a `3.0.1-rc1`.
+
 ## 3.0.1-beta2 - 2026-02-18
 ### Fixed
 - Telegram en soporte temporal:
