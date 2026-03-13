@@ -8,13 +8,16 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   update:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
@@ -35,7 +38,6 @@ jobs:
             exit 1
           fi
 
-      # ✅ USAR EL CANAL STABLE REAL DE LINUX (el que siguen Debian/Proxmox si instalas desde pkgs.tailscale.com)
       - name: Get latest stable Tailscale version (pkgs.tailscale.com)
         id: ts
         shell: bash
@@ -44,7 +46,6 @@ jobs:
 
           JSON=$(curl -fsSL "https://pkgs.tailscale.com/stable/?mode=json")
 
-          # La clave suele ser "Version". Añadimos fallbacks por si cambia el formato.
           LATEST=$(
             echo "$JSON" | jq -r '
               .Version // .version // .Linux // .linux // empty
@@ -75,7 +76,6 @@ jobs:
             exit 1
           fi
 
-          # Si tu Dockerfile tiene varios stages con el mismo ARG, normalmente interesa el ÚLTIMO.
           CURRENT=$(grep -E '^ARG[[:space:]]+TAILSCALE_VERSION=' "${DIR}/Dockerfile" \
             | tail -n 1 \
             | sed -E 's/^ARG[[:space:]]+TAILSCALE_VERSION="?([^"]+)"?/\1/' \
@@ -95,7 +95,6 @@ jobs:
             echo "needs_update=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # (Opcional pero útil) Debug de qué está comparando
       - name: Debug versions
         shell: bash
         run: |
