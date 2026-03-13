@@ -4,6 +4,12 @@ All notable changes to this app will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## 3.0.1-rc3 - 2026-03-14
+### Fixed
+- Logauth / onboarding:
+  - se corrige la estrategia de reintento de `logout` para no detenerse en el primer endpoint con respuesta no válida.
+  - el flujo ahora prioriza `POST /control-api/logout` y solo confirma un intento cuando la respuesta es realmente aceptable (`ok`/`action`/`rc`), evitando falsos bloqueos por `post_required_for_action`.
+
 ## 3.0.1-rc2 - 2026-03-13
 ### Fixed
 - Logauth / control-api:

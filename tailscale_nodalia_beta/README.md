@@ -9,7 +9,7 @@ Incluso separados por firewalls o subredes, Tailscale funciona y gestiona reglas
 
 ## Versión actual
 
-`3.0.1-rc2`
+`3.0.1-rc3`
 
 Cambios destacados (resumen de cambios recientes):
 - Flujo de Web UI por ingress estabilizado:

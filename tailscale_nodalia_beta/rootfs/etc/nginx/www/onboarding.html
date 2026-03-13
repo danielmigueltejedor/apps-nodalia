@@ -636,7 +636,7 @@
         <button id="session-download-btn" type="button" class="ghost">Descargar diagnostico</button>
       </div>
     </section>
-    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.1-rc2</code>.</p>
+    <p class="small">Nota: esta pagina lee <code>onboarding.json</code> y <code>runtime.json</code> generados por la aplicacion. UI build: <code id="ui-build-version">3.0.1-rc3</code>.</p>
   </main>
   <script>
     const stateEl = document.getElementById("state");
@@ -2198,13 +2198,28 @@
 
         let result = null;
         const attempts = [
-          { method: "POST", url: endpointBase, useBodyAction: true },
           { method: "POST", url: endpointPath, useBodyAction: false },
+          { method: "POST", url: endpointBase, useBodyAction: true },
         ];
         for (const item of attempts) {
           result = await attempt(item.method, item.url, item.useBodyAction);
-          const responseAction = String(result?.data?.action || "");
-          if (responseAction === "logout") {
+          const responseData = result?.data || {};
+          const responseAction = String(responseData.action || "").toLowerCase();
+          const responseError = String(responseData.error || "").toLowerCase();
+          const responseReason = String(responseData.reason || "").toLowerCase();
+          const responseRc = Number(responseData.rc);
+          const hasResponseRc = Number.isFinite(responseRc);
+          const responseRejected = (
+            responseError === "forbidden" ||
+            responseError === "method_not_allowed" ||
+            responseReason === "post_required_for_action" ||
+            responseReason === "missing_or_invalid_action_authorization" ||
+            responseReason === "missing_or_invalid_action_header"
+          );
+          const actionAccepted = (responseAction === "logout" || responseAction === "status");
+          const actionAcceptedWithRc = actionAccepted && (!hasResponseRc || responseRc === 0);
+          const attemptAccepted = !responseRejected && (Boolean(responseData.ok) || actionAcceptedWithRc || responseAction === "");
+          if (attemptAccepted) {
             break;
           }
         }
