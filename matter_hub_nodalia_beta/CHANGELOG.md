@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.17
+- Added a vacuum-specific Identify behavior that maps Matter `identify` / `triggerEffect` commands to Home Assistant `vacuum.locate`.
+- Enables Apple Home "play location sound" (identify) to trigger the robot locator sound through Matter Hub when the vacuum reports `LOCATE` support.
+- Added debug traces for identify routing (`VacuumIdentifyServer`) to simplify troubleshooting in addon logs.
+
 ## 0.1.0-beta.16
 - Changed vacuum `ServiceArea.selectAreas` behavior to update internal Matter room selection without immediately triggering a Home Assistant clean action.
 - Preserved Matter-selected room IDs in backend state so subsequent `Start` commands (Apple Home `OnOff`/`RunMode`) can reliably launch selective room cleaning even when Home Assistant entity attributes do not mirror selected areas.
