@@ -1,0 +1,163 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var ClientNodeInteraction_exports = {};
+__export(ClientNodeInteraction_exports, {
+  ClientNodeInteraction: () => ClientNodeInteraction
+});
+module.exports = __toCommonJS(ClientNodeInteraction_exports);
+var import_EndpointInitializer = require("#endpoint/properties/EndpointInitializer.js");
+var import_NodePhysicalProperties = require("#node/NodePhysicalProperties.js");
+var import_protocol = require("#protocol");
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+class ClientNodeInteraction {
+  #node;
+  #physicalProps;
+  constructor(node) {
+    this.#node = node;
+  }
+  /**
+   * The current session used for interaction with the node if any session is established, otherwise undefined.
+   */
+  get session() {
+    if (this.#node.env.has(import_protocol.ClientInteraction)) {
+      return this.#node.env.get(import_protocol.ClientInteraction).session;
+    }
+  }
+  get physicalProperties() {
+    if (this.#physicalProps === void 0) {
+      this.#physicalProps = (0, import_NodePhysicalProperties.NodePhysicalProperties)(this.#node);
+      this.structure?.changed.on(() => {
+        this.#physicalProps = void 0;
+      });
+    }
+    return this.#physicalProps;
+  }
+  /**
+   * Read chosen attributes remotely from the node. Known data versions are automatically injected into the request to
+   * optimize the read. Set `skipDataVersionInjection` in the request to prevent adding data versions.
+   * When data versions are used to filter the read request, the returned data only contains attributes that have
+   * changed since the last read or subscription.
+   */
+  async *read(request, context) {
+    if (!request.includeKnownVersions) {
+      request = this.structure.injectVersionFilters(request);
+    }
+    const interaction = await this.#connect();
+    const response = interaction.read(request, context);
+    yield* this.structure.mutate(request, response);
+  }
+  /**
+   * Subscribe to remote events and attributes as defined by {@link request}.
+   *
+   * matter.js updates local state
+   *
+   * By default, matter.js subscribes to all attributes and events of the peer and updates {@link ClientNode} state
+   * automatically.  So you normally do not need to subscribe manually.
+   *
+   * When providing the "sustain" flag, a SustainedSubscription is returned immediately. You need to use the events to
+   * know when/if a subscription could be established.  This class handles reconnections automatically.
+   * When not providing the "sustain" flag, a PeerSubscription is returned after a subscription have been successfully
+   * established; or an error is returned if this was not possible.
+   */
+  async subscribe(request, context) {
+    const intermediateRequest = {
+      ...this.structure.injectVersionFilters(request),
+      ...import_protocol.PhysicalDeviceProperties.subscriptionIntervalBoundsFor({
+        description: this.#node.toString(),
+        properties: this.physicalProperties,
+        request
+      }),
+      sustain: !!request.sustain,
+      updated: async (data) => {
+        const result = this.structure.mutate(request, data);
+        if (request.updated) {
+          await request.updated(result);
+        } else {
+          for await (const _chunk of result) ;
+        }
+      },
+      closed: request.closed?.bind(request)
+    };
+    const client = await this.#connect();
+    return client.subscribe(intermediateRequest, context);
+  }
+  /**
+   * Write chosen attributes remotely to the node.
+   * The returned attribute write status information is returned.
+   */
+  async write(request, context) {
+    const client = await this.#connect();
+    return client.write(request, context);
+  }
+  /**
+   * Invoke a command remotely on the node.
+   * The returned command response is returned as response chunks (attr-status).
+   *
+   * When the number of commands exceeds the peer's MaxPathsPerInvoke limit (or 1 for older nodes),
+   * commands are split across multiple parallel exchanges automatically by ClientInteraction.
+   *
+   * Single commands may be automatically batched with other commands invoked in the same timer tick.
+   */
+  async *invoke(request, context) {
+    const client = await this.#connect(false);
+    yield* client.invoke(request, context);
+  }
+  /**
+   * Initiate a BDX Message Exchange with the node.
+   * The provided function is called with the established context to perform BDX operations.
+   * Request options can be omitted if defaults are used.
+   */
+  async initBdx(request = {}, context) {
+    const client = await this.#connect();
+    return client.initBdx(request, context);
+  }
+  /**
+   * Ensure the node is online and return the ClientInteraction.
+   * When respectQueue is set to false, then the queued interaction is not used even if it is relevant for the device.
+   */
+  async #connect(respectQueue = true) {
+    if (!this.#node.lifecycle.isOnline) {
+      await this.#node.start();
+    }
+    const props = this.physicalProperties;
+    return respectQueue && (props.threadConnected || !props.rootEndpointServerList.length) ? this.#node.env.get(import_protocol.QueuedClientInteraction) : this.#node.env.get(import_protocol.ClientInteraction);
+  }
+  get structure() {
+    return this.#node.env.get(import_EndpointInitializer.EndpointInitializer).structure;
+  }
+  /**
+   * Temporary accessor of cached data, if any are stored. This will be implemented by the ClientNodeInteraction and
+   * point to the node state of the relevant endpoint and is needed to support the old API behavior for
+   * AttributeClient.
+   * TODO Remove when we remove the legacy controller API
+   * @deprecated
+   */
+  localStateFor(endpointId) {
+    if (!this.#node.endpoints.has(endpointId)) {
+      return;
+    }
+    const endpoint = this.#node.endpoints.for(endpointId);
+    return endpoint.state;
+  }
+}
+//# sourceMappingURL=ClientNodeInteraction.js.map

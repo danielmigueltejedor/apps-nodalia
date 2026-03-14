@@ -1,0 +1,106 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var NodePeerAddressStore_exports = {};
+__export(NodePeerAddressStore_exports, {
+  NodePeerAddressStore: () => NodePeerAddressStore
+});
+module.exports = __toCommonJS(NodePeerAddressStore_exports);
+var import_RemoteDescriptor = require("#behavior/system/commissioning/RemoteDescriptor.js");
+var import_ControllerBehavior = require("#behavior/system/controller/ControllerBehavior.js");
+var import_general = require("#general");
+var import_IdentityService = require("#node/server/IdentityService.js");
+var import_protocol = require("#protocol");
+var import_types = require("#types");
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+class NodePeerAddressStore extends import_protocol.PeerAddressStore {
+  #owner;
+  /**
+   * This is the map of all addresses allocated to nodes.  A node may appear in this map even if not yet commissioned
+   * if commissioning is underway.
+   */
+  #assignedAddresses = new import_protocol.PeerAddressMap();
+  constructor(owner) {
+    super();
+    this.#owner = owner;
+    const identityService = owner.env.get(import_IdentityService.IdentityService);
+    identityService.assignNodeAddress = this.assignNewAddress.bind(this);
+    identityService.releaseNodeAddress = this.deletePeer.bind(this);
+  }
+  async assignNewAddress(node, fabricIndex, nodeId) {
+    const useSequentialIds = node.owner?.stateOf(import_ControllerBehavior.ControllerBehavior).nodeIdAssignment !== "random";
+    let nextNodeId = node.owner?.stateOf(import_ControllerBehavior.ControllerBehavior).nextNodeId ?? (0, import_types.NodeId)(1);
+    while (nodeId === void 0) {
+      if (useSequentialIds) {
+        nodeId = nextNodeId;
+        nextNodeId++;
+      } else {
+        nodeId = import_types.NodeId.randomOperationalNodeId(this.#owner.env.get(import_general.Crypto));
+      }
+      if (this.#assignedAddresses.has({ fabricIndex, nodeId })) {
+        nodeId = void 0;
+      }
+    }
+    const address = (0, import_protocol.PeerAddress)({ fabricIndex, nodeId });
+    if (useSequentialIds) {
+      await node.owner?.setStateOf(import_ControllerBehavior.ControllerBehavior, { nextNodeId });
+    }
+    this.#assignedAddresses.set(address, node);
+    return address;
+  }
+  loadPeers() {
+    this.#assignedAddresses = new import_protocol.PeerAddressMap();
+    return [...this.#owner.peers].map((node) => {
+      const commissioning = node.state.commissioning;
+      if (!commissioning.peerAddress) {
+        return;
+      }
+      this.#assignedAddresses.set(commissioning.peerAddress, node);
+      const addr = commissioning.addresses?.find((addr2) => addr2.type === "udp");
+      return {
+        address: commissioning.peerAddress,
+        operationalAddress: addr && (0, import_general.ServerAddress)(addr),
+        discoveryData: import_RemoteDescriptor.RemoteDescriptor.fromLongForm(commissioning)
+      };
+    }).filter((addr) => addr !== void 0);
+  }
+  async updatePeer(peer) {
+    const node = this.#owner.peers.get(peer.address);
+    if (!node || !node.lifecycle.isInstalled) {
+      return;
+    }
+    await node.act(async (agent) => {
+      await agent.context.transaction.addResources(agent.commissioning);
+      await agent.context.transaction.begin();
+      const state = agent.commissioning.state;
+      import_RemoteDescriptor.RemoteDescriptor.toLongForm(peer.discoveryData, state);
+      if (peer.operationalAddress) {
+        state.addresses = [peer.operationalAddress];
+      }
+      await agent.context.transaction.commit();
+    });
+  }
+  deletePeer(address) {
+    this.#assignedAddresses.delete(address);
+  }
+}
+//# sourceMappingURL=NodePeerAddressStore.js.map

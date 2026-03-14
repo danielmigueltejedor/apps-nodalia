@@ -1,0 +1,46 @@
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import { Node } from "#node/Node.js";
+import { Invoke } from "#protocol";
+import { Status, StatusResponseError } from "#types";
+function ClientCommandMethod(name) {
+  const temp = {
+    // The actual implementation
+    async [name](fields) {
+      const node = this.env.get(Node);
+      const chunks = node.interaction.invoke(
+        Invoke({
+          commands: [
+            Invoke.ConcreteCommandRequest({
+              endpoint: this.endpoint,
+              cluster: this.cluster,
+              command: name,
+              fields
+            })
+          ]
+        })
+      );
+      for await (const chunk of chunks) {
+        for (const entry of chunk) {
+          switch (entry.kind) {
+            case "cmd-status":
+              if (entry.status !== Status.Success) {
+                throw StatusResponseError.create(entry.status, void 0, entry.clusterStatus);
+              }
+              return;
+            case "cmd-response":
+              return entry.data;
+          }
+        }
+      }
+    }
+  };
+  return temp[name];
+}
+export {
+  ClientCommandMethod
+};
+//# sourceMappingURL=ClientCommandMethod.js.map

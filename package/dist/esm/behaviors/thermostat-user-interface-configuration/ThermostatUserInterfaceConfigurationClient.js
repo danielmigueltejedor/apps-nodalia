@@ -1,0 +1,16 @@
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import { ThermostatUserInterfaceConfiguration } from "#clusters/thermostat-user-interface-configuration";
+import { ClientBehavior } from "../../behavior/cluster/ClientBehavior.js";
+const ThermostatUserInterfaceConfigurationClientConstructor = ClientBehavior(
+  ThermostatUserInterfaceConfiguration.Complete
+);
+const ThermostatUserInterfaceConfigurationClient = ThermostatUserInterfaceConfigurationClientConstructor;
+export {
+  ThermostatUserInterfaceConfigurationClient,
+  ThermostatUserInterfaceConfigurationClientConstructor
+};
+//# sourceMappingURL=ThermostatUserInterfaceConfigurationClient.js.map

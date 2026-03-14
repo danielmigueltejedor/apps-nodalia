@@ -1,7 +1,12 @@
 # Changelog
 
+## 0.1.0-beta.11
+- Fixed `ServiceArea` initialization for vacuums where Matter `MAPS` and/or `PROG` features are not enabled by cluster conformance.
+- Prevented writes to `supportedMaps`/`progress` when those optional attributes are disallowed, avoiding startup rollback with `Conformance "MAPS": Matter does not allow you to set this attribute (135)`.
+- Kept robust area handling (`mapId: null` fallback when maps feature is unavailable) so room selection remains functional.
+
 ## 0.1.0-beta.10
-- Hardened robotic vacuum `ServiceArea` state initialization by enforcing safe defaults (`supportedMaps`, `supportedAreas`, `selectedAreas`, `currentArea`, `progress`) before behavior validation.
+- Hardened robotic vacuum `ServiceArea` state initialization by enforcing safe defaults only for enabled features and avoiding writes to optional attributes when cluster conformance disallows them (`MAPS`/`PROG`).
 - Added automatic disambiguation for duplicate area names on the same map to satisfy Matter `AreaInfo` uniqueness validation.
 - Improved unhandled rejection diagnostics to include full stack traces and nested AggregateError causes, making behavior initialization failures visible in logs.
 

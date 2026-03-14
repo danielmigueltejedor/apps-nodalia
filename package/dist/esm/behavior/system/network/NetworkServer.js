@@ -1,0 +1,69 @@
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import { Logger } from "#general";
+import { Ble, FabricManager } from "#protocol";
+import { CommissioningServer } from "../commissioning/CommissioningServer.js";
+import { NetworkBehavior } from "./NetworkBehavior.js";
+const logger = Logger.get("NetworkingServer");
+class NetworkServer extends NetworkBehavior {
+  initialize() {
+    if (this.state.ble === void 0) {
+      this.state.ble = this.env.has(Ble);
+    } else if (this.state.ble && !this.env.has(Ble)) {
+      logger.warn("Disabling Bluetooth commissioning because BLE support is not installed");
+      this.state.ble = false;
+    }
+    const discoveryCaps = this.state.discoveryCapabilities;
+    switch (discoveryCaps.ble) {
+      case void 0:
+        discoveryCaps.ble = this.state.ble;
+        break;
+      case true:
+        if (!this.state.ble) {
+          discoveryCaps.ble = false;
+        }
+        break;
+    }
+    if (discoveryCaps.onIpNetwork === void 0) {
+      discoveryCaps.onIpNetwork = true;
+    }
+    this.reactTo(this.endpoint.eventsOf(CommissioningServer).commissioned, this.#endUncommissionedMode);
+    if (discoveryCaps.ble) {
+      this.reactTo(this.env.get(FabricManager).events.added, this.#ensureMdnsAdvertiser);
+    }
+    return super.initialize();
+  }
+  #endUncommissionedMode() {
+    if (this.internal.runtime) {
+      this.internal.runtime.endUncommissionedMode();
+    }
+  }
+  #ensureMdnsAdvertiser() {
+    if (this.internal.runtime) {
+      this.internal.runtime.ensureMdnsAdvertiser();
+    }
+  }
+}
+((NetworkServer2) => {
+  class Internal extends NetworkBehavior.Internal {
+  }
+  NetworkServer2.Internal = Internal;
+  class State extends NetworkBehavior.State {
+    listeningAddressIpv4 = void 0;
+    listeningAddressIpv6 = void 0;
+    ipv4 = true;
+    ble = void 0;
+    discoveryCapabilities = {
+      onIpNetwork: true
+    };
+    subscriptionOptions = void 0;
+  }
+  NetworkServer2.State = State;
+})(NetworkServer || (NetworkServer = {}));
+export {
+  NetworkServer
+};
+//# sourceMappingURL=NetworkServer.js.map

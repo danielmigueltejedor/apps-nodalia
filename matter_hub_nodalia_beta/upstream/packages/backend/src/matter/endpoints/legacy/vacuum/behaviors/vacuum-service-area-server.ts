@@ -45,6 +45,16 @@ class VacuumServiceAreaServerBase extends Base {
   #data: VacuumServiceAreaData | undefined;
   #actionValuesByAreaId = new Map<number, VacuumServiceAreaActionValue>();
 
+  private get supportsMaps(): boolean {
+    const features = this.features as Record<string, unknown>;
+    return features.maps === true;
+  }
+
+  private get supportsProgressReporting(): boolean {
+    const features = this.features as Record<string, unknown>;
+    return features.progressReporting === true;
+  }
+
   override async initialize() {
     this.ensureStateDefaults();
 
@@ -56,7 +66,7 @@ class VacuumServiceAreaServerBase extends Base {
 
   private ensureStateDefaults() {
     const state = this.state as unknown as Partial<MutableServiceAreaState>;
-    if (!Array.isArray(state.supportedMaps)) {
+    if (this.supportsMaps && !Array.isArray(state.supportedMaps)) {
       state.supportedMaps = [];
     }
     if (!Array.isArray(state.supportedAreas)) {
@@ -65,7 +75,7 @@ class VacuumServiceAreaServerBase extends Base {
     if (!Array.isArray(state.selectedAreas)) {
       state.selectedAreas = [];
     }
-    if (!Array.isArray(state.progress)) {
+    if (this.supportsProgressReporting && !Array.isArray(state.progress)) {
       state.progress = [];
     }
     if (state.currentArea === undefined) {
@@ -86,11 +96,15 @@ class VacuumServiceAreaServerBase extends Base {
     this.#actionValuesByAreaId.clear();
 
     if (data == null) {
-      state.supportedMaps = [];
+      if (this.supportsMaps) {
+        state.supportedMaps = [];
+      }
       state.supportedAreas = [];
       state.selectedAreas = [];
       state.currentArea = null;
-      state.progress = [];
+      if (this.supportsProgressReporting) {
+        state.progress = [];
+      }
       return;
     }
 
@@ -98,14 +112,16 @@ class VacuumServiceAreaServerBase extends Base {
       this.#actionValuesByAreaId.set(area.matterAreaId, area.actionValue);
     }
 
-    const supportedMaps = data.maps.map((map) => ({
-      mapId: map.mapId,
-      name: map.name,
-    }));
+    const supportedMaps = this.supportsMaps
+      ? data.maps.map((map) => ({
+          mapId: map.mapId,
+          name: map.name,
+        }))
+      : [];
 
     const supportedAreas = data.areas.map((area) => ({
       areaId: area.matterAreaId,
-      mapId: area.mapId,
+      mapId: this.supportsMaps ? area.mapId : null,
       areaInfo: {
         locationInfo: {
           locationName: area.name,
@@ -123,11 +139,15 @@ class VacuumServiceAreaServerBase extends Base {
       status: ServiceArea.OperationalStatus.Pending,
     }));
 
-    state.supportedMaps = supportedMaps;
+    if (this.supportsMaps) {
+      state.supportedMaps = supportedMaps;
+    }
     state.supportedAreas = supportedAreas;
     state.selectedAreas = selectedAreas;
     state.currentArea = data.currentMatterAreaId ?? null;
-    state.progress = progress;
+    if (this.supportsProgressReporting) {
+      state.progress = progress;
+    }
   }
 
   override async selectAreas(

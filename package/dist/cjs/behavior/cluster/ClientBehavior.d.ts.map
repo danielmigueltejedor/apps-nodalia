@@ -1,0 +1,1 @@
+{"version":3,"file":"ClientBehavior.d.ts","sourceRoot":"","sources":["../../../../src/behavior/cluster/ClientBehavior.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,QAAQ,CAAC;AAC1C,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAGvD;;;;;;;;GAQG;AACH,wBAAgB,cAAc,CAAC,KAAK,CAAC,CAAC,SAAS,WAAW,EAAE,OAAO,EAAE,CAAC,GAAG,eAAe,CAAC,IAAI,CAAC,CAAC,CAAC,CAM/F"}

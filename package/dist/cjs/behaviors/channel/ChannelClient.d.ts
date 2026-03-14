@@ -1,0 +1,15 @@
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/*** THIS FILE IS GENERATED, DO NOT EDIT ***/
+import { Channel } from "#clusters/channel";
+import { Identity } from "#general";
+export declare const ChannelClientConstructor: import("../../index.js").ClusterBehavior.Type<Channel.Complete, import("../../index.js").Behavior.Type, import("../../index.js").ClusterInterface<{}>>;
+export interface ChannelClient extends InstanceType<typeof ChannelClientConstructor> {
+}
+export interface ChannelClientConstructor extends Identity<typeof ChannelClientConstructor> {
+}
+export declare const ChannelClient: ChannelClientConstructor;
+//# sourceMappingURL=ChannelClient.d.ts.map

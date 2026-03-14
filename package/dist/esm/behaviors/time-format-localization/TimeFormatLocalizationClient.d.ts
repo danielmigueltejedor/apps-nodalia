@@ -1,0 +1,15 @@
+/**
+ * @license
+ * Copyright 2022-2026 Matter.js Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+/*** THIS FILE IS GENERATED, DO NOT EDIT ***/
+import { TimeFormatLocalization } from "#clusters/time-format-localization";
+import { Identity } from "#general";
+export declare const TimeFormatLocalizationClientConstructor: import("../../index.js").ClusterBehavior.Type<TimeFormatLocalization.Complete, import("../../index.js").Behavior.Type, import("../../index.js").ClusterInterface<{}>>;
+export interface TimeFormatLocalizationClient extends InstanceType<typeof TimeFormatLocalizationClientConstructor> {
+}
+export interface TimeFormatLocalizationClientConstructor extends Identity<typeof TimeFormatLocalizationClientConstructor> {
+}
+export declare const TimeFormatLocalizationClient: TimeFormatLocalizationClientConstructor;
+//# sourceMappingURL=TimeFormatLocalizationClient.d.ts.map

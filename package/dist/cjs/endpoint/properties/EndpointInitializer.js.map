@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": ["../../../../src/endpoint/properties/EndpointInitializer.ts"],
+  "mappings": ";;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAeO,MAAe,oBAAoB;AAAA;AAAA;AAAA;AAAA,EAItC,qBAAqB,WAAqB;AAAA,EAAC;AAAA;AAAA;AAAA;AAAA,EAwB3C,qBAAqB,QAA6B;AAAA,EAAC;AACvD;",
+  "names": []
+}
