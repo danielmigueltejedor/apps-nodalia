@@ -1,18 +1,12 @@
+import type { HomeAssistantEntityInformation } from "@home-assistant-matter-hub/common";
+import { ServiceAreaServer as Base } from "@matter/main/behaviors/service-area";
+import { ServiceArea } from "@matter/main/clusters/service-area";
 import { HomeAssistantEntityBehavior } from "../../../../behaviors/home-assistant-entity-behavior.js";
 import {
   parseVacuumServiceAreaData,
+  type VacuumServiceAreaActionValue,
   type VacuumServiceAreaData,
 } from "../service-area-data.js";
-
-import * as MatterBehaviors from "@matter/main/behaviors";
-
-type ClusterBehaviorFactory = {
-  set(config: object): object;
-};
-
-interface AgentLike {
-  get(cluster: typeof HomeAssistantEntityBehavior): HomeAssistantEntityBehavior;
-}
 
 interface SelectAreasLike {
   selectedAreas?: unknown;
@@ -39,114 +33,167 @@ const AREA_ID_KEYS = [
   "room_id",
 ] as const;
 
-export function createVacuumServiceAreaServer(): object | undefined {
-  const serviceAreaServer = (MatterBehaviors as Record<string, unknown>)
-    .ServiceAreaServer as ClusterBehaviorFactory | undefined;
+interface MutableServiceAreaState {
+  supportedMaps: ServiceArea.Map[];
+  supportedAreas: ServiceArea.Area[];
+  selectedAreas: number[];
+  currentArea: number | null;
+  progress: ServiceArea.Progress[];
+}
 
-  if (serviceAreaServer?.set == null) {
-    return undefined;
+class VacuumServiceAreaServerBase extends Base {
+  #data: VacuumServiceAreaData | undefined;
+  #actionValuesByAreaId = new Map<number, VacuumServiceAreaActionValue>();
+
+  override async initialize() {
+    this.ensureStateDefaults();
+
+    const homeAssistant = await this.agent.load(HomeAssistantEntityBehavior);
+    this.update(homeAssistant.entity);
+    this.reactTo(homeAssistant.onChange, this.update);
+    await super.initialize();
   }
 
-  const configuration = {
-    getSupportedMaps: (_: unknown, agent: unknown) => {
-      const data = getData(agent);
-      return (data?.maps ?? []).map((map) =>
-        ({
-          mapId: map.mapId,
-          mapName: map.name,
-          name: map.name,
-        }) as object,
-      );
-    },
+  private ensureStateDefaults() {
+    const state = this.state as unknown as Partial<MutableServiceAreaState>;
+    if (!Array.isArray(state.supportedMaps)) {
+      state.supportedMaps = [];
+    }
+    if (!Array.isArray(state.supportedAreas)) {
+      state.supportedAreas = [];
+    }
+    if (!Array.isArray(state.selectedAreas)) {
+      state.selectedAreas = [];
+    }
+    if (!Array.isArray(state.progress)) {
+      state.progress = [];
+    }
+    if (state.currentArea === undefined) {
+      state.currentArea = null;
+    }
+  }
 
-    getSupportedAreas: (_: unknown, agent: unknown) => {
-      const data = getData(agent);
-      return (data?.areas ?? []).map((area) =>
-        ({
-          areaId: area.matterAreaId,
-          mapId: area.mapId,
-          locationInfo: { locationName: area.name },
-          areaInfo: { locationInfo: { locationName: area.name } },
-        }) as object,
-      );
-    },
+  private update(entity: HomeAssistantEntityInformation) {
+    this.ensureStateDefaults();
+    const state = this.state as unknown as MutableServiceAreaState;
 
-    getCurrentMap: (_: unknown, agent: unknown) => {
-      const data = getData(agent);
-      if (data == null || data.maps.length === 0) {
-        return undefined;
-      }
-      return data.maps[0].mapId;
-    },
+    const attributes = entity.state.attributes;
+    const data = parseVacuumServiceAreaData(
+      attributes as Parameters<typeof parseVacuumServiceAreaData>[0],
+    );
 
-    getCurrentArea: (_: unknown, agent: unknown) => {
-      const data = getData(agent);
-      if (data?.currentMatterAreaId == null) {
-        return undefined;
-      }
-      const currentArea = data.areas.find(
-        (area) => area.matterAreaId === data.currentMatterAreaId,
+    this.#data = data;
+    this.#actionValuesByAreaId.clear();
+
+    if (data == null) {
+      state.supportedMaps = [];
+      state.supportedAreas = [];
+      state.selectedAreas = [];
+      state.currentArea = null;
+      state.progress = [];
+      return;
+    }
+
+    for (const area of data.areas) {
+      this.#actionValuesByAreaId.set(area.matterAreaId, area.actionValue);
+    }
+
+    const supportedMaps = data.maps.map((map) => ({
+      mapId: map.mapId,
+      name: map.name,
+    }));
+
+    const supportedAreas = data.areas.map((area) => ({
+      areaId: area.matterAreaId,
+      mapId: area.mapId,
+      areaInfo: {
+        locationInfo: {
+          locationName: area.name,
+          floorNumber: null,
+          areaType: null,
+        },
+        landmarkInfo: null,
+      },
+    }));
+
+    const selectedAreas = data.selectedMatterAreaIds;
+    const progress = selectedAreas.map((areaId) => ({
+      areaId,
+      status: ServiceArea.OperationalStatus.Pending,
+    }));
+
+    state.supportedMaps = supportedMaps;
+    state.supportedAreas = supportedAreas;
+    state.selectedAreas = selectedAreas;
+    state.currentArea = data.currentMatterAreaId ?? null;
+    state.progress = progress;
+  }
+
+  override async selectAreas(
+    request: ServiceArea.SelectAreasRequest,
+  ): Promise<ServiceArea.SelectAreasResponse> {
+    const response = await super.selectAreas(request);
+
+    if (response.status !== ServiceArea.SelectAreasStatus.Success) {
+      return response;
+    }
+
+    const data = this.#data;
+    if (data == null) {
+      return response;
+    }
+
+    const selectedAreaValues = this.state.selectedAreas
+      .map((areaId) => this.#actionValuesByAreaId.get(areaId))
+      .filter(
+        (value): value is VacuumServiceAreaActionValue => value != null,
       );
-      if (currentArea == null) {
-        return undefined;
-      }
+
+    if (selectedAreaValues.length === 0) {
+      return response;
+    }
+
+    const entity = this.agent.get(HomeAssistantEntityBehavior);
+    entity.callAction(buildSelectAreasAction(data, selectedAreaValues));
+
+    return response;
+  }
+
+  // Optional command: emulate skip by re-selecting areas except the skipped one.
+  override async skipArea(
+    request: ServiceArea.SkipAreaRequest,
+  ): Promise<ServiceArea.SkipAreaResponse> {
+    const skipResult = this.assertSkipServiceArea(request);
+    if (skipResult.status !== ServiceArea.SkipAreaStatus.Success) {
+      return skipResult;
+    }
+
+    const remainingAreas = this.state.selectedAreas.filter(
+      (areaId) => areaId !== request.skippedArea,
+    );
+
+    const selectResult = await this.selectAreas({ newAreas: remainingAreas });
+    if (selectResult.status !== ServiceArea.SelectAreasStatus.Success) {
       return {
-        areaId: currentArea.matterAreaId,
-        mapId: currentArea.mapId,
-        locationInfo: { locationName: currentArea.name },
-        areaInfo: { locationInfo: { locationName: currentArea.name } },
-      } as object;
-    },
+        status: ServiceArea.SkipAreaStatus.InvalidSkippedArea,
+        statusText: selectResult.statusText,
+      };
+    }
 
-    getProgress: (_: unknown, agent: unknown) => {
-      const data = getData(agent);
-      if (data == null || data.selectedMatterAreaIds.length === 0) {
-        return [];
-      }
-      return data.selectedMatterAreaIds.map((areaId) => ({ areaId })) as object[];
-    },
+    return {
+      status: ServiceArea.SkipAreaStatus.Success,
+      statusText: "",
+    };
+  }
+}
 
-    selectAreas: (request: unknown, agent: unknown) => {
-      const data = getData(agent);
-      const entity = getEntity(agent);
-      if (data == null || entity == null) {
-        return;
-      }
-
-      const selectedMatterAreaIds = normalizeSelectedAreaIds(request);
-      const selectedAreaValues = selectedMatterAreaIds
-        .map(
-          (matterAreaId) =>
-            data.areas.find((area) => area.matterAreaId === matterAreaId)
-              ?.actionValue,
-        )
-        .filter((areaValue): areaValue is number | string => areaValue != null);
-
-      if (selectedAreaValues.length === 0) {
-        return;
-      }
-
-      entity.callAction(buildSelectAreasAction(data, selectedAreaValues));
-    },
-
-    skipArea: (request: unknown, agent: unknown) => {
-      const areaId = normalizeSkippedAreaId(request);
-      if (areaId == null) {
-        return;
-      }
-      configuration.selectAreas([areaId], agent);
-    },
-  };
-
-  return serviceAreaServer.set({
-    config: configuration,
-    configuration,
-  });
+export function createVacuumServiceAreaServer(): object {
+  return VacuumServiceAreaServerBase.set({});
 }
 
 function buildSelectAreasAction(
   data: VacuumServiceAreaData,
-  selectedAreaValues: Array<number | string>,
+  selectedAreaValues: VacuumServiceAreaActionValue[],
 ): { action: string; data: Record<string, unknown> } {
   const payload: Record<string, unknown> = {
     [data.paramsKey]: data.paramsNested
@@ -162,30 +209,6 @@ function buildSelectAreasAction(
     action: data.action,
     data: payload,
   };
-}
-
-function getEntity(agent: unknown): HomeAssistantEntityBehavior | undefined {
-  const typedAgent = agent as AgentLike | undefined;
-  if (typedAgent?.get == null) {
-    return undefined;
-  }
-
-  try {
-    return typedAgent.get(HomeAssistantEntityBehavior);
-  } catch {
-    return undefined;
-  }
-}
-
-function getData(agent: unknown) {
-  const entity = getEntity(agent);
-  const attributes = entity?.entity?.state?.attributes;
-  if (attributes == null || typeof attributes !== "object") {
-    return undefined;
-  }
-  return parseVacuumServiceAreaData(
-    attributes as Parameters<typeof parseVacuumServiceAreaData>[0],
-  );
 }
 
 export function normalizeSelectedAreaIds(request: unknown): number[] {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.9
+- Fixed `ServiceArea` startup crash on Matter.js `0.16.10` by initializing `supportedMaps`, `supportedAreas`, `selectedAreas`, `currentArea`, and `progress` with safe defaults before behavior validation.
+- Prevented `Cannot read properties of undefined (reading 'length')` during robotic vacuum endpoint initialization.
+
+## 0.1.0-beta.8
+- Added a global `unhandledRejection` safeguard in backend bootstrap to prevent container crashes from detached async promise rejections (including numeric rejection reasons like `3`).
+- Improved logging of unhandled rejection reasons for faster troubleshooting.
+
 ## 0.1.0-beta.7
 - Added support for Home Assistant `vacuum.clean_area` style calls using string area IDs (e.g. `cleaning_area_id: [\"despensa\"]`).
 - Extended Service Area mapping to keep Matter numeric IDs while sending custom action values (number or string) to Home Assistant actions.
