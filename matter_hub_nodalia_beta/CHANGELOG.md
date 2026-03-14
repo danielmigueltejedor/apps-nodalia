@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.26
+- Fixed a critical selective-clean context loss where Home Assistant transient updates without room metadata set `hasData:false`, clearing in-memory action-value mappings right before `start`.
+- `VacuumServiceArea` now keeps previous valid parsed room/action data when incoming HA attributes temporarily omit room metadata.
+- Added automatic fallback reconstruction from Matter `supportedAreas` state so room cleaning can still resolve actions even when HA payloads are temporarily incomplete.
+- Added diagnostic log when fallback state-based reconstruction is used.
+
 ## 0.1.0-beta.25
 - Fixed a remaining selective-clean race where `ServiceArea.selectAreas` stored IDs correctly, but immediate `start` still fell back to `vacuum.start`.
 - `getSelectedAreasAction` now always attempts to build an action from stored selected IDs and can reuse a cached selective-clean action when temporary runtime state is incomplete.

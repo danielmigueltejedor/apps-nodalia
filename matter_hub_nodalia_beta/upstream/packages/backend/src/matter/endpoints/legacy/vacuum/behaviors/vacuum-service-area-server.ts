@@ -5,6 +5,7 @@ import { ServiceArea } from "@matter/main/clusters/service-area";
 import { HomeAssistantEntityBehavior } from "../../../../behaviors/home-assistant-entity-behavior.js";
 import {
   parseVacuumServiceAreaData,
+  type VacuumServiceAreaArea,
   type VacuumServiceAreaActionValue,
   type VacuumServiceAreaData,
 } from "../service-area-data.js";
@@ -93,14 +94,33 @@ export class VacuumServiceAreaServerBase extends Base {
     const state = this.state as unknown as MutableServiceAreaState;
 
     const attributes = entity.state.attributes;
-    const data = parseVacuumServiceAreaData(
+    const parsedData = parseVacuumServiceAreaData(
       attributes as Parameters<typeof parseVacuumServiceAreaData>[0],
     );
+    const data = parsedData ?? this.#data ?? this.buildFallbackDataFromState();
+    const usingPreviousData = parsedData == null && this.#data != null;
+    const usingStateFallbackData =
+      parsedData == null && this.#data == null && data != null;
 
-    this.#data = data;
-    this.#actionValuesByAreaId.clear();
+    if (usingPreviousData) {
+      const selectedAreasFromState = this.getNormalizedStateSelectedAreaIds();
+      if (selectedAreasFromState.length > 0) {
+        this.setStoredSelectedAreas(selectedAreasFromState, "state-no-data");
+      }
+      console.debug(
+        "VacuumServiceArea retaining previous parsed data (current HA update has no room metadata)",
+      );
+    }
+
+    if (usingStateFallbackData) {
+      console.debug(
+        "VacuumServiceArea using fallback data from Matter state (HA attributes without room metadata)",
+      );
+    }
 
     if (data == null) {
+      this.#data = undefined;
+      this.#actionValuesByAreaId.clear();
       this.setStoredSelectedAreas([], "no-data");
       if (this.supportsMaps) {
         state.supportedMaps = [];
@@ -113,6 +133,9 @@ export class VacuumServiceAreaServerBase extends Base {
       }
       return;
     }
+
+    this.#data = data;
+    this.#actionValuesByAreaId.clear();
 
     for (const area of data.areas) {
       this.#actionValuesByAreaId.set(area.matterAreaId, area.actionValue);
@@ -363,6 +386,76 @@ export class VacuumServiceAreaServerBase extends Base {
     }
 
     return buildSelectAreasAction(data, selectedAreaValues);
+  }
+
+  private buildFallbackDataFromState(): VacuumServiceAreaData | undefined {
+    const state = this.state as unknown as Partial<MutableServiceAreaState>;
+    const supportedAreas = Array.isArray(state.supportedAreas)
+      ? state.supportedAreas
+      : [];
+
+    const areas = supportedAreas
+      .map((area) => {
+        const areaRecord = area as unknown as {
+          areaId?: unknown;
+          mapId?: unknown;
+          areaInfo?: {
+            locationInfo?: {
+              locationName?: unknown;
+            } | null;
+          } | null;
+        };
+
+        const matterAreaId = toNumber(areaRecord.areaId);
+        if (matterAreaId == null) {
+          return undefined;
+        }
+
+        const locationName = areaRecord.areaInfo?.locationInfo?.locationName;
+        const name =
+          typeof locationName === "string" && locationName.trim().length > 0
+            ? locationName
+            : `Area ${matterAreaId}`;
+
+        const mapId = toNumber(areaRecord.mapId) ?? 1;
+        const fallbackArea: VacuumServiceAreaArea = {
+          matterAreaId,
+          segmentId: matterAreaId,
+          actionValue: matterAreaId,
+          mapId,
+          name,
+        };
+
+        return fallbackArea;
+      })
+      .filter((area): area is VacuumServiceAreaArea => area != null);
+
+    if (areas.length === 0) {
+      return undefined;
+    }
+
+    const mapIds = [...new Set(areas.map((area) => area.mapId))].sort(
+      (left, right) => left - right,
+    );
+    const maps = mapIds.map((mapId) => ({
+      mapId,
+      name: mapIds.length === 1 ? "Map" : `Map ${mapId}`,
+    }));
+
+    const selectedMatterAreaIds = this.getNormalizedStateSelectedAreaIds();
+    const currentMatterAreaId = toNumber(state.currentArea);
+
+    return {
+      maps,
+      areas,
+      selectedMatterAreaIds,
+      currentMatterAreaId,
+      action: "vacuum.send_command",
+      command: "app_segment_clean",
+      commandKey: "command",
+      paramsKey: "params",
+      paramsNested: false,
+    };
   }
 }
 

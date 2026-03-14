@@ -1,5 +1,5 @@
 name: Matter Hub (Nodalia Beta)
-version: 0.1.0-beta.25
+version: 0.1.0-beta.26
 slug: matter_hub_nodalia_beta
 description: Bridge Home Assistant devices to Matter ecosystems (Nodalia beta build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
