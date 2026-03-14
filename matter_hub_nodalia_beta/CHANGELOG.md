@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-beta.12
+- Explicitly enabled `ServiceArea` optional Matter features (`MAPS`, `PROG`) when creating the robotic vacuum behavior, so `supportedMaps`/`progress` are conformant and writable.
+- Prevented startup rollback loops caused by mismatched ServiceArea feature flags during endpoint initialization.
+
 ## 0.1.0-beta.11
 - Fixed `ServiceArea` initialization for vacuums where Matter `MAPS` and/or `PROG` features are not enabled by cluster conformance.
 - Prevented writes to `supportedMaps`/`progress` when those optional attributes are disallowed, avoiding startup rollback with `Conformance "MAPS": Matter does not allow you to set this attribute (135)`.

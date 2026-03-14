@@ -209,7 +209,10 @@ class VacuumServiceAreaServerBase extends Base {
 }
 
 export function createVacuumServiceAreaServer(): object {
-  return VacuumServiceAreaServerBase.set({});
+  return VacuumServiceAreaServerBase.with(
+    ServiceArea.Feature.Maps,
+    ServiceArea.Feature.ProgressReporting,
+  ).set({});
 }
 
 function buildSelectAreasAction(
