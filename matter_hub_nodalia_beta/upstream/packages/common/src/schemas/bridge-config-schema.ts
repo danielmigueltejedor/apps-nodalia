@@ -62,6 +62,34 @@ const featureFlagSchema: JSONSchema7 = {
   additionalProperties: false,
 };
 
+const deviceIdentitySchema: JSONSchema7 = {
+  title: "Identidad del dispositivo bridged",
+  description:
+    "Opcional: sobrescribe fabricante/modelo visibles en ecosistemas Matter (útil cuando Home Assistant no aporta metadatos del dispositivo).",
+  type: "object",
+  properties: {
+    vendorName: {
+      title: "Fabricante",
+      type: "string",
+      minLength: 1,
+      maxLength: 32,
+    },
+    productName: {
+      title: "Modelo",
+      type: "string",
+      minLength: 1,
+      maxLength: 32,
+    },
+    productLabel: {
+      title: "Etiqueta de producto",
+      type: "string",
+      minLength: 1,
+      maxLength: 64,
+    },
+  },
+  additionalProperties: false,
+};
+
 export const bridgeConfigSchema: JSONSchema7 = {
   type: "object",
   title: "Configuración del puente",
@@ -87,6 +115,7 @@ export const bridgeConfigSchema: JSONSchema7 = {
     },
     filter: homeAssistantFilterSchema,
     featureFlags: featureFlagSchema,
+    deviceIdentity: deviceIdentitySchema,
   },
   required: ["name", "port", "filter"],
   additionalProperties: false,

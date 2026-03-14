@@ -1,3 +1,4 @@
+import { inspect } from "node:util";
 import type { HomeAssistantEntityInformation } from "@home-assistant-matter-hub/common";
 import { ServiceAreaServer as Base } from "@matter/main/behaviors/service-area";
 import { ServiceArea } from "@matter/main/clusters/service-area";
@@ -175,6 +176,12 @@ export class VacuumServiceAreaServerBase extends Base {
     request: ServiceArea.SelectAreasRequest,
   ): Promise<ServiceArea.SelectAreasResponse> {
     const normalizedAreas = normalizeSelectedAreaIds(request);
+    if (normalizedAreas.length === 0) {
+      console.debug(
+        `VacuumServiceArea selectAreas received unparsable payload: ${inspect(request, { depth: 4, breakLength: 120 })}`,
+      );
+    }
+
     const response = await super.selectAreas(
       normalizedAreas.length > 0 ? { newAreas: normalizedAreas } : request,
     );
@@ -366,6 +373,22 @@ function extractAreaIds(value: unknown): number[] {
       .filter((entry): entry is number => entry != null);
   }
 
+  if (isIterable(value)) {
+    return toUniqueAreaIds(
+      [...value]
+        .map((entry) => extractAreaId(entry))
+        .filter((entry): entry is number => entry != null),
+    );
+  }
+
+  if (isArrayLike(value)) {
+    return toUniqueAreaIds(
+      Array.from(value)
+        .map((entry) => extractAreaId(entry))
+        .filter((entry): entry is number => entry != null),
+    );
+  }
+
   const areaId = extractAreaId(value);
   return areaId != null ? [areaId] : [];
 }
@@ -425,6 +448,19 @@ function areSameNumberArrays(left: number[], right: number[]): boolean {
 }
 
 function toNumber(value: unknown): number | undefined {
+  if (value != null && typeof value === "object") {
+    const valueOf = (value as { valueOf?: () => unknown }).valueOf;
+    if (typeof valueOf === "function") {
+      const primitive = valueOf.call(value);
+      if (primitive !== value) {
+        const parsedPrimitive = toNumber(primitive);
+        if (parsedPrimitive != null) {
+          return parsedPrimitive;
+        }
+      }
+    }
+  }
+
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
@@ -439,6 +475,35 @@ function toNumber(value: unknown): number | undefined {
     }
   }
   return undefined;
+}
+
+function isIterable(value: unknown): value is Iterable<unknown> {
+  if (value == null || typeof value === "string") {
+    return false;
+  }
+
+  return (
+    typeof value === "object" &&
+    typeof (value as { [Symbol.iterator]?: unknown })[Symbol.iterator] ===
+      "function"
+  );
+}
+
+function isArrayLike(value: unknown): value is ArrayLike<unknown> {
+  if (value == null || typeof value === "string") {
+    return false;
+  }
+
+  if (Array.isArray(value) || isIterable(value)) {
+    return false;
+  }
+
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  const length = (value as { length?: unknown }).length;
+  return typeof length === "number" && Number.isFinite(length) && length >= 0;
 }
 
 function disambiguateDuplicateAreaNames(areas: ServiceArea.Area[]) {

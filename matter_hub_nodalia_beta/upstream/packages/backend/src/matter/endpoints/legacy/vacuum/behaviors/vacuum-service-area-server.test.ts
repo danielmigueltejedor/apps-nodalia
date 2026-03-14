@@ -13,6 +13,22 @@ describe("normalizeSelectedAreaIds", () => {
     expect(ids).toEqual([17, 18]);
   });
 
+  it("should parse area IDs from iterable payloads", () => {
+    const ids = normalizeSelectedAreaIds({
+      newAreas: new Set([31, 32]),
+    });
+
+    expect(ids).toEqual([31, 32]);
+  });
+
+  it("should parse area IDs from typed array payloads", () => {
+    const ids = normalizeSelectedAreaIds({
+      newAreas: Uint16Array.from([41, 42]),
+    });
+
+    expect(ids).toEqual([41, 42]);
+  });
+
   it("should parse area IDs from structured area arrays", () => {
     const ids = normalizeSelectedAreaIds({
       newAreas: [{ areaId: 10 }, { id: "11" }, { segment_id: 12 }],

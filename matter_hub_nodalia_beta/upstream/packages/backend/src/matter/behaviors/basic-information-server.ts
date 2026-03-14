@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
-import type { HomeAssistantEntityInformation } from "@home-assistant-matter-hub/common";
+import type {
+  BridgeDeviceIdentityOverrides,
+  HomeAssistantDeviceRegistry,
+  HomeAssistantEntityInformation,
+} from "@home-assistant-matter-hub/common";
 import { VendorId } from "@matter/main";
 import { BridgedDeviceBasicInformationServer as Base } from "@matter/main/behaviors";
 import { BridgeDataProvider } from "../../services/bridges/bridge-data-provider.js";
@@ -16,19 +20,35 @@ export class BasicInformationServer extends Base {
   }
 
   private update(entity: HomeAssistantEntityInformation) {
-    const { basicInformation } = this.env.get(BridgeDataProvider);
+    const { basicInformation, deviceIdentity } = this.env.get(BridgeDataProvider);
     const device = entity.deviceRegistry;
+    const attributes = asRecord(entity.state?.attributes);
+    const vendorName = resolveVendorName(
+      device,
+      attributes,
+      deviceIdentity,
+      basicInformation.vendorName,
+    );
+    const productName = resolveProductName(
+      device,
+      attributes,
+      vendorName,
+      deviceIdentity,
+      basicInformation.productName,
+    );
+    const productLabel = resolveProductLabel(
+      device,
+      attributes,
+      productName,
+      deviceIdentity,
+      basicInformation.productLabel,
+    );
+
     applyPatchState(this.state, {
       vendorId: VendorId(basicInformation.vendorId),
-      vendorName:
-        ellipse(32, device?.manufacturer) ??
-        hash(32, basicInformation.vendorName),
-      productName:
-        ellipse(32, device?.model_id) ??
-        ellipse(32, device?.model) ??
-        hash(32, basicInformation.productName),
-      productLabel:
-        ellipse(64, device?.model) ?? hash(64, basicInformation.productLabel),
+      vendorName,
+      productName,
+      productLabel,
       hardwareVersion: basicInformation.hardwareVersion,
       softwareVersion: basicInformation.softwareVersion,
       hardwareVersionString: ellipse(64, device?.hw_version),
@@ -44,6 +64,157 @@ export class BasicInformationServer extends Base {
       serialNumber: hash(32, entity.entity_id),
     });
   }
+}
+
+function resolveVendorName(
+  device: HomeAssistantDeviceRegistry | undefined,
+  attributes: Record<string, unknown>,
+  identityOverrides: BridgeDeviceIdentityOverrides | undefined,
+  fallback: string,
+): string {
+  return (
+    ellipse(
+      32,
+      firstNonEmpty(
+        identityOverrides?.vendorName,
+        toStringValue(attributes.matter_vendor_name),
+        toStringValue(attributes.vendor_name),
+        toStringValue(attributes.manufacturer),
+        toStringValue(attributes.brand),
+        device?.manufacturer,
+        device?.default_manufacturer,
+      ),
+    ) ?? hash(32, fallback)
+  );
+}
+
+function resolveProductName(
+  device: HomeAssistantDeviceRegistry | undefined,
+  attributes: Record<string, unknown>,
+  vendorName: string,
+  identityOverrides: BridgeDeviceIdentityOverrides | undefined,
+  fallback: string,
+): string {
+  const humanName = stripVendorPrefix(
+    firstNonEmpty(
+      toStringValue(attributes.friendly_name),
+      device?.name_by_user,
+      device?.name,
+    ),
+    vendorName,
+  );
+
+  const modelName = firstNonEmpty(
+    identityOverrides?.productName,
+    toStringValue(attributes.matter_product_name),
+    toStringValue(attributes.product_name),
+    toStringValue(attributes.model_name),
+    toStringValue(attributes.model),
+    toStringValue(attributes.device_model),
+    device?.model,
+    device?.default_model,
+    device?.model_id,
+  );
+
+  const preferredName =
+    modelName == null
+      ? humanName
+      : isLikelyOpaqueModelName(modelName) && humanName != null
+        ? humanName
+        : modelName;
+
+  return ellipse(32, preferredName) ?? hash(32, fallback);
+}
+
+function resolveProductLabel(
+  device: HomeAssistantDeviceRegistry | undefined,
+  attributes: Record<string, unknown>,
+  productName: string,
+  identityOverrides: BridgeDeviceIdentityOverrides | undefined,
+  fallback: string,
+): string {
+  return (
+    ellipse(
+      64,
+      firstNonEmpty(
+        identityOverrides?.productLabel,
+        toStringValue(attributes.matter_product_label),
+        toStringValue(attributes.product_label),
+        toStringValue(attributes.friendly_name),
+        device?.name_by_user,
+        device?.name,
+        productName,
+        device?.model,
+        device?.default_model,
+        device?.model_id,
+      ),
+    ) ?? hash(64, fallback)
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value == null || typeof value !== "object") {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function toStringValue(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function firstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (value != null && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return undefined;
+}
+
+function stripVendorPrefix(value: string | undefined, vendor: string): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+
+  const vendorTrimmed = vendor.trim();
+  if (vendorTrimmed.length === 0) {
+    return trimmed;
+  }
+
+  const prefixPattern = new RegExp(
+    `^${escapeRegExp(vendorTrimmed)}[\\s\\-_:|,.]*`,
+    "i",
+  );
+  const stripped = trimmed.replace(prefixPattern, "").trim();
+  return stripped.length > 0 ? stripped : trimmed;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isLikelyOpaqueModelName(value: string): boolean {
+  const normalized = value.trim();
+  if (normalized.length === 0) {
+    return false;
+  }
+
+  return (
+    normalized.includes(".") ||
+    normalized.includes("_") ||
+    /[a-z]+\.[a-z]+/i.test(normalized) ||
+    /[a-z]{2,}\d{2,}/i.test(normalized)
+  );
 }
 
 function ellipse(maxLength: number, value?: string) {

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0-beta.22
+- Fixed Apple Home room-selection parsing in `ServiceArea.selectAreas` when `newAreas` arrives in non-plain-array payload shapes (iterable/array-like objects).
+- Added robust area-id extraction for iterable and typed-array inputs, plus object `valueOf()` numeric wrappers.
+- Added debug trace for unparsable `selectAreas` payloads to speed up diagnosis in addon logs.
+- Added unit tests for bigint, iterable (`Set`) and typed-array (`Uint16Array`) area-selection payloads.
+
+## 0.1.0-beta.21
+- Improved bridged device identity metadata so Apple Home shows real manufacturer/model more reliably instead of bridge defaults.
+- `BridgedDeviceBasicInformation` now also uses Home Assistant device registry fallbacks (`default_manufacturer`, `default_model`) and entity attributes (`manufacturer`, `brand`, `model`, `model_name`).
+- Added human-friendly model fallback: when model IDs look opaque (e.g. `roborock.vacuum.a104`), the addon prefers a cleaned friendly name (e.g. `Qrevo S`) for `productName`.
+- Improved `productLabel` fallback order to prioritize readable names (`friendly_name`, `name_by_user`, `name`) before generic defaults.
+- Added optional bridge UI overrides for bridged device identity:
+  - `Fabricante` (`deviceIdentity.vendorName`)
+  - `Modelo` (`deviceIdentity.productName`)
+  - `Etiqueta de producto` (`deviceIdentity.productLabel`)
+
 ## 0.1.0-beta.20
 - Fixed vacuum selective-clean persistence when Matter controllers (Apple Home) send `ServiceArea.selectAreas` with IDs that can arrive as non-number runtime types (e.g. bigint).
 - Normalized `selectedAreas` read from Matter state before filtering/mapping, preventing false-empty selections that triggered fallback `vacuum.start`.

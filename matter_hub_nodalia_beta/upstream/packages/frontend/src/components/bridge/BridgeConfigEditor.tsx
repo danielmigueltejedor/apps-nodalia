@@ -47,6 +47,17 @@ const bridgeConfigUiSchema: UiSchema = {
       },
     },
   },
+  deviceIdentity: {
+    vendorName: {
+      "ui:placeholder": "Ej. Roborock",
+    },
+    productName: {
+      "ui:placeholder": "Ej. Qrevo S",
+    },
+    productLabel: {
+      "ui:placeholder": "Ej. Aspirador principal",
+    },
+  },
   "ui:submitButtonOptions": {
     norender: true,
   },

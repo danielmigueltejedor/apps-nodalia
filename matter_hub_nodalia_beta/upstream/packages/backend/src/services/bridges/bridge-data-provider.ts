@@ -1,6 +1,7 @@
 import type {
   BridgeBasicInformation,
   BridgeData,
+  BridgeDeviceIdentityOverrides,
   BridgeFeatureFlags,
   BridgeStatus,
   HomeAssistantFilter,
@@ -44,6 +45,9 @@ export class BridgeDataProvider extends Service implements BridgeData {
   get featureFlags(): BridgeFeatureFlags | undefined {
     return this.data.featureFlags;
   }
+  get deviceIdentity(): BridgeDeviceIdentityOverrides | undefined {
+    return this.data.deviceIdentity;
+  }
   get countryCode(): string | undefined {
     return this.data.countryCode;
   }
@@ -73,6 +77,7 @@ export class BridgeDataProvider extends Service implements BridgeData {
       filter: this.filter,
       port: this.port,
       featureFlags: this.featureFlags,
+      deviceIdentity: this.deviceIdentity,
       basicInformation: this.basicInformation,
       countryCode: this.countryCode,
       status: status.code,

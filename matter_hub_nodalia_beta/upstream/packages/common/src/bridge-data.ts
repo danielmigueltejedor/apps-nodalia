@@ -7,11 +7,18 @@ interface AllBridgeFeatureFlags {
 
 export type BridgeFeatureFlags = Partial<AllBridgeFeatureFlags>;
 
+export interface BridgeDeviceIdentityOverrides {
+  readonly vendorName?: string;
+  readonly productName?: string;
+  readonly productLabel?: string;
+}
+
 export interface BridgeConfig {
   readonly name: string;
   readonly port: number;
   readonly filter: HomeAssistantFilter;
   readonly featureFlags?: BridgeFeatureFlags;
+  readonly deviceIdentity?: BridgeDeviceIdentityOverrides;
   readonly countryCode?: string;
 }
 
