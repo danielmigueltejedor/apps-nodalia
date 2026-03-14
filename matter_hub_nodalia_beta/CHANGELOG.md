@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-beta.13
+- Enabled `host_network: true` for the Matter Hub addon so mDNS/commissioning traffic is advertised on the host LAN instead of the supervisor container subnet (`172.30.x.x`).
+- Improves Apple Home commissioning reliability where pairing stalled after QR scan despite the bridge running.
+
 ## 0.1.0-beta.12
 - Explicitly enabled `ServiceArea` optional Matter features (`MAPS`, `PROG`) when creating the robotic vacuum behavior, so `supportedMaps`/`progress` are conformant and writable.
 - Prevented startup rollback loops caused by mismatched ServiceArea feature flags during endpoint initialization.
