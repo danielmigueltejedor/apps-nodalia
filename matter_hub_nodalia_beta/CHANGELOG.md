@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.18
+- Improved vacuum room-selection persistence by tracking selected Matter areas not only from `selectAreas` command flow but also from current cluster state updates.
+- Prevents room selections from being lost when Home Assistant entity attributes don't include selected areas (common when Apple Home starts cleaning via `RvcRunMode.changeToMode`).
+- Added debug traces for stored area-selection updates to diagnose Apple Home selective-clean flows.
+
 ## 0.1.0-beta.17
 - Added a vacuum-specific Identify behavior that maps Matter `identify` / `triggerEffect` commands to Home Assistant `vacuum.locate`.
 - Enables Apple Home "play location sound" (identify) to trigger the robot locator sound through Matter Hub when the vacuum reports `LOCATE` support.

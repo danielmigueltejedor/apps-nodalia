@@ -97,7 +97,7 @@ export class VacuumServiceAreaServerBase extends Base {
     this.#actionValuesByAreaId.clear();
 
     if (data == null) {
-      this.#selectedMatterAreaIds = [];
+      this.setStoredSelectedAreas([], "no-data");
       if (this.supportsMaps) {
         state.supportedMaps = [];
       }
@@ -112,6 +112,13 @@ export class VacuumServiceAreaServerBase extends Base {
 
     for (const area of data.areas) {
       this.#actionValuesByAreaId.set(area.matterAreaId, area.actionValue);
+    }
+
+    const selectedAreasFromState = (
+      Array.isArray(state.selectedAreas) ? state.selectedAreas : []
+    ).filter((areaId) => this.#actionValuesByAreaId.has(areaId));
+    if (selectedAreasFromState.length > 0) {
+      this.setStoredSelectedAreas(selectedAreasFromState, "state");
     }
 
     const supportedMaps = this.supportsMaps
@@ -142,7 +149,7 @@ export class VacuumServiceAreaServerBase extends Base {
       selectedAreasFromAttributes.length > 0 ||
       this.#selectedMatterAreaIds.length === 0
     ) {
-      this.#selectedMatterAreaIds = selectedAreasFromAttributes;
+      this.setStoredSelectedAreas(selectedAreasFromAttributes, "attributes");
     }
 
     const selectedAreas = this.#selectedMatterAreaIds.filter((areaId) =>
@@ -176,8 +183,11 @@ export class VacuumServiceAreaServerBase extends Base {
       return response;
     }
 
-    this.#selectedMatterAreaIds = this.state.selectedAreas.filter((areaId) =>
-      this.#actionValuesByAreaId.has(areaId),
+    this.setStoredSelectedAreas(
+      this.state.selectedAreas.filter((areaId) =>
+        this.#actionValuesByAreaId.has(areaId),
+      ),
+      "selectAreas",
     );
     console.debug(
       `VacuumServiceArea selectAreas status=${response.status} selected=${JSON.stringify(this.#selectedMatterAreaIds)}`,
@@ -189,6 +199,19 @@ export class VacuumServiceAreaServerBase extends Base {
   getSelectedMatterAreaIds(): number[] {
     return this.#selectedMatterAreaIds.filter((areaId) =>
       this.#actionValuesByAreaId.has(areaId),
+    );
+  }
+
+  private setStoredSelectedAreas(areaIds: number[], source: string) {
+    const normalized = toUniqueAreaIds(areaIds).filter((areaId) =>
+      this.#actionValuesByAreaId.has(areaId),
+    );
+    if (areSameNumberArrays(this.#selectedMatterAreaIds, normalized)) {
+      return;
+    }
+    this.#selectedMatterAreaIds = normalized;
+    console.debug(
+      `VacuumServiceArea stored selected areas updated (${source}): ${JSON.stringify(this.#selectedMatterAreaIds)}`,
     );
   }
 
@@ -363,6 +386,18 @@ function extractAreaId(value: unknown): number | undefined {
 
 function toUniqueAreaIds(values: number[]): number[] {
   return [...new Set(values)];
+}
+
+function areSameNumberArrays(left: number[], right: number[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function toNumber(value: unknown): number | undefined {
