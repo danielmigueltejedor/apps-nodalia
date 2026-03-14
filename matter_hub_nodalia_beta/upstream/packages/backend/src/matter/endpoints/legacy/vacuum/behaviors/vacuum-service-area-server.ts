@@ -41,7 +41,7 @@ interface MutableServiceAreaState {
   progress: ServiceArea.Progress[];
 }
 
-class VacuumServiceAreaServerBase extends Base {
+export class VacuumServiceAreaServerBase extends Base {
   #data: VacuumServiceAreaData | undefined;
   #actionValuesByAreaId = new Map<number, VacuumServiceAreaActionValue>();
 
@@ -159,9 +159,23 @@ class VacuumServiceAreaServerBase extends Base {
       return response;
     }
 
+    const selectedAreasAction = this.getSelectedAreasAction();
+    if (selectedAreasAction == null) {
+      return response;
+    }
+
+    const entity = this.agent.get(HomeAssistantEntityBehavior);
+    entity.callAction(selectedAreasAction);
+
+    return response;
+  }
+
+  getSelectedAreasAction():
+    | { action: string; data: Record<string, unknown> }
+    | undefined {
     const data = this.#data;
     if (data == null) {
-      return response;
+      return undefined;
     }
 
     const selectedAreaValues = this.state.selectedAreas
@@ -171,13 +185,10 @@ class VacuumServiceAreaServerBase extends Base {
       );
 
     if (selectedAreaValues.length === 0) {
-      return response;
+      return undefined;
     }
 
-    const entity = this.agent.get(HomeAssistantEntityBehavior);
-    entity.callAction(buildSelectAreasAction(data, selectedAreaValues));
-
-    return response;
+    return buildSelectAreasAction(data, selectedAreaValues);
   }
 
   // Optional command: emulate skip by re-selecting areas except the skipped one.
@@ -208,11 +219,13 @@ class VacuumServiceAreaServerBase extends Base {
   }
 }
 
+export const VacuumServiceAreaServer = VacuumServiceAreaServerBase.with(
+  ServiceArea.Feature.Maps,
+  ServiceArea.Feature.ProgressReporting,
+).set({});
+
 export function createVacuumServiceAreaServer(): object {
-  return VacuumServiceAreaServerBase.with(
-    ServiceArea.Feature.Maps,
-    ServiceArea.Feature.ProgressReporting,
-  ).set({});
+  return VacuumServiceAreaServer;
 }
 
 function buildSelectAreasAction(

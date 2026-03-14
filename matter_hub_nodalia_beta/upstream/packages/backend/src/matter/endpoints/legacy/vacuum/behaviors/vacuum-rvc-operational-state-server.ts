@@ -6,6 +6,7 @@ import { RvcOperationalState } from "@matter/main/clusters";
 import { testBit } from "../../../../../utils/test-bit.js";
 import { HomeAssistantEntityBehavior } from "../../../../behaviors/home-assistant-entity-behavior.js";
 import { RvcOperationalStateServer } from "../../../../behaviors/rvc-operational-state-server.js";
+import { resolveVacuumStartAction } from "./vacuum-start-action.js";
 
 export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
   getOperationalState(entity): RvcOperationalState.OperationalState {
@@ -33,7 +34,5 @@ export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
     }
     return { action: "vacuum.stop" };
   },
-  resume: () => ({
-    action: "vacuum.start",
-  }),
+  resume: (_, agent) => resolveVacuumStartAction(agent),
 });

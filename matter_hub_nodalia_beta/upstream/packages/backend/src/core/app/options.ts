@@ -1,3 +1,4 @@
+import os from "node:os";
 import { VendorId } from "@matter/main";
 import type { ArgumentsCamelCase } from "yargs";
 import type { WebApiProps } from "../../api/web-api.js";
@@ -18,7 +19,9 @@ export class Options {
   get mdns(): MdnsOptions {
     return {
       ipv4: true,
-      networkInterface: notEmpty(this.startOptions.mdnsNetworkInterface),
+      networkInterface: resolveMdnsNetworkInterface(
+        this.startOptions.mdnsNetworkInterface,
+      ),
     };
   }
 
@@ -82,4 +85,27 @@ function notEmpty(val: string | undefined | null): string | undefined {
     return undefined;
   }
   return value;
+}
+
+function resolveMdnsNetworkInterface(
+  val: string | undefined | null,
+): string | undefined {
+  const networkInterface = notEmpty(val);
+  if (networkInterface == null) {
+    return undefined;
+  }
+
+  const interfaces = os.networkInterfaces();
+  const entries = interfaces[networkInterface];
+  if (
+    entries != null &&
+    entries.some((entry) => entry != null && entry.internal !== true)
+  ) {
+    return networkInterface;
+  }
+
+  console.warn(
+    `Configured mDNS network interface "${networkInterface}" is not available; falling back to automatic interface selection.`,
+  );
+  return undefined;
 }

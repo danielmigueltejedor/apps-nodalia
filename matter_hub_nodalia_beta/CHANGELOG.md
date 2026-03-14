@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-beta.15
+- Fixed vacuum start behavior for Matter clients (including Apple Home) to honor selected Service Area rooms when available instead of always sending `vacuum.start`.
+- Applied the same start-routing fix across `OnOff`, `RvcRunMode.start`, and `RvcOperationalState.resume` paths so room-based cleaning is consistent regardless of which Matter command path the controller uses.
+- Added fallback behavior: if no selected Service Area rooms are present, the addon still uses regular `vacuum.start`.
+
+## 0.1.0-beta.14
+- Added resilient mDNS interface handling: if `mdns_network_interface` points to a missing interface (e.g. `eth0` after enabling host networking), Matter Hub now logs a warning and falls back to automatic interface selection instead of failing bridge startup.
+- Prevented bridge startup crashes caused by stale interface names in addon options.
+
 ## 0.1.0-beta.13
 - Enabled `host_network: true` for the Matter Hub addon so mDNS/commissioning traffic is advertised on the host LAN instead of the supervisor container subnet (`172.30.x.x`).
 - Improves Apple Home commissioning reliability where pairing stalled after QR scan despite the bridge running.
