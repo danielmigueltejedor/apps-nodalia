@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.7
+- Added support for Home Assistant `vacuum.clean_area` style calls using string area IDs (e.g. `cleaning_area_id: [\"despensa\"]`).
+- Extended Service Area mapping to keep Matter numeric IDs while sending custom action values (number or string) to Home Assistant actions.
+- Improved room/area parsing for object maps with non-numeric keys (e.g. `room_map: { bano_del_dormitorio: \"Bano dormitorio\" }`).
+
+## 0.1.0-beta.6
+- Fixed unhandled promise rejection crashes when a Home Assistant service call fails (e.g. vacuum action errors), preventing addon shutdown on `ERR_UNHANDLED_REJECTION`.
+
 ## 0.1.0-beta.5
 - Fixed beta image build context by providing required package metadata files (`README.md`/`LICENSE`) expected by upstream bundling scripts.
 

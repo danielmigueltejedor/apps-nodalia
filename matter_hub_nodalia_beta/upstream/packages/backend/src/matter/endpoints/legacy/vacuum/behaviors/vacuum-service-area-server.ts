@@ -114,19 +114,19 @@ export function createVacuumServiceAreaServer(): object | undefined {
       }
 
       const selectedMatterAreaIds = normalizeSelectedAreaIds(request);
-      const selectedSegmentIds = selectedMatterAreaIds
+      const selectedAreaValues = selectedMatterAreaIds
         .map(
           (matterAreaId) =>
             data.areas.find((area) => area.matterAreaId === matterAreaId)
-              ?.segmentId,
+              ?.actionValue,
         )
-        .filter((segmentId): segmentId is number => segmentId != null);
+        .filter((areaValue): areaValue is number | string => areaValue != null);
 
-      if (selectedSegmentIds.length === 0) {
+      if (selectedAreaValues.length === 0) {
         return;
       }
 
-      entity.callAction(buildSelectAreasAction(data, selectedSegmentIds));
+      entity.callAction(buildSelectAreasAction(data, selectedAreaValues));
     },
 
     skipArea: (request: unknown, agent: unknown) => {
@@ -146,12 +146,12 @@ export function createVacuumServiceAreaServer(): object | undefined {
 
 function buildSelectAreasAction(
   data: VacuumServiceAreaData,
-  selectedSegmentIds: number[],
+  selectedAreaValues: Array<number | string>,
 ): { action: string; data: Record<string, unknown> } {
   const payload: Record<string, unknown> = {
     [data.paramsKey]: data.paramsNested
-      ? [selectedSegmentIds]
-      : selectedSegmentIds,
+      ? [selectedAreaValues]
+      : selectedAreaValues,
   };
 
   if (data.command != null) {

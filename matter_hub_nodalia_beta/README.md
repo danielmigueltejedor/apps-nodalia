@@ -18,3 +18,7 @@ Home Assistant app to bridge entities to Matter ecosystems.
   - `matter_service_area_command` / `matter_service_area_command_key`
   - `matter_service_area_params_key` (default: `params`)
   - `matter_service_area_params_nested` (`true`/`false`, also supports `\"1\"` and `\"true\"`)
+- Home Assistant `vacuum.clean_area` is supported by mapping areas to string IDs, for example:
+  - `matter_service_area_action: vacuum.clean_area`
+  - `matter_service_area_params_key: cleaning_area_id`
+  - `room_map: { bano_del_dormitorio: \"Bano dormitorio\", despensa: \"Despensa\" }`

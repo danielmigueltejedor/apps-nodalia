@@ -30,11 +30,35 @@ export class HomeAssistantActions extends Service {
   }
 
   private processAction(_key: string, calls: HomeAssistantActionCall[]) {
+    if (calls.length === 0) {
+      return;
+    }
+
     const entity_id = calls[0].entityId;
     const action = calls[0].action;
     const data = Object.assign({}, ...calls.map((c) => c.data));
     const [domain, actionName] = action.split(".");
-    void this.callAction(domain, actionName, data, { entity_id }, false);
+
+    if (!domain || !actionName) {
+      this.log.warn(
+        `Skipping invalid action '${action}' for entity '${entity_id}'`,
+      );
+      return;
+    }
+
+    void this.callAction(domain, actionName, data, { entity_id }, false).catch(
+      (error) => {
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : JSON.stringify(error);
+        this.log.warn(
+          `Action '${domain}.${actionName}' for '${entity_id}' failed: ${message}`,
+        );
+      },
+    );
   }
 
   call(action: HomeAssistantAction, entityId: string) {
