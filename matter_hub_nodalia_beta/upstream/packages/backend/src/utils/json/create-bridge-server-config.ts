@@ -11,6 +11,22 @@ export type BridgeServerNodeConfig =
 export function createBridgeServerConfig(
   data: BridgeData,
 ): BridgeServerNodeConfig {
+  const vendorName = trimToLength(
+    data.deviceIdentity?.vendorName ?? data.basicInformation.vendorName,
+    32,
+    "...",
+  );
+  const productName = trimToLength(
+    data.deviceIdentity?.productName ?? data.basicInformation.productName,
+    32,
+    "...",
+  );
+  const productLabel = trimToLength(
+    data.deviceIdentity?.productLabel ?? data.basicInformation.productLabel,
+    64,
+    "...",
+  );
+
   return {
     type: ServerNode.RootEndpoint,
     id: data.id,
@@ -25,10 +41,10 @@ export function createBridgeServerConfig(
       uniqueId: data.id,
       nodeLabel: trimToLength(data.name, 32, "..."),
       vendorId: VendorId(data.basicInformation.vendorId),
-      vendorName: data.basicInformation.vendorName,
+      vendorName,
       productId: data.basicInformation.productId,
-      productName: data.basicInformation.productName,
-      productLabel: data.basicInformation.productLabel,
+      productName,
+      productLabel,
       serialNumber: crypto
         .createHash("md5")
         .update(`serial-${data.id}`)

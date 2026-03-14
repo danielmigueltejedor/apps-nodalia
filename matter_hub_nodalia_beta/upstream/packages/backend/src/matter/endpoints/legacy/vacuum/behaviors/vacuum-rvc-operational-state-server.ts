@@ -3,8 +3,10 @@ import {
   VacuumDeviceFeature,
   VacuumState,
 } from "@home-assistant-matter-hub/common";
+import type { Agent } from "@matter/main";
 import { RvcOperationalState } from "@matter/main/clusters";
 import { testBit } from "../../../../../utils/test-bit.js";
+import { HomeAssistantRegistry } from "../../../../../services/home-assistant/home-assistant-registry.js";
 import { HomeAssistantEntityBehavior } from "../../../../behaviors/home-assistant-entity-behavior.js";
 import { RvcOperationalStateServer } from "../../../../behaviors/rvc-operational-state-server.js";
 import { resolveVacuumStartAction } from "./vacuum-start-action.js";
@@ -14,11 +16,17 @@ const CLEANING_MOP_HINTS = [
   "mop_cleaning",
   "washing_mop",
   "mop_washing",
+  "washing_mop_pad",
+  "mop_pad_washing",
   "wash_mop",
   "mop_wash",
   "washing",
+  "mop_wash_pause",
+  "mop_cleaning_paused",
   "self_clean",
+  "self_cleaning",
   "auto_wash",
+  "auto_washing",
   "dock_wash",
   "mopwash",
   "lavando_mopa",
@@ -28,6 +36,8 @@ const CLEANING_MOP_HINTS = [
 
 const FILLING_WATER_HINTS = [
   "filling_water_tank",
+  "filling_water",
+  "water_tank_filling",
   "fill_water",
   "water_refill",
   "filling",
@@ -37,9 +47,18 @@ const FILLING_WATER_HINTS = [
 
 const EMPTYING_DUST_HINTS = [
   "emptying_dust_bin",
+  "emptying_dust",
+  "auto_emptying",
+  "auto_empty_dust",
+  "emptying_dock_dust",
+  "collecting_dust",
+  "dust_collecting",
+  "dust_collection_in_progress",
   "emptying",
   "auto_empty",
   "dust_collection",
+  "auto_dust_collection",
+  "dustbin_emptying",
   "vaciando",
   "vaciado",
 ] as const;
@@ -97,9 +116,66 @@ const PAUSED_HINTS = ["paused", "idle", "standby", "pausado", "en_espera"] as co
 const DOCKED_HINTS = ["docked", "on_dock", "base", "en_base"] as const;
 const ERROR_HINTS = ["error", "fault", "stuck", "atascado"] as const;
 
+const OPERATIONAL_HINT_KEY_PARTS = [
+  "status",
+  "state",
+  "mode",
+  "task",
+  "job",
+  "phase",
+  "activity",
+  "action",
+  "operation",
+  "mop",
+  "dock",
+  "charge",
+  "dust",
+  "water",
+  "clean",
+  "wash",
+  "dry",
+  "empty",
+] as const;
+
+const RELATED_OPERATIONAL_ENTITY_DOMAINS = new Set([
+  "sensor",
+  "binary_sensor",
+  "select",
+  "text",
+]);
+
+const RELATED_OPERATIONAL_ENTITY_HINTS = [
+  "status",
+  "estado",
+  "task",
+  "phase",
+  "job",
+  "operation",
+  "activity",
+  "vacuum",
+  "aspir",
+  "clean",
+  "limpi",
+  "mop",
+  "mopa",
+  "wash",
+  "lav",
+  "dry",
+  "sec",
+  "dust",
+  "polvo",
+  "empty",
+  "vaci",
+  "dock",
+  "base",
+] as const;
+
 export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
-  getOperationalState(entity): RvcOperationalState.OperationalState {
-    const statusHints = collectOperationalStateHints(entity.state, entity.attributes);
+  getOperationalState(entity, agent): RvcOperationalState.OperationalState {
+    const statusHints = [
+      ...collectOperationalStateHints(entity.state, entity.attributes),
+      ...collectRelatedOperationalStateHints(agent),
+    ];
 
     if (hasHint(statusHints, CLEANING_MOP_HINTS)) {
       return RvcOperationalState.OperationalState.CleaningMop;
@@ -172,10 +248,7 @@ function collectOperationalStateHints(
   const hints = new Set<string>();
 
   const add = (value: unknown) => {
-    const normalized = normalizeHint(value);
-    if (normalized != null) {
-      hints.add(normalized);
-    }
+    addHint(hints, value);
   };
 
   add(entityState);
@@ -193,8 +266,170 @@ function collectOperationalStateHints(
   add(attributes.charging_state);
   add(attributes.working_state);
   add(attributes.status_description);
+  add(attributes.vacuum_status);
+  add(attributes.state_text);
+  add(attributes.status_text);
+  add(attributes.current_task);
+  add(attributes.task_phase);
+
+  for (const [key, value] of Object.entries(attributes)) {
+    const normalizedKey = normalizeHint(key);
+    if (
+      normalizedKey == null ||
+      !OPERATIONAL_HINT_KEY_PARTS.some((part) => normalizedKey.includes(part))
+    ) {
+      continue;
+    }
+
+    if (typeof value === "boolean") {
+      if (value) {
+        add(normalizedKey);
+      }
+      continue;
+    }
+
+    if (typeof value === "string") {
+      add(value);
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        add(item);
+      }
+      continue;
+    }
+
+    if (value != null && typeof value === "object") {
+      for (const nestedValue of Object.values(value)) {
+        add(nestedValue);
+      }
+    }
+  }
 
   return [...hints];
+}
+
+function collectRelatedOperationalStateHints(agent: Agent): string[] {
+  const hints = new Set<string>();
+  const currentEntity = agent.get(HomeAssistantEntityBehavior).entity;
+  const currentEntityId = currentEntity.entity_id;
+  const deviceId =
+    currentEntity.deviceRegistry?.id ?? currentEntity.registry?.device_id;
+
+  if (deviceId == null) {
+    return [];
+  }
+
+  let registry: HomeAssistantRegistry;
+  try {
+    registry = agent.env.get(HomeAssistantRegistry);
+  } catch {
+    return [];
+  }
+
+  for (const relatedEntity of Object.values(registry.entities)) {
+    if (
+      relatedEntity.device_id !== deviceId ||
+      relatedEntity.entity_id === currentEntityId
+    ) {
+      continue;
+    }
+
+    const [domain] = relatedEntity.entity_id.split(".");
+    if (!domain || !RELATED_OPERATIONAL_ENTITY_DOMAINS.has(domain)) {
+      continue;
+    }
+
+    const relatedState = registry.states[relatedEntity.entity_id];
+    if (relatedState == null) {
+      continue;
+    }
+
+    if (
+      !isLikelyOperationalCompanionEntity(
+        relatedEntity.entity_id,
+        relatedState.attributes?.friendly_name,
+      )
+    ) {
+      continue;
+    }
+
+    addHint(hints, relatedState.state);
+    addHint(hints, relatedState.attributes?.friendly_name);
+    collectHintValuesFromAttributes(hints, asRecord(relatedState.attributes));
+  }
+
+  return [...hints];
+}
+
+function isLikelyOperationalCompanionEntity(
+  entityId: string,
+  friendlyName: unknown,
+): boolean {
+  const normalizedEntityId = normalizeHint(entityId);
+  const normalizedFriendlyName = normalizeHint(friendlyName);
+
+  return RELATED_OPERATIONAL_ENTITY_HINTS.some((hint) => {
+    return (
+      normalizedEntityId?.includes(hint) ||
+      normalizedFriendlyName?.includes(hint)
+    );
+  });
+}
+
+function collectHintValuesFromAttributes(
+  hints: Set<string>,
+  attributes: Record<string, unknown>,
+): void {
+  for (const [key, value] of Object.entries(attributes)) {
+    const normalizedKey = normalizeHint(key);
+    if (
+      normalizedKey == null ||
+      !OPERATIONAL_HINT_KEY_PARTS.some((part) => normalizedKey.includes(part))
+    ) {
+      continue;
+    }
+
+    if (typeof value === "boolean") {
+      if (value) {
+        addHint(hints, normalizedKey);
+      }
+      continue;
+    }
+
+    if (typeof value === "string") {
+      addHint(hints, value);
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        addHint(hints, item);
+      }
+      continue;
+    }
+
+    if (value != null && typeof value === "object") {
+      for (const nestedValue of Object.values(value)) {
+        addHint(hints, nestedValue);
+      }
+    }
+  }
+}
+
+function addHint(hints: Set<string>, value: unknown): void {
+  const normalized = normalizeHint(value);
+  if (normalized != null) {
+    hints.add(normalized);
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value == null || typeof value !== "object") {
+    return {};
+  }
+  return value as Record<string, unknown>;
 }
 
 function normalizeHint(value: unknown): string | undefined {

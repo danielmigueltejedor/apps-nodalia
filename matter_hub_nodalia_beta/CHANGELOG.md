@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.31
+- Improved robotic vacuum maintenance-state detection by expanding operational hint parsing for mop wash/dry and dust emptying flows.
+- Added companion-entity status lookup: vacuum operational state now also inspects related `sensor`/`binary_sensor`/`select`/`text` entities on the same Home Assistant device when they look like status/task entities.
+- Expanded hint synonyms and key matching (`status/state/task/phase/action/mop/dust/wash/dry/empty`) to better map Roborock-style states to Matter `RvcOperationalState`.
+- Fixed bridge edit form data loss for identity overrides: `deviceIdentity` (`vendorName`/`productName`/`productLabel`) is now preserved and sent correctly when editing a bridge.
+
 ## 0.1.0-beta.30
 - Improved Service Area progress reporting during selective room cleaning so Apple Home reflects active cleaning instead of staying in a “moving to room” style status.
 - While vacuum is in `cleaning` state, Matter `ServiceArea.progress` now marks the active room as `Operating` (instead of all selected areas being `Pending`).
