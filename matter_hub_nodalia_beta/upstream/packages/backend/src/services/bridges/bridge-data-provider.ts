@@ -62,6 +62,26 @@ export class BridgeDataProvider extends Service implements BridgeData {
     Object.assign(this.data, data);
   }
 
+  mergeDeviceIdentityDefaults(defaults: BridgeDeviceIdentityOverrides) {
+    const next: Partial<Record<DeviceIdentityField, string>> = {};
+    for (const field of DEVICE_IDENTITY_FIELDS) {
+      const value = normalizeString(defaults[field]);
+      if (value != null) {
+        next[field] = value;
+      }
+    }
+
+    if (Object.keys(next).length === 0) {
+      return;
+    }
+
+    const current = this.data.deviceIdentity ?? {};
+    this.data.deviceIdentity = {
+      ...next,
+      ...current,
+    };
+  }
+
   /**
    * @deprecated
    */
@@ -102,4 +122,22 @@ export class BridgeDataProvider extends Service implements BridgeData {
       deviceCount,
     };
   }
+}
+
+type DeviceIdentityField = keyof BridgeDeviceIdentityOverrides;
+
+const DEVICE_IDENTITY_FIELDS: readonly DeviceIdentityField[] = [
+  "vendorName",
+  "productName",
+  "productLabel",
+  "serialNumber",
+  "softwareVersionString",
+];
+
+function normalizeString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
 }

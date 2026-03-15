@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-beta.36
+- Added automatic bridge root identity enrichment when a bridge exposes a single Home Assistant device: vendor, model, product label, serial number and firmware are now derived from that device metadata if not manually configured.
+- Root-node serial now avoids hashed fallback values (e.g. `17d73...`) when Home Assistant provides serial data from the device or companion entities.
+- Root-node firmware now prefers real software-version fields (including `update.*` companion entities) to avoid showing generic year-like values such as `2026`.
+- Manual `deviceIdentity` overrides still keep highest priority and are not overwritten by auto-derived values.
+
 ## 0.1.0-beta.35
 - Fixed firmware string selection precedence to avoid generic numeric `version` values (e.g. `2026`) overriding real software version strings.
 - Firmware now prioritizes explicit software fields (`sw_version`, `software_version`, `firmware_version`, `update.installed_version/current_version`) and only uses generic `version` when it looks firmware-like (contains separators such as `.` / `_` / `-`).
