@@ -19,7 +19,7 @@ export const BridgesPage = () => {
   useEffect(() => {
     if (bridgeError) {
       notifications.show({
-        message: bridgeError.message ?? "Could not load bridges",
+        message: bridgeError.message ?? "No se pudieron cargar los puentes",
         severity: "error",
       });
     }
@@ -48,7 +48,7 @@ export const BridgesPage = () => {
                 endIcon={<Add />}
                 variant="outlined"
               >
-                Create new bridge
+                Crear nuevo puente
               </Button>
             </Box>
 

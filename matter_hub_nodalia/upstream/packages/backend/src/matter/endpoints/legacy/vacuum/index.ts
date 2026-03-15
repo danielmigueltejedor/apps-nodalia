@@ -7,7 +7,7 @@ import { RoboticVacuumCleanerDevice } from "@matter/main/devices";
 import { testBit } from "../../../../utils/test-bit.js";
 import { BasicInformationServer } from "../../../behaviors/basic-information-server.js";
 import { HomeAssistantEntityBehavior } from "../../../behaviors/home-assistant-entity-behavior.js";
-import { IdentifyServer } from "../../../behaviors/identify-server.js";
+import { VacuumIdentifyServer } from "./behaviors/vacuum-identify-server.js";
 import { VacuumOnOffServer } from "./behaviors/vacuum-on-off-server.js";
 import { VacuumRvcOperationalStateServer } from "./behaviors/vacuum-rvc-operational-state-server.js";
 import { VacuumRvcRunModeServer } from "./behaviors/vacuum-rvc-run-mode-server.js";
@@ -16,7 +16,7 @@ import { parseVacuumServiceAreaData } from "./service-area-data.js";
 
 const VacuumEndpointType = RoboticVacuumCleanerDevice.with(
   BasicInformationServer,
-  IdentifyServer,
+  VacuumIdentifyServer,
   HomeAssistantEntityBehavior,
   VacuumRvcOperationalStateServer,
   VacuumRvcRunModeServer,

@@ -2,14 +2,19 @@ import {
   type BridgeConfig,
   bridgeConfigSchema,
 } from "@home-assistant-matter-hub/common";
-import { LibraryBooks, TextFields } from "@mui/icons-material";
+import { DataObject, Tune } from "@mui/icons-material";
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
 import Link from "@mui/material/Link";
+import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
-import { useCallback, useState } from "react";
+import ToggleButton from "@mui/material/ToggleButton";
+import ToggleButtonGroup from "@mui/material/ToggleButtonGroup";
+import Typography from "@mui/material/Typography";
+import type { UiSchema } from "@rjsf/utils";
+import { type MouseEvent, useCallback, useState } from "react";
 import { navigation } from "../../routes.tsx";
 import { FormEditor } from "../misc/editors/FormEditor";
 import { JsonEditor } from "../misc/editors/JsonEditor";
@@ -19,6 +24,50 @@ enum BridgeEditorMode {
   JSON_EDITOR = "JSON_EDITOR",
   FIELDS_EDITOR = "FIELDS_EDITOR",
 }
+
+const bridgeConfigUiSchema: UiSchema = {
+  name: {
+    "ui:placeholder": "Ej. Puente Principal",
+  },
+  port: {
+    "ui:help": "Puerto TCP para el puente Matter (por defecto 5540).",
+  },
+  countryCode: {
+    "ui:placeholder": "ES",
+  },
+  filter: {
+    include: {
+      "ui:options": {
+        orderable: false,
+      },
+    },
+    exclude: {
+      "ui:options": {
+        orderable: false,
+      },
+    },
+  },
+  deviceIdentity: {
+    vendorName: {
+      "ui:placeholder": "Ej. Roborock",
+    },
+    productName: {
+      "ui:placeholder": "Ej. Qrevo S",
+    },
+    productLabel: {
+      "ui:placeholder": "Ej. Aspirador principal",
+    },
+    serialNumber: {
+      "ui:placeholder": "Ej. R77MBD44501217",
+    },
+    softwareVersionString: {
+      "ui:placeholder": "Ej. 02.07.14",
+    },
+  },
+  "ui:submitButtonOptions": {
+    norender: true,
+  },
+};
 
 export interface BridgeConfigEditorProps {
   bridgeId?: string;
@@ -32,12 +81,13 @@ export const BridgeConfigEditor = (props: BridgeConfigEditorProps) => {
   const [editorMode, setEditorMode] = useState<BridgeEditorMode>(
     BridgeEditorMode.FIELDS_EDITOR,
   );
-  const toggleEditor = () => {
-    setEditorMode(
-      editorMode === BridgeEditorMode.FIELDS_EDITOR
-        ? BridgeEditorMode.JSON_EDITOR
-        : BridgeEditorMode.FIELDS_EDITOR,
-    );
+  const handleEditorModeChange = (
+    _: MouseEvent<HTMLElement>,
+    nextMode: BridgeEditorMode | null,
+  ) => {
+    if (nextMode != null) {
+      setEditorMode(nextMode);
+    }
   };
 
   const [config, setConfig] = useState<object | undefined>(props.bridge);
@@ -54,7 +104,7 @@ export const BridgeConfigEditor = (props: BridgeConfigEditorProps) => {
         return [
           {
             instancePath: "/port",
-            message: `Port is already used by bridge with id ${usedBy}`,
+            message: `El puerto ya está en uso por el puente con id ${usedBy}`,
           },
         ];
       }
@@ -76,81 +126,107 @@ export const BridgeConfigEditor = (props: BridgeConfigEditorProps) => {
   };
 
   return (
-    <>
-      <Alert severity="warning" variant="outlined">
-        Please consult{" "}
-        <Link href={navigation.faq.bridgeConfig} target="_blank">
-          the documentation
-        </Link>{" "}
-        for proper bridge configurations.{" "}
-        <strong>
-          Especially if you are using labels, see the "Labels" section.
-        </strong>
-      </Alert>
+    <Paper
+      variant="outlined"
+      sx={(theme) => ({
+        p: { xs: 2, md: 3 },
+        borderRadius: 3,
+        background:
+          theme.palette.mode === "dark"
+            ? "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%)"
+            : "linear-gradient(180deg, rgba(8,114,138,0.06) 0%, rgba(8,114,138,0.015) 100%)",
+      })}
+    >
+      <Stack spacing={3}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
+          spacing={2}
+        >
+          <Box>
+            <Typography variant="h6">Opciones de configuración</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Define cómo se expone este puente en Matter y qué entidades incluye.
+            </Typography>
+          </Box>
 
-      <Stack spacing={2}>
-        <Box display="flex" justifyContent={"flex-end"}>
-          <Button
-            onClick={() => toggleEditor()}
-            title={
-              editorMode === BridgeEditorMode.FIELDS_EDITOR
-                ? "JSON editor"
-                : "Form editor"
-            }
+          <ToggleButtonGroup
+            value={editorMode}
+            exclusive
+            size="small"
+            color="primary"
+            onChange={handleEditorModeChange}
           >
-            {editorMode === BridgeEditorMode.FIELDS_EDITOR ? (
-              <TextFields />
-            ) : (
-              <LibraryBooks />
-            )}
-          </Button>
+            <ToggleButton value={BridgeEditorMode.FIELDS_EDITOR}>
+              <Tune fontSize="small" sx={{ mr: 0.75 }} />
+              Formulario
+            </ToggleButton>
+            <ToggleButton value={BridgeEditorMode.JSON_EDITOR}>
+              <DataObject fontSize="small" sx={{ mr: 0.75 }} />
+              JSON
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
+
+        <Alert severity="info" variant="outlined">
+          Consulta{" "}
+          <Link href={navigation.faq.bridgeConfig} target="_blank">
+            la documentación
+          </Link>{" "}
+          para una configuración óptima del puente.{" "}
+          <strong>
+            Si usas etiquetas, revisa especialmente la sección &quot;Etiquetas&quot;.
+          </strong>
+        </Alert>
+
+        <Box
+          sx={{
+            p: { xs: 1.5, md: 2 },
+            borderRadius: 2,
+            border: 1,
+            borderColor: "divider",
+            bgcolor: "background.paper",
+          }}
+        >
+          {editorMode === BridgeEditorMode.FIELDS_EDITOR && (
+            <FormEditor
+              value={config ?? {}}
+              onChange={onChange}
+              schema={bridgeConfigSchema}
+              uiSchema={bridgeConfigUiSchema}
+              customValidate={validatePort}
+            />
+          )}
+
+          {editorMode === BridgeEditorMode.JSON_EDITOR && (
+            <JsonEditor
+              value={config ?? {}}
+              onChange={onChange}
+              schema={bridgeConfigSchema}
+              customValidate={validatePort}
+            />
+          )}
         </Box>
 
-        {editorMode === BridgeEditorMode.FIELDS_EDITOR && (
-          <FormEditor
-            value={config ?? {}}
-            onChange={onChange}
-            schema={bridgeConfigSchema}
-            customValidate={validatePort}
-          />
-        )}
-
-        {editorMode === BridgeEditorMode.JSON_EDITOR && (
-          <JsonEditor
-            value={config ?? {}}
-            onChange={onChange}
-            schema={bridgeConfigSchema}
-            customValidate={validatePort}
-          />
-        )}
-
-        <Grid container>
-          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              color="error"
-              onClick={props.onCancel}
-            >
-              Cancel
+        <Grid container spacing={2}>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Button fullWidth variant="outlined" color="inherit" onClick={props.onCancel}>
+              Cancelar
             </Button>
           </Grid>
-          <Grid
-            size={{ xs: 0, sm: 4, md: 6 }}
-            sx={{ display: { xs: "none", sm: "block" } }}
-          />
-          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
+          <Grid size={{ xs: 12, sm: 6 }}>
             <Button
               fullWidth
-              variant="outlined"
+              variant="contained"
               disabled={!isValid}
               onClick={saveAction}
             >
-              Save
+              Guardar cambios
             </Button>
           </Grid>
         </Grid>
       </Stack>
-    </>
+    </Paper>
   );
 };

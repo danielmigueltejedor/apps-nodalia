@@ -9,6 +9,7 @@ import {
   RvcRunModeServer,
   RvcSupportedRunMode,
 } from "../../../../behaviors/rvc-run-mode-server.js";
+import { resolveVacuumStartAction } from "./vacuum-start-action.js";
 
 export const VacuumRvcRunModeServer = RvcRunModeServer({
   getCurrentMode: (entity) =>
@@ -28,7 +29,7 @@ export const VacuumRvcRunModeServer = RvcRunModeServer({
     },
   ],
 
-  start: () => ({ action: "vacuum.start" }),
+  start: (_, agent) => resolveVacuumStartAction(agent),
   returnToBase: () => ({ action: "vacuum.return_to_base" }),
   pause: (_, agent) => {
     const supportedFeatures =

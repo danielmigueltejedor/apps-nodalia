@@ -42,7 +42,8 @@ export const BridgeDetailsPage = () => {
   useEffect(() => {
     if (bridgeError) {
       notifications.show({
-        message: bridgeError.message ?? "Failed to load Bridge details",
+        message:
+          bridgeError.message ?? "No se pudieron cargar los detalles del puente",
         severity: "error",
       });
     }
@@ -55,18 +56,18 @@ export const BridgeDetailsPage = () => {
   }, [devicesError, notifications]);
 
   if (!bridge && bridgeLoading) {
-    return "Loading";
+    return "Cargando...";
   }
 
   if (!bridge) {
-    return "Not found";
+    return "No encontrado";
   }
 
   return (
     <Stack spacing={4}>
       <Breadcrumbs
         items={[
-          { name: "Bridges", to: navigation.bridges },
+          { name: "Puentes", to: navigation.bridges },
           { name: bridge.name, to: navigation.bridge(bridgeId) },
         ]}
       />
@@ -86,9 +87,9 @@ export const BridgeDetailsPage = () => {
         <Stack spacing={2}>
           <Box display="flex" justifyContent="flex-end" alignItems="center">
             {timer != null && (
-              <Tooltip title="New devices and changes on labels are discovered every 30 seconds.">
+              <Tooltip title="Los cambios de dispositivos y etiquetas se detectan cada 30 segundos.">
                 <Typography variant="body2" color="textSecondary">
-                  Refreshing states in {timer - 1} seconds...
+                  Actualizando estados en {timer - 1} segundos...
                 </Typography>
               </Tooltip>
             )}

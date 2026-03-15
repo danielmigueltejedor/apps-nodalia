@@ -37,10 +37,10 @@ export const EndpointState = (props: EndpointStateProps) => {
   );
   const metadata = useMemo(
     () => ({
-      "Endpoint ID": props.endpoint.id.local,
-      "Endpoint Type": `${props.endpoint.type.name} (${props.endpoint.type.id})`,
-      "Endpoint Number": props.endpoint.endpoint,
-      "# of Child Endpoints": props.endpoint.parts.length,
+      "ID del endpoint": props.endpoint.id.local,
+      "Tipo de endpoint": `${props.endpoint.type.name} (${props.endpoint.type.id})`,
+      "Número de endpoint": props.endpoint.endpoint,
+      "# de endpoints hijo": props.endpoint.parts.length,
     }),
     [props.endpoint],
   );
@@ -49,7 +49,7 @@ export const EndpointState = (props: EndpointStateProps) => {
     <>
       <Paper sx={{ p: 2, mb: 2 }} variant="outlined">
         <Stack spacing={2}>
-          <Typography component="span">About this endpoint</Typography>
+          <Typography component="span">Información del endpoint</Typography>
           <ObjectTable value={metadata} hideHead></ObjectTable>
         </Stack>
       </Paper>
@@ -61,7 +61,7 @@ export const EndpointState = (props: EndpointStateProps) => {
             aria-controls="panel1-content"
           >
             <Typography component="span">
-              Behavior: <strong>{behavior}</strong>
+              Comportamiento: <strong>{behavior}</strong>
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
@@ -87,8 +87,8 @@ const ObjectTable = <T extends object>(props: {
         {!props.hideHead && (
           <TableHead>
             <TableRow>
-              <TableCell>Property</TableCell>
-              <TableCell>Value</TableCell>
+              <TableCell>Propiedad</TableCell>
+              <TableCell>Valor</TableCell>
             </TableRow>
           </TableHead>
         )}

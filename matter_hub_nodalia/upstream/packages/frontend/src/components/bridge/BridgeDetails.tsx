@@ -91,7 +91,7 @@ const Pairing = (props: { bridge: BridgeDataWithMetadata }) => {
                 href={navigation.faq.multiFabric}
                 target="_blank"
               >
-                Commissioned
+                Comisionado
               </Typography>
             </Alert>
           </Box>
@@ -117,8 +117,8 @@ const BasicInfo = (props: { bridge: BridgeDataWithMetadata }) => {
   return (
     <Typography variant="subtitle2" component="div">
       <div>ID: {props.bridge.id}</div>
-      <div>Name: {props.bridge.name}</div>
-      <div>Port: {props.bridge.port}</div>
+      <div>Nombre: {props.bridge.name}</div>
+      <div>Puerto: {props.bridge.port}</div>
       <div>
         <div>Fabrics:</div>
         <div style={{ fontSize: "1.5em" }}>
@@ -137,12 +137,13 @@ const CommissioningInfo = (props: { bridge: BridgeDataWithMetadata }) => {
   }
   return (
     <Typography variant="subtitle2" component="div">
-      <div>Passcode: {props.bridge.commissioning.passcode}</div>
-      <div>Discriminator: {props.bridge.commissioning.discriminator}</div>
+      <div>Código: {props.bridge.commissioning.passcode}</div>
+      <div>Discriminador: {props.bridge.commissioning.discriminator}</div>
       <div>
-        Manual Pairing Code: {props.bridge.commissioning.manualPairingCode}
+        Código manual de emparejamiento:{" "}
+        {props.bridge.commissioning.manualPairingCode}
       </div>
-      <div>QR Pairing Code: {props.bridge.commissioning.qrPairingCode}</div>
+      <div>Código QR de emparejamiento: {props.bridge.commissioning.qrPairingCode}</div>
     </Typography>
   );
 };

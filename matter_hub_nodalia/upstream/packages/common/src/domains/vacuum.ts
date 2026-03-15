@@ -56,6 +56,9 @@ export interface VacuumDeviceAttributes {
   segments?: unknown;
   segment_ids?: unknown;
   segment_names?: unknown;
+  room_mapping?: unknown;
+  room_map?: unknown;
+  segment_map?: unknown;
   selected_map?: unknown;
   map_id?: unknown;
   selected_segments?: unknown;
@@ -64,9 +67,15 @@ export interface VacuumDeviceAttributes {
   current_segments?: unknown;
   selected_rooms?: unknown;
   current_rooms?: unknown;
+  selected_areas?: unknown;
+  active_areas?: unknown;
   current_segment?: unknown;
+  current_area?: unknown;
   room_clean_command?: unknown;
   segment_clean_command?: unknown;
+  matter_service_area_action?: unknown;
   matter_service_area_command?: unknown;
+  matter_service_area_command_key?: unknown;
+  matter_service_area_params_key?: unknown;
   matter_service_area_params_nested?: unknown;
 }

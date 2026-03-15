@@ -54,7 +54,10 @@ export const CreateBridgePage = () => {
   const saveAction = async (config: BridgeConfig) => {
     await createBridge({ ...config })
       .then(() =>
-        notifications.show({ message: "Bridge saved", severity: "success" }),
+        notifications.show({
+          message: "Puente guardado correctamente",
+          severity: "success",
+        }),
       )
       .then(() => cancelAction())
       .catch((err: Error) =>
@@ -63,25 +66,24 @@ export const CreateBridgePage = () => {
   };
 
   if (!bridgeConfig || !usedPorts) {
-    return "Loading";
+    return "Cargando...";
   }
 
   return (
     <Stack spacing={4}>
       <Breadcrumbs
         items={[
-          { name: "Bridges", to: navigation.bridges },
-          { name: "Create New", to: navigation.createBridge },
+          { name: "Puentes", to: navigation.bridges },
+          { name: "Crear nuevo", to: navigation.createBridge },
         ]}
       />
 
       {showReuseBridgeHint && (
         <Alert severity="info" variant="outlined">
           <Typography>
-            Did you know that you can connect the same bridge with multiple
-            assistants?{" "}
+            ¿Sabías que puedes conectar el mismo puente con varios asistentes?{" "}
             <Link href={navigation.faq.multiFabric} target="_blank">
-              Learn more.
+              Más información.
             </Link>
           </Typography>
         </Alert>

@@ -116,7 +116,7 @@ export const JsonEditor = (props: JsonEditorProps) => {
           }}
           onClick={() => prettify()}
         >
-          Prettify
+          Formatear JSON
         </Button>
       </Box>
       {errors.length > 0 && (

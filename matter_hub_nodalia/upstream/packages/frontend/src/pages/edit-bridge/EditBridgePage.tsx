@@ -31,6 +31,7 @@ export const EditBridgePage = () => {
       countryCode: bridge.countryCode,
       filter: bridge.filter,
       featureFlags: bridge.featureFlags,
+      deviceIdentity: bridge.deviceIdentity,
     };
   }, [isLoading, bridge]);
 
@@ -42,7 +43,7 @@ export const EditBridgePage = () => {
     await updateBridge({ ...config, id: bridgeId })
       .then(() =>
         notifications.show({
-          message: "Update completed",
+          message: "Cambios guardados correctamente",
           severity: "success",
         }),
       )
@@ -53,19 +54,19 @@ export const EditBridgePage = () => {
   };
 
   if (isLoading || !usedPorts) {
-    return "Loading";
+    return "Cargando...";
   }
   if (!bridge || !bridgeConfig) {
-    return "Not found";
+    return "No encontrado";
   }
 
   return (
     <Stack spacing={4}>
       <Breadcrumbs
         items={[
-          { name: "Bridges", to: navigation.bridges },
+          { name: "Puentes", to: navigation.bridges },
           { name: bridge.name, to: navigation.bridge(bridgeId) },
-          { name: "Edit", to: navigation.editBridge(bridgeId) },
+          { name: "Editar", to: navigation.editBridge(bridgeId) },
         ]}
       />
 

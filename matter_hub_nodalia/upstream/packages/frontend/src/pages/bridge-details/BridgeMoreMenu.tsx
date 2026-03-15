@@ -37,13 +37,13 @@ export const BridgeMoreMenu = ({ bridge }: BridgeMoreMenuProps) => {
     await factoryReset(bridge)
       .then(() =>
         notification.show({
-          message: "Bridge Reset successfully",
+          message: "Puente restablecido correctamente",
           severity: "success",
         }),
       )
       .catch((reason) =>
         notification.show({
-          message: `Failed to reset bridge: ${reason.toString()}`,
+          message: `No se pudo restablecer el puente: ${reason.toString()}`,
           severity: "error",
         }),
       );
@@ -53,14 +53,14 @@ export const BridgeMoreMenu = ({ bridge }: BridgeMoreMenuProps) => {
     await deleteBridge(bridge)
       .then(() =>
         notification.show({
-          message: "Bridge deleted successfully",
+          message: "Puente eliminado correctamente",
           severity: "success",
         }),
       )
       .then(() => navigate(navigation.bridges))
       .catch((reason) =>
         notification.show({
-          message: `Failed to delete bridge: ${reason.toString()}`,
+          message: `No se pudo eliminar el puente: ${reason.toString()}`,
           severity: "error",
         }),
       );
@@ -76,20 +76,20 @@ export const BridgeMoreMenu = ({ bridge }: BridgeMoreMenuProps) => {
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Edit</ListItemText>
+          <ListItemText>Editar</ListItemText>
         </MenuItem>
         <Divider />
         <MenuItem onClick={handleFactoryReset}>
           <ListItemIcon>
             <ResetIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Factory Reset</ListItemText>
+          <ListItemText>Restablecer de fábrica</ListItemText>
         </MenuItem>
         <MenuItem onClick={handleDelete}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Delete</ListItemText>
+          <ListItemText>Eliminar</ListItemText>
         </MenuItem>
       </Menu>
     </>
