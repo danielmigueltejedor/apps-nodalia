@@ -172,40 +172,22 @@ const RELATED_OPERATIONAL_ENTITY_HINTS = [
 
 export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
   getOperationalState(entity, agent): RvcOperationalState.OperationalState {
-    const statusHints = [
-      ...collectOperationalStateHints(entity.state, entity.attributes),
-      ...collectRelatedOperationalStateHints(agent),
-    ];
+    const primaryHints = collectOperationalStateHints(
+      entity.state,
+      entity.attributes,
+    );
+    const primaryState = resolveOperationalStateFromHints(primaryHints);
+    if (primaryState != null) {
+      return primaryState;
+    }
 
-    if (hasHint(statusHints, CLEANING_MOP_HINTS)) {
-      return RvcOperationalState.OperationalState.CleaningMop;
-    }
-    if (hasHint(statusHints, FILLING_WATER_HINTS)) {
-      return RvcOperationalState.OperationalState.FillingWaterTank;
-    }
-    if (hasHint(statusHints, EMPTYING_DUST_HINTS)) {
-      return RvcOperationalState.OperationalState.EmptyingDustBin;
-    }
-    if (hasHint(statusHints, UPDATING_MAPS_HINTS)) {
-      return RvcOperationalState.OperationalState.UpdatingMaps;
-    }
-    if (hasHint(statusHints, CHARGING_HINTS)) {
-      return RvcOperationalState.OperationalState.Charging;
-    }
-    if (hasHint(statusHints, SEEKING_CHARGER_HINTS)) {
-      return RvcOperationalState.OperationalState.SeekingCharger;
-    }
-    if (hasHint(statusHints, RUNNING_HINTS)) {
-      return RvcOperationalState.OperationalState.Running;
-    }
-    if (hasHint(statusHints, PAUSED_HINTS)) {
-      return RvcOperationalState.OperationalState.Paused;
-    }
-    if (hasHint(statusHints, DOCKED_HINTS)) {
-      return RvcOperationalState.OperationalState.Docked;
-    }
-    if (hasHint(statusHints, ERROR_HINTS)) {
-      return RvcOperationalState.OperationalState.Error;
+    // Companion entities (sensor/select/binary_sensor/text) are useful as
+    // fallback, but should not override the vacuum entity itself when it has
+    // an explicit operational state.
+    const relatedHints = collectRelatedOperationalStateHints(agent);
+    const relatedState = resolveOperationalStateFromHints(relatedHints);
+    if (relatedState != null) {
+      return relatedState;
     }
 
     const state = entity.state as VacuumState | "unavailable";
@@ -234,6 +216,42 @@ export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
   },
   resume: (_, agent) => resolveVacuumStartAction(agent),
 });
+
+function resolveOperationalStateFromHints(
+  hints: string[],
+): RvcOperationalState.OperationalState | undefined {
+  if (hasHint(hints, CLEANING_MOP_HINTS)) {
+    return RvcOperationalState.OperationalState.CleaningMop;
+  }
+  if (hasHint(hints, FILLING_WATER_HINTS)) {
+    return RvcOperationalState.OperationalState.FillingWaterTank;
+  }
+  if (hasHint(hints, EMPTYING_DUST_HINTS)) {
+    return RvcOperationalState.OperationalState.EmptyingDustBin;
+  }
+  if (hasHint(hints, UPDATING_MAPS_HINTS)) {
+    return RvcOperationalState.OperationalState.UpdatingMaps;
+  }
+  if (hasHint(hints, CHARGING_HINTS)) {
+    return RvcOperationalState.OperationalState.Charging;
+  }
+  if (hasHint(hints, SEEKING_CHARGER_HINTS)) {
+    return RvcOperationalState.OperationalState.SeekingCharger;
+  }
+  if (hasHint(hints, RUNNING_HINTS)) {
+    return RvcOperationalState.OperationalState.Running;
+  }
+  if (hasHint(hints, PAUSED_HINTS)) {
+    return RvcOperationalState.OperationalState.Paused;
+  }
+  if (hasHint(hints, DOCKED_HINTS)) {
+    return RvcOperationalState.OperationalState.Docked;
+  }
+  if (hasHint(hints, ERROR_HINTS)) {
+    return RvcOperationalState.OperationalState.Error;
+  }
+  return undefined;
+}
 
 function hasHint(values: string[], hints: readonly string[]): boolean {
   return values.some((value) =>
@@ -356,7 +374,6 @@ function collectRelatedOperationalStateHints(agent: Agent): string[] {
     }
 
     addHint(hints, relatedState.state);
-    addHint(hints, relatedState.attributes?.friendly_name);
     collectHintValuesFromAttributes(hints, asRecord(relatedState.attributes));
   }
 
@@ -403,18 +420,8 @@ function collectHintValuesFromAttributes(
       continue;
     }
 
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        addHint(hints, item);
-      }
-      continue;
-    }
-
-    if (value != null && typeof value === "object") {
-      for (const nestedValue of Object.values(value)) {
-        addHint(hints, nestedValue);
-      }
-    }
+    // Avoid companion-entity static lists (possible states/options) that can
+    // keep stale maintenance hints active for too long.
   }
 }
 

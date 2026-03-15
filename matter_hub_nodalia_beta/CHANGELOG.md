@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.32
+- Fixed robotic vacuum operational-state “stuck in CleaningMop” behavior after returning to normal cleaning.
+- `RvcOperationalState` resolution now prioritizes hints from the main vacuum entity first, and only uses companion entities (`sensor`/`binary_sensor`/`select`/`text`) as fallback when the main entity provides no clear operational match.
+- Reduced false positives from companion entities by ignoring companion attribute collections/lists that can contain static status catalogs.
+
 ## 0.1.0-beta.31
 - Improved robotic vacuum maintenance-state detection by expanding operational hint parsing for mop wash/dry and dust emptying flows.
 - Added companion-entity status lookup: vacuum operational state now also inspects related `sensor`/`binary_sensor`/`select`/`text` entities on the same Home Assistant device when they look like status/task entities.
