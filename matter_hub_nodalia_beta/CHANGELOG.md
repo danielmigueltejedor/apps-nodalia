@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.39
+- Improved vacuum maintenance-state detection for mop washing triggered outside Home Assistant (e.g. from Roborock app), so Apple Home reflects `CleaningMop` more reliably.
+- Expanded mop-wash hint catalog with additional English/Spanish variants (including phrases like `washing_the_mop` / `lavando_la_mopa`).
+- Made hint matching token-aware to tolerate connector words in normalized states (`lavando_la_mopa` now matches `lavando_mopa`).
+
 ## 0.1.0-beta.38
 - Fixed backend TypeScript build failure in `BridgeDataProvider` (`TS2540: Cannot assign to 'deviceIdentity' because it is a read-only property`) by applying identity updates via object merge instead of direct property assignment.
 

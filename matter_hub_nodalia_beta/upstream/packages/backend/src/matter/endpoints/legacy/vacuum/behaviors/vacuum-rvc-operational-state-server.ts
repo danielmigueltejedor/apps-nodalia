@@ -15,13 +15,20 @@ const CLEANING_MOP_HINTS = [
   "cleaning_mop",
   "mop_cleaning",
   "washing_mop",
+  "washing_the_mop",
+  "washing_the_mop_pad",
   "mop_washing",
+  "mop_washing_in_progress",
+  "mop_wash_in_progress",
   "washing_mop_pad",
   "mop_pad_washing",
+  "mop_pad_cleaning",
   "wash_mop",
+  "wash_mop_pad",
   "mop_wash",
   "washing",
   "mop_wash_pause",
+  "mop_washing_pause",
   "mop_cleaning_paused",
   "self_clean",
   "self_cleaning",
@@ -30,7 +37,11 @@ const CLEANING_MOP_HINTS = [
   "dock_wash",
   "mopwash",
   "lavando_mopa",
+  "lavando_la_mopa",
   "lavado_mopa",
+  "lavado_de_mopa",
+  "limpiando_mopa",
+  "limpieza_mopa",
   "lavando",
 ] as const;
 
@@ -254,9 +265,23 @@ function resolveOperationalStateFromHints(
 }
 
 function hasHint(values: string[], hints: readonly string[]): boolean {
-  return values.some((value) =>
-    hints.some((hint) => value === hint || value.includes(hint)),
-  );
+  return values.some((value) => hints.some((hint) => hintMatches(value, hint)));
+}
+
+function hintMatches(value: string, hint: string): boolean {
+  if (value === hint || value.includes(hint)) {
+    return true;
+  }
+
+  // Accept "connector" words between tokens, e.g.
+  // "lavando_la_mopa" should match "lavando_mopa".
+  const valueTokens = value.split("_").filter(Boolean);
+  const hintTokens = hint.split("_").filter(Boolean);
+  if (valueTokens.length === 0 || hintTokens.length <= 1) {
+    return false;
+  }
+
+  return hintTokens.every((token) => valueTokens.includes(token));
 }
 
 function collectOperationalStateHints(
