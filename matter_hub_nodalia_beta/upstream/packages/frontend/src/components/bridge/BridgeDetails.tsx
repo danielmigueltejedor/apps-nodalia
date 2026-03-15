@@ -120,7 +120,7 @@ const BasicInfo = (props: { bridge: BridgeDataWithMetadata }) => {
       <div>Nombre: {props.bridge.name}</div>
       <div>Puerto: {props.bridge.port}</div>
       <div>
-        <div>Fábricas:</div>
+        <div>Fabrics:</div>
         <div style={{ fontSize: "1.5em" }}>
           {props.bridge.commissioning?.fabrics && (
             <FabricList fabrics={props.bridge.commissioning.fabrics} />

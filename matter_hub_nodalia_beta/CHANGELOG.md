@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-beta.42
+- Changed mop-drying status mapping back to `Charging` (instead of `CleaningMop`) to match preferred Apple Home behavior when no native drying state exists.
+- Keeps expanded drying hint detection so Roborock drying variants are still recognized reliably.
+
+## 0.1.0-beta.41
+- Updated UI terminology to keep Matter wording: changed `Fábricas` to `Fabrics` in bridge summary and bridge details views.
+
+## 0.1.0-beta.40
+- Improved mop-drying status mapping for Apple Home: drying-like Roborock states are now mapped to `CleaningMop` instead of generic `Charging`.
+- Added additional drying hint variants in English/Spanish (`drying_mop`, `hot_air_drying`, `secando_la_mopa`, `secado_de_mopa`, etc.).
+- Keeps charging-only statuses mapped to `Charging` to avoid masking real base charging states.
+
 ## 0.1.0-beta.39
 - Improved vacuum maintenance-state detection for mop washing triggered outside Home Assistant (e.g. from Roborock app), so Apple Home reflects `CleaningMop` more reliably.
 - Expanded mop-wash hint catalog with additional English/Spanish variants (including phrases like `washing_the_mop` / `lavando_la_mopa`).

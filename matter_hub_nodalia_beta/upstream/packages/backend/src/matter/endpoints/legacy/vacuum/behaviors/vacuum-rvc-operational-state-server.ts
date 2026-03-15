@@ -83,8 +83,6 @@ const UPDATING_MAPS_HINTS = [
   "mapeando",
 ] as const;
 
-// RVC has no dedicated "drying mop" state, so we map drying-like statuses
-// to Charging because this typically happens while docked on base.
 const CHARGING_HINTS = [
   "charging",
   "charge",
@@ -97,6 +95,9 @@ const CHARGING_HINTS = [
   "dry",
   "hot_air_drying",
   "secando_mopa",
+  "secando_la_mopa",
+  "secado_mopa",
+  "secado_de_mopa",
   "secando",
   "cargando",
 ] as const;

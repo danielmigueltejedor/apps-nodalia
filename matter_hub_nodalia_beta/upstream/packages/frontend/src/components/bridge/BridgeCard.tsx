@@ -36,7 +36,7 @@ export const BridgeCard = ({ bridge }: BridgeCardProps) => {
               <Grid size={6}>
                 <Typography variant="caption" component="div">
                   <div>
-                    Fábricas: {bridge.commissioning?.fabrics.length ?? 0}
+                    Fabrics: {bridge.commissioning?.fabrics.length ?? 0}
                   </div>
                   <div>Dispositivos: {bridge.deviceCount}</div>
                 </Typography>
