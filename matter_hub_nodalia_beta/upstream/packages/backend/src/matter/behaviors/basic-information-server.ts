@@ -44,10 +44,12 @@ export class BasicInformationServer extends Base {
       deviceIdentity,
       basicInformation.productLabel,
     );
+    const relatedSerialNumber = this.resolveRelatedSerialNumber(entity);
     const serialNumber = resolveSerialNumber(
       device,
       attributes,
       deviceIdentity,
+      relatedSerialNumber,
       entity.entity_id,
     );
     const softwareVersionString = resolveSoftwareVersionString(
@@ -114,6 +116,7 @@ export class BasicInformationServer extends Base {
           ? firstNonEmpty(
               toVersionStringValue(attributes.installed_version),
               toVersionStringValue(attributes.current_version),
+              toVersionStringValue(attributes.latest_version),
               toVersionStringValue(attributes.sw_version),
               toVersionStringValue(attributes.software_version),
               toVersionStringValue(attributes.firmware_version),
@@ -142,6 +145,62 @@ export class BasicInformationServer extends Base {
       );
       if (fromVersionEntity != null) {
         return fromVersionEntity;
+      }
+    }
+
+    return undefined;
+  }
+
+  private resolveRelatedSerialNumber(
+    entity: HomeAssistantEntityInformation,
+  ): string | undefined {
+    const deviceId = entity.deviceRegistry?.id ?? entity.registry?.device_id;
+    if (deviceId == null) {
+      return undefined;
+    }
+
+    let registry: HomeAssistantRegistry;
+    try {
+      registry = this.env.get(HomeAssistantRegistry);
+    } catch {
+      return undefined;
+    }
+
+    for (const relatedEntity of Object.values(registry.entities)) {
+      if (
+        relatedEntity.device_id !== deviceId ||
+        relatedEntity.entity_id === entity.entity_id
+      ) {
+        continue;
+      }
+
+      const relatedState = registry.states[relatedEntity.entity_id];
+      if (relatedState == null) {
+        continue;
+      }
+
+      const attributes = asRecord(relatedState.attributes);
+      if (
+        !isLikelySerialEntity(
+          relatedEntity.entity_id,
+          toStringValue(attributes.friendly_name),
+        )
+      ) {
+        continue;
+      }
+
+      const serial = firstNonEmpty(
+        toSerialStringValue(attributes.serial_number),
+        toSerialStringValue(attributes.serialNumber),
+        toSerialStringValue(attributes.device_serial_number),
+        toSerialStringValue(attributes.device_sn),
+        toSerialStringValue(attributes.robot_serial_number),
+        toSerialStringValue(attributes.serial),
+        toSerialStringValue(attributes.sn),
+        toSerialStringValue(relatedState.state),
+      );
+      if (serial != null) {
+        return serial;
       }
     }
 
@@ -239,6 +298,7 @@ function resolveSerialNumber(
   device: HomeAssistantDeviceRegistry | undefined,
   attributes: Record<string, unknown>,
   identityOverrides: BridgeDeviceIdentityOverrides | undefined,
+  relatedSerialNumber: string | undefined,
   fallback: string,
 ): string {
   return (
@@ -249,8 +309,12 @@ function resolveSerialNumber(
         toStringValue(attributes.serial_number),
         toStringValue(attributes.serialNumber),
         toStringValue(attributes.device_serial_number),
+        toStringValue(attributes.device_sn),
+        toStringValue(attributes.robot_serial_number),
+        toStringValue(attributes.serial),
         toStringValue(attributes.sn),
         device?.serial_number,
+        relatedSerialNumber,
       ),
     ) ?? hash(32, fallback)
   );
@@ -269,6 +333,10 @@ function resolveSoftwareVersionString(
       toVersionStringValue(attributes.sw_version),
       toVersionStringValue(attributes.software_version),
       toVersionStringValue(attributes.firmware_version),
+      toVersionStringValue(attributes.current_version),
+      toVersionStringValue(attributes.installed_version),
+      toVersionStringValue(attributes.latest_version),
+      toVersionStringValue(attributes.fw_version),
       relatedSoftwareVersion,
       device?.sw_version,
       toFirmwareLikeVersionValue(attributes.version),
@@ -308,6 +376,17 @@ function toVersionStringValue(value: unknown): string | undefined {
     return undefined;
   }
   if (/^(unknown|unavailable|none|null|on|off)$/i.test(normalized)) {
+    return undefined;
+  }
+  return normalized;
+}
+
+function toSerialStringValue(value: unknown): string | undefined {
+  const normalized = toStringValue(value);
+  if (normalized == null) {
+    return undefined;
+  }
+  if (/^(unknown|unavailable|none|null)$/i.test(normalized)) {
     return undefined;
   }
   return normalized;
@@ -374,6 +453,19 @@ function isLikelySoftwareVersionEntity(
     normalized.includes("versi") ||
     normalized.includes("sw_version") ||
     normalized.includes("fw_version")
+  );
+}
+
+function isLikelySerialEntity(
+  entityId: string,
+  friendlyName: string | undefined,
+): boolean {
+  const normalized = `${entityId} ${friendlyName ?? ""}`.toLowerCase();
+  return (
+    normalized.includes("serial") ||
+    normalized.includes("serie") ||
+    normalized.includes("sn") ||
+    normalized.includes("device_sn")
   );
 }
 

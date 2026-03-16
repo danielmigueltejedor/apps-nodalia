@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0-beta.2
+- Added initial experimental `camera` domain exposure in legacy endpoint mapping.
+- Camera entities are now bridged as a Matter-compatible on/off endpoint (`camera.turn_on` / `camera.turn_off`) with identify support.
+- This is a compatibility-first bridge path while native Matter camera streaming support is still pending in the underlying Matter stack.
+
+## 0.2.0-beta.1
+- Added a new vacuum diagnostics panel in the Web UI endpoint view, showing key HA and Matter fields for room-cleaning troubleshooting (`currentArea`, `selectedAreas`, `progress`, run state and ServiceArea action config).
+- Improved vacuum `currentArea` resolution by:
+  - accepting additional current-area attribute keys,
+  - matching room names (not only numeric IDs/action values),
+  - reading likely companion entities on the same device (e.g. `sensor.*current_room` / `*habitacion_actual`) when the main vacuum entity has no direct current-area value.
+- Improved companion-entity operational hint detection for dock maintenance states (`washing`, `drying`, `dust emptying`, `water filling`) when companion entities expose binary/active states.
+- Expanded identity auto-detection for serial/firmware:
+  - serial now considers extra keys (`serial`, `device_sn`, `robot_serial_number`) and related serial-like companion entities,
+  - firmware now also considers `current_version` / `installed_version` / `latest_version` and `fw_version` before generic fallbacks.
+
 ## 0.1.0-beta.42
 - Changed mop-drying status mapping back to `Charging` (instead of `CleaningMop`) to match preferred Apple Home behavior when no native drying state exists.
 - Keeps expanded drying hint detection so Roborock drying variants are still recognized reliably.

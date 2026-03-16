@@ -182,6 +182,44 @@ const RELATED_OPERATIONAL_ENTITY_HINTS = [
   "base",
 ] as const;
 
+const COMPANION_DRYING_HINTS = [
+  "dry",
+  "drying",
+  "mop_dry",
+  "secad",
+  "secando",
+  "hot_air",
+] as const;
+
+const COMPANION_WASHING_HINTS = [
+  "wash",
+  "washing",
+  "mop_wash",
+  "mop_clean",
+  "self_clean",
+  "lav",
+  "mopa",
+] as const;
+
+const COMPANION_DUST_HINTS = [
+  "dust",
+  "empty",
+  "collect",
+  "vaci",
+  "polvo",
+] as const;
+
+const COMPANION_FILLING_HINTS = [
+  "fill",
+  "filling",
+  "water",
+  "tank",
+  "rellen",
+  "llen",
+] as const;
+
+const COMPANION_UPDATING_HINTS = ["map", "mapping", "actualiz"] as const;
+
 export const VacuumRvcOperationalStateServer = RvcOperationalStateServer({
   getOperationalState(entity, agent): RvcOperationalState.OperationalState {
     const primaryHints = collectOperationalStateHints(
@@ -400,6 +438,14 @@ function collectRelatedOperationalStateHints(agent: Agent): string[] {
     }
 
     addHint(hints, relatedState.state);
+    const derivedHint = deriveOperationalHintFromCompanionEntity(
+      relatedEntity.entity_id,
+      relatedState.attributes?.friendly_name,
+      relatedState.state,
+    );
+    if (derivedHint != null) {
+      addHint(hints, derivedHint);
+    }
     collectHintValuesFromAttributes(hints, asRecord(relatedState.attributes));
   }
 
@@ -449,6 +495,84 @@ function collectHintValuesFromAttributes(
     // Avoid companion-entity static lists (possible states/options) that can
     // keep stale maintenance hints active for too long.
   }
+}
+
+function deriveOperationalHintFromCompanionEntity(
+  entityId: string,
+  friendlyName: unknown,
+  state: unknown,
+): string | undefined {
+  if (!isActiveCompanionState(state)) {
+    return undefined;
+  }
+
+  const normalizedEntityId = normalizeHint(entityId) ?? "";
+  const normalizedFriendlyName =
+    typeof friendlyName === "string" ? normalizeHint(friendlyName) ?? "" : "";
+  const source = `${normalizedEntityId}_${normalizedFriendlyName}`;
+
+  if (containsAnyHint(source, COMPANION_WASHING_HINTS)) {
+    return "washing_mop";
+  }
+  if (containsAnyHint(source, COMPANION_DRYING_HINTS)) {
+    // No native Matter drying state: keep mapping to Charging.
+    return "drying_mop";
+  }
+  if (containsAnyHint(source, COMPANION_DUST_HINTS)) {
+    return "emptying_dust_bin";
+  }
+  if (containsAnyHint(source, COMPANION_FILLING_HINTS)) {
+    return "filling_water_tank";
+  }
+  if (containsAnyHint(source, COMPANION_UPDATING_HINTS)) {
+    return "updating_maps";
+  }
+
+  return undefined;
+}
+
+function isActiveCompanionState(state: unknown): boolean {
+  if (typeof state === "boolean") {
+    return state;
+  }
+  if (typeof state === "number") {
+    return state !== 0;
+  }
+  const normalized = normalizeHint(state);
+  if (normalized == null) {
+    return false;
+  }
+
+  if (
+    normalized === "off" ||
+    normalized === "false" ||
+    normalized === "idle" ||
+    normalized === "standby" ||
+    normalized === "unknown" ||
+    normalized === "unavailable" ||
+    normalized === "none" ||
+    normalized === "null"
+  ) {
+    return false;
+  }
+
+  return (
+    normalized === "on" ||
+    normalized === "true" ||
+    normalized === "running" ||
+    normalized === "active" ||
+    normalized === "cleaning" ||
+    normalized === "washing" ||
+    normalized === "drying" ||
+    normalized === "filling" ||
+    normalized === "emptying" ||
+    normalized === "collecting" ||
+    normalized.includes("in_progress")
+  );
+}
+
+function containsAnyHint(source: string, hints: readonly string[]): boolean {
+  return hints.some((hint) => source.includes(hint));
 }
 
 function addHint(hints: Set<string>, value: unknown): void {

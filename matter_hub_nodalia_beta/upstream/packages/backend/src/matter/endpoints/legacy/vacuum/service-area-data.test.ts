@@ -196,6 +196,25 @@ describe("parseVacuumServiceAreaData", () => {
     expect(data.currentMatterAreaId).toBe(bathroom?.matterAreaId);
   });
 
+  it("should resolve current area by room name labels", () => {
+    const data = parseVacuumServiceAreaData({
+      rooms: [
+        { id: 17, name: "Salón" },
+        { id: 18, name: "Cocina" },
+      ],
+      current_room: "salon",
+    });
+
+    expect(data).toBeDefined();
+    if (!data) {
+      throw new Error("Expected parsed service area data");
+    }
+
+    const livingRoom = data.areas.find((area) => area.name === "Salón");
+    expect(livingRoom).toBeDefined();
+    expect(data.currentMatterAreaId).toBe(livingRoom?.matterAreaId);
+  });
+
   it("should return undefined when no area identifiers are available", () => {
     const data = parseVacuumServiceAreaData({
       supported_features: 1,

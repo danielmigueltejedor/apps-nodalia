@@ -2,6 +2,7 @@ export enum HomeAssistantDomain {
   automation = "automation",
   button = "button",
   binary_sensor = "binary_sensor",
+  camera = "camera",
   climate = "climate",
   cover = "cover",
   fan = "fan",

@@ -7,6 +7,7 @@ import type { HomeAssistantEntityBehavior } from "../../behaviors/home-assistant
 import { AutomationDevice } from "./automation/index.js";
 import { BinarySensorDevice } from "./binary-sensor/index.js";
 import { ButtonDevice } from "./button/index.js";
+import { CameraDevice } from "./camera/index.js";
 import { ClimateDevice } from "./climate/index.js";
 import { CoverDevice } from "./cover/index.js";
 import { FanDevice } from "./fan/index.js";
@@ -43,6 +44,7 @@ const deviceCtrs: Record<
   switch: SwitchDevice,
   lock: LockDevice,
   fan: FanDevice,
+  camera: CameraDevice,
   binary_sensor: BinarySensorDevice,
   sensor: SensorDevice,
   cover: CoverDevice,

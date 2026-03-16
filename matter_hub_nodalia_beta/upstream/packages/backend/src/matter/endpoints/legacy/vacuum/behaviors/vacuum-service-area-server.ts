@@ -5,6 +5,7 @@ import {
 } from "@home-assistant-matter-hub/common";
 import { ServiceAreaServer as Base } from "@matter/main/behaviors/service-area";
 import { ServiceArea } from "@matter/main/clusters/service-area";
+import { HomeAssistantRegistry } from "../../../../../services/home-assistant/home-assistant-registry.js";
 import { HomeAssistantEntityBehavior } from "../../../../behaviors/home-assistant-entity-behavior.js";
 import {
   parseVacuumServiceAreaData,
@@ -36,6 +37,43 @@ const AREA_ID_KEYS = [
   "segment_id",
   "roomId",
   "room_id",
+] as const;
+
+const RELATED_CURRENT_AREA_ENTITY_DOMAINS = new Set([
+  "sensor",
+  "binary_sensor",
+  "select",
+  "text",
+  "input_text",
+]);
+
+const RELATED_CURRENT_AREA_ENTITY_HINTS = [
+  "current_room",
+  "current_area",
+  "current_segment",
+  "habitacion_actual",
+  "room",
+  "area",
+  "segment",
+  "estancia",
+  "habitacion",
+] as const;
+
+const CURRENT_AREA_ATTRIBUTE_KEYS = [
+  "current_area",
+  "currentArea",
+  "current_segment",
+  "currentSegment",
+  "current_room",
+  "currentRoom",
+  "room_name",
+  "segment_name",
+  "area_name",
+  "room",
+  "segment",
+  "area",
+  "cleaning_area_id",
+  "cleaningAreaId",
 ] as const;
 
 interface MutableServiceAreaState {
@@ -199,11 +237,14 @@ export class VacuumServiceAreaServerBase extends Base {
     }
 
     const selectedAreas = this.#selectedMatterAreaIds;
+    const currentMatterAreaId =
+      data.currentMatterAreaId ??
+      this.resolveCurrentMatterAreaIdFromCompanionEntities(entity, data.areas);
     const isOperating = isOperatingVacuumState(entity.state.state);
     const operatingAreaId = isOperating
-      ? data.currentMatterAreaId ??
+      ? currentMatterAreaId ??
         (selectedAreas.length > 0 ? selectedAreas[0] : null)
-      : data.currentMatterAreaId ?? null;
+      : currentMatterAreaId ?? null;
     const progress = selectedAreas.map((areaId) => ({
       areaId,
       status:
@@ -270,6 +311,117 @@ export class VacuumServiceAreaServerBase extends Base {
 
   getSelectedMatterAreaIds(): number[] {
     return this.#selectedMatterAreaIds;
+  }
+
+  private resolveCurrentMatterAreaIdFromCompanionEntities(
+    entity: HomeAssistantEntityInformation,
+    areas: VacuumServiceAreaArea[],
+  ): number | undefined {
+    const deviceId = entity.deviceRegistry?.id ?? entity.registry?.device_id;
+    if (deviceId == null) {
+      return undefined;
+    }
+
+    let registry: HomeAssistantRegistry;
+    try {
+      registry = this.agent.env.get(HomeAssistantRegistry);
+    } catch {
+      return undefined;
+    }
+
+    for (const relatedEntity of Object.values(registry.entities)) {
+      if (
+        relatedEntity.device_id !== deviceId ||
+        relatedEntity.entity_id === entity.entity_id
+      ) {
+        continue;
+      }
+
+      const [domain] = relatedEntity.entity_id.split(".");
+      if (!domain || !RELATED_CURRENT_AREA_ENTITY_DOMAINS.has(domain)) {
+        continue;
+      }
+
+      const relatedState = registry.states[relatedEntity.entity_id];
+      if (relatedState == null) {
+        continue;
+      }
+
+      if (
+        !isLikelyCurrentAreaCompanionEntity(
+          relatedEntity.entity_id,
+          relatedState.attributes?.friendly_name,
+        )
+      ) {
+        continue;
+      }
+
+      const candidateValues = collectCurrentAreaCandidateValues(
+        relatedState.state,
+        relatedState.attributes as Record<string, unknown>,
+      );
+
+      for (const candidateValue of candidateValues) {
+        const resolvedAreaId = this.resolveMatterAreaIdFromCurrentAreaCandidate(
+          candidateValue,
+          areas,
+        );
+        if (resolvedAreaId != null) {
+          return resolvedAreaId;
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private resolveMatterAreaIdFromCurrentAreaCandidate(
+    value: unknown,
+    areas: VacuumServiceAreaArea[],
+  ): number | undefined {
+    const numericValue = toNumber(value);
+    if (numericValue != null) {
+      for (const area of areas) {
+        if (
+          area.matterAreaId === numericValue ||
+          (typeof area.actionValue === "number" && area.actionValue === numericValue)
+        ) {
+          return area.matterAreaId;
+        }
+      }
+    }
+
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const normalizedValue = normalizeAreaLookup(value);
+    if (normalizedValue == null) {
+      return undefined;
+    }
+
+    for (const area of areas) {
+      if (normalizeAreaLookup(area.name) === normalizedValue) {
+        return area.matterAreaId;
+      }
+      if (
+        typeof area.actionValue === "string" &&
+        normalizeAreaLookup(area.actionValue) === normalizedValue
+      ) {
+        return area.matterAreaId;
+      }
+      if (String(area.matterAreaId) === value.trim()) {
+        return area.matterAreaId;
+      }
+      if (
+        typeof area.actionValue === "number" &&
+        String(area.actionValue) === value.trim()
+      ) {
+        return area.matterAreaId;
+      }
+    }
+
+    return undefined;
   }
 
   getSelectionDebugSnapshot(): {
@@ -746,4 +898,125 @@ function disambiguateDuplicateAreaNames(areas: ServiceArea.Area[]) {
       };
     }
   }
+}
+
+function isLikelyCurrentAreaCompanionEntity(
+  entityId: string,
+  friendlyName: unknown,
+): boolean {
+  const normalizedEntityId = normalizeAreaLookup(entityId);
+  const normalizedFriendlyName = normalizeAreaLookup(
+    typeof friendlyName === "string" ? friendlyName : undefined,
+  );
+
+  return RELATED_CURRENT_AREA_ENTITY_HINTS.some((hint) => {
+    const normalizedHint = normalizeAreaLookup(hint);
+    if (normalizedHint == null) {
+      return false;
+    }
+    return (
+      normalizedEntityId?.includes(normalizedHint) ||
+      normalizedFriendlyName?.includes(normalizedHint)
+    );
+  });
+}
+
+function collectCurrentAreaCandidateValues(
+  state: unknown,
+  attributes: Record<string, unknown>,
+): unknown[] {
+  const values: unknown[] = [];
+
+  if (!isIgnoredCurrentAreaState(state)) {
+    values.push(state);
+  }
+
+  for (const key of CURRENT_AREA_ATTRIBUTE_KEYS) {
+    values.push(attributes[key]);
+  }
+
+  return values.flatMap((value) => collectCandidateValues(value, 0));
+}
+
+function collectCandidateValues(value: unknown, depth: number): unknown[] {
+  if (value == null || depth > 2) {
+    return [];
+  }
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "bigint") {
+    return [value];
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => collectCandidateValues(entry, depth + 1));
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const prioritizedKeys = [
+      "areaId",
+      "area_id",
+      "roomId",
+      "room_id",
+      "segmentId",
+      "segment_id",
+      "id",
+      "value",
+      "name",
+      "room_name",
+      "segment_name",
+      "area_name",
+      "room",
+      "segment",
+      "area",
+      "label",
+    ];
+
+    const candidates = prioritizedKeys
+      .map((key) => record[key])
+      .filter((entry) => entry != null);
+
+    if (candidates.length > 0) {
+      return candidates.flatMap((entry) => collectCandidateValues(entry, depth + 1));
+    }
+
+    return Object.values(record).flatMap((entry) =>
+      collectCandidateValues(entry, depth + 1),
+    );
+  }
+
+  return [];
+}
+
+function isIgnoredCurrentAreaState(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized === "" ||
+    normalized === "unknown" ||
+    normalized === "unavailable" ||
+    normalized === "none" ||
+    normalized === "null" ||
+    normalized === "off" ||
+    normalized === "false"
+  );
+}
+
+function normalizeAreaLookup(value: string | undefined): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+
+  const normalized = value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized.length > 0 ? normalized : undefined;
 }

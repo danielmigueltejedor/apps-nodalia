@@ -44,6 +44,10 @@ export const EndpointState = (props: EndpointStateProps) => {
     }),
     [props.endpoint],
   );
+  const vacuumDiagnostics = useMemo(
+    () => getVacuumDiagnostics(props.endpoint),
+    [props.endpoint],
+  );
 
   return (
     <>
@@ -53,6 +57,17 @@ export const EndpointState = (props: EndpointStateProps) => {
           <ObjectTable value={metadata} hideHead></ObjectTable>
         </Stack>
       </Paper>
+
+      {vacuumDiagnostics != null && (
+        <Paper sx={{ p: 2, mb: 2 }} variant="outlined">
+          <Stack spacing={2}>
+            <Typography component="span">
+              Diagnóstico de aspiradora (beta)
+            </Typography>
+            <ObjectTable value={vacuumDiagnostics} hideHead />
+          </Stack>
+        </Paper>
+      )}
 
       {behaviors.map((behavior) => (
         <Accordion key={behavior}>
@@ -72,6 +87,95 @@ export const EndpointState = (props: EndpointStateProps) => {
     </>
   );
 };
+
+function getVacuumDiagnostics(
+  endpoint: EndpointData,
+): Record<string, unknown> | undefined {
+  const endpointState = asRecord(endpoint.state);
+  const serviceArea = asRecord(endpointState[ClusterId.serviceArea]);
+  const rvcOperationalState = asRecord(
+    endpointState[ClusterId.rvcOperationalState],
+  );
+  const rvcRunMode = asRecord(endpointState[ClusterId.rvcRunMode]);
+
+  const isVacuumEndpoint =
+    endpoint.type.name.toLowerCase().includes("vacuum") ||
+    Object.keys(serviceArea).length > 0 ||
+    Object.keys(rvcOperationalState).length > 0;
+  if (!isVacuumEndpoint) {
+    return undefined;
+  }
+
+  const homeAssistantEntity = asRecord(endpointState[ClusterId.homeAssistantEntity]);
+  const entity = asRecord(homeAssistantEntity.entity);
+  const entityState = asRecord(entity.state);
+  const attributes = asRecord(entityState.attributes);
+
+  const currentAreaHa = firstDefined(
+    attributes.current_area,
+    attributes.current_segment,
+    attributes.current_room,
+    attributes.currentArea,
+    attributes.currentSegment,
+    attributes.currentRoom,
+  );
+  const selectedAreasHa = firstDefined(
+    attributes.selected_areas,
+    attributes.selected_segments,
+    attributes.current_rooms,
+    attributes.current_segments,
+    attributes.cleaning_area_id,
+  );
+  const detailedStatusHa = firstDefined(
+    attributes.status,
+    attributes.task_status,
+    attributes.cleaning_state,
+    attributes.dock_state,
+    attributes.working_state,
+    attributes.status_text,
+    attributes.state_text,
+  );
+
+  return {
+    "Entidad HA": entity.entity_id ?? "-",
+    "Estado HA": entityState.state ?? "-",
+    "Estado detallado HA": detailedStatusHa ?? "-",
+    "Área actual HA": currentAreaHa ?? "-",
+    "Áreas seleccionadas HA": selectedAreasHa ?? "-",
+    "Acción ServiceArea HA": attributes.matter_service_area_action ?? "-",
+    "Comando ServiceArea HA":
+      attributes.matter_service_area_command ??
+      attributes.room_clean_command ??
+      attributes.segment_clean_command ??
+      "-",
+    "ParamsKey ServiceArea HA": attributes.matter_service_area_params_key ?? "-",
+    "currentArea Matter": serviceArea.currentArea ?? null,
+    "selectedAreas Matter": serviceArea.selectedAreas ?? [],
+    "progress Matter": serviceArea.progress ?? [],
+    "Estado operacional Matter":
+      rvcOperationalState.operationalState ??
+      rvcOperationalState.currentOperationalState ??
+      "-",
+    "Modo ejecución Matter":
+      rvcRunMode.currentMode ?? rvcRunMode.currentModeLabel ?? "-",
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value == null || typeof value !== "object") {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function firstDefined(...values: unknown[]): unknown {
+  for (const value of values) {
+    if (value != null) {
+      return value;
+    }
+  }
+  return undefined;
+}
 
 const ObjectTable = <T extends object>(props: {
   value: T;

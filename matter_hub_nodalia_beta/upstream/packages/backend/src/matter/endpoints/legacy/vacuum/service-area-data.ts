@@ -74,6 +74,33 @@ const SELECTED_AREA_KEYS = [
   "active_areas",
 ] as const;
 
+const CURRENT_AREA_KEYS = [
+  "current_segment",
+  "currentSegment",
+  "current_segment_id",
+  "currentSegmentId",
+  "current_room",
+  "currentRoom",
+  "current_room_id",
+  "currentRoomId",
+  "current_area",
+  "currentArea",
+  "current_area_id",
+  "currentAreaId",
+  "active_segment",
+  "activeSegment",
+  "active_room",
+  "activeRoom",
+  "active_area",
+  "activeArea",
+  "room",
+  "room_id",
+  "segment",
+  "segment_id",
+  "area",
+  "area_id",
+] as const;
+
 export function parseVacuumServiceAreaData(
   attributes: Attributes,
 ): VacuumServiceAreaData | undefined {
@@ -95,7 +122,9 @@ export function parseVacuumServiceAreaData(
   const selectedMatterAreaIds = toMatterAreaIds(selectedAreaValues, areas);
 
   const currentAreaValue = extractAreaValue(
-    attributes.current_segment ?? attributes.current_area,
+    attributes.current_segment ??
+      attributes.current_area ??
+      firstAreaValue(attributes, CURRENT_AREA_KEYS),
   );
   const currentMatterAreaId =
     currentAreaValue == null
@@ -507,10 +536,21 @@ function toMatterAreaIds(
 ): number[] {
   const byMatterAreaId = new Map<number, number>();
   const byActionValue = new Map<string, number>();
+  const byAreaName = new Map<string, number>();
 
   for (const area of areas) {
     byMatterAreaId.set(area.matterAreaId, area.matterAreaId);
     byActionValue.set(toAreaValueKey(area.actionValue), area.matterAreaId);
+    const normalizedAreaName = normalizeAreaLookup(area.name);
+    if (normalizedAreaName != null) {
+      byAreaName.set(normalizedAreaName, area.matterAreaId);
+    }
+    if (typeof area.actionValue === "string") {
+      const normalizedActionValue = normalizeAreaLookup(area.actionValue);
+      if (normalizedActionValue != null) {
+        byAreaName.set(normalizedActionValue, area.matterAreaId);
+      }
+    }
   }
 
   const matterAreaIds: number[] = [];
@@ -526,6 +566,17 @@ function toMatterAreaIds(
     const byAction = byActionValue.get(toAreaValueKey(areaValue));
     if (byAction != null) {
       matterAreaIds.push(byAction);
+      continue;
+    }
+
+    if (typeof areaValue === "string") {
+      const normalizedAreaValue = normalizeAreaLookup(areaValue);
+      if (normalizedAreaValue != null) {
+        const byName = byAreaName.get(normalizedAreaValue);
+        if (byName != null) {
+          matterAreaIds.push(byName);
+        }
+      }
     }
   }
 
@@ -733,4 +784,16 @@ function createDefaultAreaName(
   }
 
   return `Area ${matterAreaId}`;
+}
+
+function normalizeAreaLookup(value: string): string | undefined {
+  const normalized = value
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return normalized.length > 0 ? normalized : undefined;
 }

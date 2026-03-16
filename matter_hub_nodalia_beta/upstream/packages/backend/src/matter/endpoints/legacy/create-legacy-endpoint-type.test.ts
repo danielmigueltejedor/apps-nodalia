@@ -47,6 +47,9 @@ const testEntities: Record<
       fan_speed_list: ["off", "low", "medium", "high"],
     }),
   ],
+  [HomeAssistantDomain.camera]: [
+    createEntity("camera.cam1", "streaming"),
+  ],
   [HomeAssistantDomain.climate]: [
     createEntity<ClimateDeviceAttributes>("climate.cl1", "on", {
       hvac_modes: [ClimateHvacMode.heat],
