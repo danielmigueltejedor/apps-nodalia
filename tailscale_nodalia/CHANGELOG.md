@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.2.0 - 2026-03-28
+### Changed
+- Bump Tailscale: 1.96.2 → 1.96.4
+- Add-on version: 3.1.0 → 3.2.0
 ## 3.1.0 - 2026-03-18
 ### Changed
 - Bump Tailscale: 1.94.2 → 1.96.2

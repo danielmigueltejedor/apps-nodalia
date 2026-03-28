@@ -1,5 +1,5 @@
 name: Nodalia Connect
-version: 3.1.0
+version: 3.2.0
 slug: tailscale_nodalia
 description: Zero config VPN for building secure networks (Nodalia stable build)
 url: https://github.com/danielmigueltejedor/apps-nodalia
