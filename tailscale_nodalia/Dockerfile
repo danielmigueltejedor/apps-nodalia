@@ -5,7 +5,7 @@ FROM ${BUILD_FROM}
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG BUILD_ARCH=amd64
-ARG TAILSCALE_VERSION="1.102.3"
+ARG TAILSCALE_VERSION="1.102.4"
 ARG TAILSCALE_REPO="https://pkgs.tailscale.com/stable"
 ARG CLOUDFLARED_REPO="https://github.com/cloudflare/cloudflared/releases/latest/download"
 
