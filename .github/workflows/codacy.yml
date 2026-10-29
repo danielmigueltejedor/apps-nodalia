@@ -1,4 +1,4 @@
-name: Codacy Security Scan
+name: ShellCheck Security Scan
 
 on:
   push:
@@ -6,24 +6,28 @@ on:
       - main
   pull_request:
 
-jobs:
-  codacy-security-scan:
-    name: Codacy Security Scan
-    runs-on: ubuntu-latest
+permissions:
+  contents: read
+  security-events: write
 
+jobs:
+  shellcheck:
+    name: ShellCheck Security Scan
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Run Codacy ShellCheck
-        uses: codacy/codacy-analysis-cli-action@d840f886c4bd4edc059706d09c6a1586111c540b
-        with:
-          verbose: true
-          tool: shellcheck
-          format: sarif
-          output: results.sarif
-          gh-code-scanning-compat: true
-          max-allowed-issues: 2147483647
+      - name: Install ShellCheck
+        run: |
+          if ! command -v shellcheck >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y shellcheck
+          fi
+          shellcheck --version
+
+      - name: Analyze tracked shell scripts and generate SARIF
+        run: python3 scripts/shellcheck_sarif.py
 
       - name: Upload SARIF to GitHub code scanning
         if: always() && hashFiles('results.sarif') != ''
