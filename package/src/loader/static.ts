@@ -12,7 +12,7 @@ import { loader } from "./loader.js";
  * You must load components required separately into {@link loader.registry}.
  */
 export function load(path: string): {} {
-    const parsed = path.match(/([^/]+)\/[^/]+\/[^/]+\.js/);
+    const parsed = path.match(/^([^/]+)\/[^/]+\/[^/]+\.js$/);
 
     if (parsed) {
         const [, group] = parsed;

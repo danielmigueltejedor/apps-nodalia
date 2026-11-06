@@ -147,6 +147,7 @@ export function ManagedReference(
                     return (parent.original as Container)[altKey];
                 }
             }
+            return undefined;
         },
 
         change(mutator: () => void) {

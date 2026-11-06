@@ -185,7 +185,7 @@ export class CommissioningClient extends Behavior {
         const address = await identityService.assignNodeAddress(node, fabric.fabricIndex, opts.nodeId);
 
         const commissioningOptions: LocatedNodeCommissioningOptions = {
-            addresses: addresses.map(ServerAddress),
+            addresses: addresses.map(address => ServerAddress(address)),
             fabric,
             nodeId: address.nodeId,
             passcode,

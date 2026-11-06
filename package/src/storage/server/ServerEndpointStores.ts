@@ -59,7 +59,7 @@ export class ServerEndpointStores {
             return;
         }
 
-        if (this.#numbersPersisted) {
+        if (this.#numbersPersisted !== undefined) {
             await this.#numbersPersisted;
         }
 
@@ -76,7 +76,7 @@ export class ServerEndpointStores {
 
     async close() {
         // We can't dispose until number persistence completes
-        if (this.#numbersPersisted) {
+        if (this.#numbersPersisted !== undefined) {
             await this.#numbersPersisted;
         }
     }

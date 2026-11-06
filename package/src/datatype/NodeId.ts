@@ -94,7 +94,7 @@ export namespace NodeId {
         if (!isCaseAuthenticatedTag(nodeId)) {
             throw new UnexpectedDataError(`Invalid CASE Authenticated tag: ${nodeId}`);
         }
-        return CaseAuthenticatedTag(parseInt(nodeId.toString(16).slice(8), 16));
+        return CaseAuthenticatedTag(Number.parseInt(nodeId.toString(16).slice(8), 16));
     };
 
     /**

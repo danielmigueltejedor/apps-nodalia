@@ -417,7 +417,7 @@ function syncFeatures(schema: Schema.Cluster, cluster: ClusterType) {
     }
 
     // If we have cached this version of the cluster, return the cached schema
-    const featureKey = [...incomingFeatures].sort().join(",");
+    const featureKey = [...incomingFeatures].sort((a, b) => a.localeCompare(b)).join(",");
     let schemaBucket = configuredSchemaCache.get(schema);
     if (schemaBucket === undefined) {
         schemaBucket = {};

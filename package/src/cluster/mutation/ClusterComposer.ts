@@ -43,12 +43,14 @@ export class ClusterComposer<const T extends ClusterType> {
         let cluster: ClusterType | undefined;
 
         // First check cache
-        const cacheKey = [...selection].sort().join("␜");
+        const cacheKey = [...selection].sort((a, b) => a.localeCompare(b)).join("␜");
         cluster = featureSelectionCache.get(this.cluster)?.[cacheKey]?.deref();
 
         // Next check whether feature set remains unchanged
         if (!cluster) {
-            const currentCacheKey = [...new FeatureSet(this.cluster.supportedFeatures)].sort().join("␜");
+            const currentCacheKey = [...new FeatureSet(this.cluster.supportedFeatures)]
+                .sort((a, b) => a.localeCompare(b))
+                .join("␜");
             if (currentCacheKey === cacheKey) {
                 cluster = featureSelectionCache.get(this.cluster)?.[cacheKey]?.deref();
             }

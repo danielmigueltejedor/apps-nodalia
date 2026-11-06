@@ -148,7 +148,9 @@ export function RemoteActorContext(options: RemoteActorContext.Options) {
             tx = Transaction.open(via, exchange, isolation);
             tx.onClose(close);
         } catch (e) {
-            close?.();
+            if (close) {
+                close();
+            }
             tx?.[Symbol.dispose]();
             throw e;
         }

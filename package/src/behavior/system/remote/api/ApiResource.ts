@@ -134,11 +134,11 @@ export abstract class ApiResource {
     /**
      * Subscribe to events.
      */
-    // oxlint-disable-next-line require-yield
     async *subscribe(
         _abort: Abort.Signal,
         _request?: Envelope.Data,
     ): AsyncGenerator<Envelope<LocalResponse>, void, void> {
+        yield* [] as Envelope<LocalResponse>[];
         throw new NotImplementedError();
     }
 

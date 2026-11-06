@@ -1,6 +1,6 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64:19.0.0
 # hadolint ignore=DL3006
-FROM ${BUILD_FROM}
+FROM ${BUILD_FROM} # NOSONAR - HA add-ons require root for s6-overlay
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -28,10 +28,10 @@ RUN \
   && if [ "${BUILD_ARCH}" = "aarch64" ]; then ARCH="arm64"; fi \
   && if [ "${BUILD_ARCH}" = "amd64" ]; then ARCH="amd64"; fi \
   && TS_PKG="tailscale_${TAILSCALE_VERSION#v}_${ARCH}.tgz" \
-  && curl --fail --show-error --silent --location \
+  && curl --proto "=https" --tlsv1.2 --fail --show-error --silent --location \
     "${TAILSCALE_REPO}/${TS_PKG}" \
     --output "/tmp/${TS_PKG}" \
-  && curl --fail --show-error --silent --location \
+  && curl --proto "=https" --tlsv1.2 --fail --show-error --silent --location \
     "${TAILSCALE_REPO}/${TS_PKG}.sha256" \
     --output "/tmp/${TS_PKG}.sha256" \
   && if grep -Eq "[[:space:]]${TS_PKG}$" "/tmp/${TS_PKG}.sha256"; then \
@@ -43,7 +43,7 @@ RUN \
   && rm -f "/tmp/${TS_PKG}" "/tmp/${TS_PKG}.sha256" \
   && if [ "${BUILD_ARCH}" = "aarch64" ]; then CF_ARCH="arm64"; fi \
   && if [ "${BUILD_ARCH}" = "amd64" ]; then CF_ARCH="amd64"; fi \
-  && curl --fail --show-error --silent --location \
+  && curl --proto "=https" --tlsv1.2 --fail --show-error --silent --location \
     "${CLOUDFLARED_REPO}/cloudflared-linux-${CF_ARCH}" \
     --output /usr/bin/cloudflared \
   && chmod 0755 /usr/bin/cloudflared \

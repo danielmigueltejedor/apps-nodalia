@@ -516,7 +516,8 @@ function clusterTypeProtocolOf(backing: BehaviorBacking): ClusterTypeProtocol | 
         }
     }
 
-    const elementsCacheKey = `a:${[...nonMandatorySupportedAttributes.values()].sort().join(",")},e:${[...nonMandatorySupportedEvents.values()].sort().join(",")},c:${[...nonMandatorySupportedCommands.values()].sort().join(",")}`;
+    const byId = (a: string | number, b: string | number) => (a < b ? -1 : a > b ? 1 : 0);
+    const elementsCacheKey = `a:${[...nonMandatorySupportedAttributes.values()].sort(byId).join(",")},e:${[...nonMandatorySupportedEvents.values()].sort(byId).join(",")},c:${[...nonMandatorySupportedCommands.values()].sort(byId).join(",")}`;
     const existingCache = behaviorCache.get(behavior)?.get(elementsCacheKey);
     if (existingCache) {
         return existingCache;

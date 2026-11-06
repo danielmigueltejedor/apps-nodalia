@@ -10,7 +10,7 @@ import { AccessLevel } from "#model";
 import { AccessControl, Mark } from "#protocol";
 import { Contextual } from "../Contextual.js";
 import type { NodeActivity } from "../NodeActivity.js";
-export let nextInternalId = 1;
+let nextInternalId = 1;
 
 let ReadOnly: LocalActorContext | undefined;
 

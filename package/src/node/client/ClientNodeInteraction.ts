@@ -46,6 +46,7 @@ export class ClientNodeInteraction implements Interactable<ActionContext> {
         if (this.#node.env.has(ClientInteraction)) {
             return this.#node.env.get(ClientInteraction).session;
         }
+        return undefined;
     }
 
     get physicalProperties() {

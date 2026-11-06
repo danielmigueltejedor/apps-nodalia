@@ -1,6 +1,6 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64:19.0.0
 # hadolint ignore=DL3006
-FROM ${BUILD_FROM}
+FROM ${BUILD_FROM} # NOSONAR - HA add-ons require root for s6-overlay
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -21,7 +21,7 @@ RUN \
   && if [ "${BUILD_ARCH}" = "armhf" ]; then GO2RTC_ARCH="armv6"; fi \
   && if [ "${BUILD_ARCH}" = "armv7" ]; then GO2RTC_ARCH="arm"; fi \
   && if [ "${BUILD_ARCH}" = "i386" ]; then GO2RTC_ARCH="i386"; fi \
-  && curl --fail --show-error --silent --location \
+  && curl --proto "=https" --tlsv1.2 --fail --show-error --silent --location \
     "https://github.com/AlexxIT/go2rtc/releases/download/v${GO2RTC_VERSION}/go2rtc_linux_${GO2RTC_ARCH}" \
     --output /usr/local/bin/go2rtc \
   && chmod 0755 /usr/local/bin/go2rtc \

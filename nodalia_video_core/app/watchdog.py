@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from .go2rtc import Go2RTCManager
 from .health import apply_probe, extract_consumers, initial_health
 from .models import AddonConfig, CameraHealth, CameraState, ProbeResult
+from .proxy_security import sanitize_for_log
 
 LOGGER = logging.getLogger("nodalia_video_core.watchdog")
 
@@ -237,7 +238,11 @@ class Watchdog:
             health.last_error = (
                 f"Exceeded max reconnect attempts ({camera.health.max_reconnect_attempts})"
             )
-            LOGGER.error("[%s] %s", camera_id, health.last_error)
+            LOGGER.error(
+                "[%s] %s",
+                sanitize_for_log(camera_id),
+                sanitize_for_log(health.last_error),
+            )
             return
 
         health.state = CameraState.RECONNECTING
@@ -245,7 +250,7 @@ class Watchdog:
         health.last_reconnect = now
 
         if hard:
-            LOGGER.warning("[%s] Hard reconnect requested", camera_id)
+            LOGGER.warning("[%s] Hard reconnect requested", sanitize_for_log(camera_id))
             await self.go2rtc.restart()
         else:
             await self.go2rtc.soft_reconnect(camera_id)

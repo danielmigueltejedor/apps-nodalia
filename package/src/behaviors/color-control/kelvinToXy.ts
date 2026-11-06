@@ -1915,7 +1915,7 @@ function expandLookupTable() {
     // Fill remaining values of lookup
     for (const [kelvin, xy] of Object.entries(lookupTable)) {
         for (let i = 1; i < 10; i++) {
-            lookupTable[parseInt(kelvin) + i] = xy;
+            lookupTable[Number.parseInt(kelvin) + i] = xy;
         }
     }
 }

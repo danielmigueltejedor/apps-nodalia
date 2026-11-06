@@ -179,7 +179,7 @@ function generateDiscoveredType(analysis: DiscoveredShapeAnalysis, baseType?: Be
         extendSchema();
 
         // Update the cluster.  Note that we do not validate feature combinations.  What the device sends we work with
-        cluster = new ClusterComposer(cluster, true).compose(featureNames.map(capitalize));
+        cluster = new ClusterComposer(cluster, true).compose(featureNames.map(name => capitalize(name)));
     }
 
     // If the schema does not match what the device actually returned, further augment both the ClusterModel and

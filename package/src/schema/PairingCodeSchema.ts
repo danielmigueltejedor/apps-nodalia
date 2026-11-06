@@ -242,17 +242,17 @@ class ManualPairingCodeSchema extends Schema<ManualPairingData, string> {
         if (encoded.length !== 11 && encoded.length !== 21) {
             throw new UnexpectedDataError("Invalid pairing code");
         }
-        if (new Verhoeff().computeChecksum(encoded.slice(0, -1)) !== parseInt(encoded.slice(-1))) {
+        if (new Verhoeff().computeChecksum(encoded.slice(0, -1)) !== Number.parseInt(encoded.slice(-1))) {
             throw new UnexpectedDataError("Invalid checksum");
         }
-        const hasVendorProductIds = !!(parseInt(encoded[0]) & (1 << 2));
-        const shortDiscriminator = ((parseInt(encoded[0]) & 0x03) << 2) | ((parseInt(encoded.slice(1, 6)) >> 14) & 0x3);
-        const passcode = (parseInt(encoded.slice(1, 6)) & 0x3fff) | (parseInt(encoded.slice(6, 10)) << 14);
+        const hasVendorProductIds = !!(Number.parseInt(encoded[0]) & (1 << 2));
+        const shortDiscriminator = ((Number.parseInt(encoded[0]) & 0x03) << 2) | ((Number.parseInt(encoded.slice(1, 6)) >> 14) & 0x3);
+        const passcode = (Number.parseInt(encoded.slice(1, 6)) & 0x3fff) | (Number.parseInt(encoded.slice(6, 10)) << 14);
         let vendorId: VendorId | undefined;
         let productId: number | undefined;
         if (hasVendorProductIds) {
-            vendorId = VendorId(parseInt(encoded.slice(10, 15)));
-            productId = parseInt(encoded.slice(15, 20));
+            vendorId = VendorId(Number.parseInt(encoded.slice(10, 15)));
+            productId = Number.parseInt(encoded.slice(15, 20));
         }
         return { shortDiscriminator, passcode, vendorId, productId };
     }

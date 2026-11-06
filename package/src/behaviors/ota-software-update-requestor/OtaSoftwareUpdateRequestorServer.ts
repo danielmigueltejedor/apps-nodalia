@@ -245,8 +245,10 @@ export class OtaSoftwareUpdateRequestorServer extends OtaSoftwareUpdateRequestor
                 this.context,
             );
 
+            const delaySeconds =
+                Math.floor((crypto.getRandomValues(new Uint32Array(1))[0]! / 0x1_0000_0000) * 599) + 120;
             this.#scheduleUpdateQuery(
-                Seconds(Math.floor(Math.random() * 599) + 120),
+                Seconds(delaySeconds),
                 ScheduleReason.Busy, // Handle failed update like a busy provider to retry
                 location,
             ); // check again on the last location a bit earlier
@@ -949,7 +951,7 @@ export class OtaSoftwareUpdateRequestorServer extends OtaSoftwareUpdateRequestor
         }
         const fetchStream = res.body;
         const contentLength = res.headers.get("content-length");
-        let totalBytes = contentLength ? parseInt(contentLength) : undefined;
+        let totalBytes = contentLength ? Number.parseInt(contentLength) : undefined;
         if (totalBytes === undefined || !Number.isFinite(totalBytes) || totalBytes <= 0) {
             totalBytes = undefined;
         }

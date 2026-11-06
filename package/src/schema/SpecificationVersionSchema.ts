@@ -22,6 +22,6 @@ const SpecificationVersionSchema = ByteArrayBitmapSchema({
 
 export namespace SpecificationVersion {
     export const encode = (version: SpecificationVersion) =>
-        parseInt(Bytes.toHex(SpecificationVersionSchema.encode({ ...version, reserved: 0 })), 16);
+        Number.parseInt(Bytes.toHex(SpecificationVersionSchema.encode({ ...version, reserved: 0 })), 16);
     export const decode = (version: number) => SpecificationVersionSchema.decode(Bytes.fromHex(toHex(version)));
 }

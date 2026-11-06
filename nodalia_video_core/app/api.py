@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, WebSocket, WebSocket
 from starlette.responses import StreamingResponse
 
 from .go2rtc import Go2RTCManager
+from .proxy_security import UnsafeProxyPathError, safe_proxy_target, sanitize_for_log
 from .ui import dashboard_response
 from .watchdog import Watchdog
 
@@ -68,9 +69,10 @@ def create_app(watchdog: Watchdog, go2rtc: Go2RTCManager) -> FastAPI:
 
     @app.get("/go2rtc/{path:path}")
     async def proxy_go2rtc(path: str, request: Request) -> StreamingResponse:
-        target = f"{go2rtc.config.go2rtc_api}/{path}"
-        if request.url.query:
-            target = f"{target}?{request.url.query}"
+        try:
+            target = safe_proxy_target(go2rtc.config.go2rtc_api, path, request.url.query)
+        except UnsafeProxyPathError as exc:
+            raise HTTPException(status_code=400, detail="Invalid proxy path") from exc
 
         client = httpx.AsyncClient(timeout=None)
         upstream_request = client.build_request("GET", target)
@@ -78,7 +80,11 @@ def create_app(watchdog: Watchdog, go2rtc: Go2RTCManager) -> FastAPI:
             response = await client.send(upstream_request, stream=True)
         except httpx.HTTPError as exc:
             await client.aclose()
-            LOGGER.warning("go2rtc proxy request failed for %s: %s", target, exc)
+            LOGGER.warning(
+                "go2rtc proxy request failed for %s: %s",
+                sanitize_for_log(target),
+                sanitize_for_log(exc),
+            )
             raise HTTPException(status_code=502, detail="go2rtc proxy request failed") from exc
 
         async def stream_upstream():
@@ -86,7 +92,11 @@ def create_app(watchdog: Watchdog, go2rtc: Go2RTCManager) -> FastAPI:
                 async for chunk in response.aiter_raw():
                     yield chunk
             except httpx.HTTPError as exc:
-                LOGGER.debug("go2rtc proxy stream ended for %s: %s", target, exc)
+                LOGGER.debug(
+                    "go2rtc proxy stream ended for %s: %s",
+                    sanitize_for_log(target),
+                    sanitize_for_log(exc),
+                )
             finally:
                 await response.aclose()
                 await client.aclose()
@@ -105,8 +115,16 @@ def create_app(watchdog: Watchdog, go2rtc: Go2RTCManager) -> FastAPI:
     @app.websocket("/go2rtc/api/ws")
     async def proxy_go2rtc_ws(websocket: WebSocket) -> None:
         await websocket.accept()
-        target = go2rtc.config.go2rtc_api.replace("http://", "ws://").replace("https://", "wss://")
-        target = f"{target}/api/ws"
+        # Prefer WSS when go2rtc is HTTPS; loopback HTTP add-on still needs WS (local only).
+        api = go2rtc.config.go2rtc_api
+        if api.startswith("https://"):
+            ws_base = "wss://" + api.removeprefix("https://")
+        elif api.startswith("http://"):
+            ws_base = "ws://" + api.removeprefix("http://")  # NOSONAR - loopback go2rtc HTTP
+        else:
+            await websocket.close(code=1011)
+            return
+        target = f"{ws_base}/api/ws"
         if websocket.url.query:
             target = f"{target}?{websocket.url.query}"
 

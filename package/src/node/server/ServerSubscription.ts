@@ -468,8 +468,8 @@ export class ServerSubscription implements Subscription {
                         for (const [endpointId, clusters] of Object.entries(attributeFilter)) {
                             for (const [clusterId, attributes] of Object.entries(clusters)) {
                                 this.#addOutstandingAttributes(
-                                    EndpointNumber(parseInt(endpointId)),
-                                    ClusterId(parseInt(clusterId)),
+                                    EndpointNumber(Number.parseInt(endpointId)),
+                                    ClusterId(Number.parseInt(clusterId)),
                                     Array.from(attributes),
                                 );
                             }
@@ -642,7 +642,7 @@ export class ServerSubscription implements Subscription {
         if (this.#outstandingAttributeUpdates !== undefined || this.#outstandingEventsMinNumber !== undefined) {
             logger.debug(`Flushing subscription ${this.idStr}${this.#isClosed ? " (for closing)" : ""}`);
             this.#triggerSendUpdate(true, flushViaSession);
-            if (this.#currentUpdatePromise) {
+            if (this.#currentUpdatePromise !== undefined) {
                 using _waiting = this.#lifetime?.join("waiting on flush");
                 await this.#currentUpdatePromise;
             }
@@ -660,7 +660,7 @@ export class ServerSubscription implements Subscription {
 
         await this.#cancel(flushViaSession);
 
-        if (this.#currentUpdatePromise) {
+        if (this.#currentUpdatePromise !== undefined) {
             using _waiting = this.#lifetime?.closing()?.join("waiting on update");
             await this.#currentUpdatePromise;
         }

@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          JSON=$(curl -fsSL "https://pkgs.tailscale.com/stable/?mode=json")
+          JSON=$(curl --proto "=https" --tlsv1.2 -fsSL "https://pkgs.tailscale.com/stable/?mode=json")
 
           LATEST=$(
             echo "$JSON" | jq -r '
@@ -119,7 +119,7 @@ jobs:
           for ARCH in amd64 arm64; do
             URL="https://pkgs.tailscale.com/stable/tailscale_${LATEST}_${ARCH}.tgz"
             echo "Checking ${URL}"
-            if ! curl --fail --head --silent --location "${URL}" >/dev/null; then
+            if ! curl --proto "=https" --tlsv1.2 --fail --head --silent --location "${URL}" >/dev/null; then
               echo "ERROR: Tailscale tarball no existe: ${URL}"
               exit 1
             fi

@@ -145,7 +145,7 @@ export class TlvNumberSchema extends TlvNumericSchema<number> {
     }
 }
 
-export const TlvLongNumberSchema = TlvNumericSchema<number | bigint>;
+export class TlvLongNumberSchema extends TlvNumericSchema<number | bigint> {}
 
 /** Unsigned integer TLV schema. */
 export const TlvFloat = new TlvNumberSchema(TlvType.Float, _value => TlvLength.FourBytes, FLOAT32_MIN, FLOAT32_MAX);

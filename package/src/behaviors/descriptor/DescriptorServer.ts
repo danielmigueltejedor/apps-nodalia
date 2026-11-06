@@ -208,7 +208,7 @@ export class DescriptorServer extends DescriptorBehavior {
             numbers = [];
         }
 
-        numbers.sort();
+        numbers.sort((a, b) => a - b);
 
         // Do a quick deep equal so we can avoid updating state since the filtering on events that trigger this function
         // is rather lazy

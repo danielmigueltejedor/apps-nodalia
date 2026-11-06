@@ -11,6 +11,7 @@ import httpx
 import yaml
 
 from .models import AddonConfig, CameraConfig
+from .proxy_security import sanitize_for_log
 
 LOGGER = logging.getLogger("nodalia_video_core.go2rtc")
 
@@ -28,6 +29,7 @@ class Go2RTCManager:
         self.process: asyncio.subprocess.Process | None = None
         self._lock = asyncio.Lock()
         self.generation = 0
+        self._log_task: asyncio.Task[None] | None = None
 
     def build_config(self) -> dict[str, Any]:
         streams: dict[str, list[str]] = {}
@@ -64,7 +66,7 @@ class Go2RTCManager:
                 stderr=asyncio.subprocess.STDOUT,
             )
             self.generation += 1
-            asyncio.create_task(self._log_output(self.process))
+            self._log_task = asyncio.create_task(self._log_output(self.process))
 
     async def stop(self) -> None:
         async with self._lock:
@@ -92,7 +94,7 @@ class Go2RTCManager:
                 stderr=asyncio.subprocess.STDOUT,
             )
             self.generation += 1
-            asyncio.create_task(self._log_output(self.process))
+            self._log_task = asyncio.create_task(self._log_output(self.process))
 
     async def _stop_locked(self) -> None:
         if not self.process or self.process.returncode is not None:
@@ -117,7 +119,7 @@ class Go2RTCManager:
         await self.start()
 
     async def soft_reconnect(self, camera_id: str) -> bool:
-        LOGGER.warning("[%s] Soft reconnect requested", camera_id)
+        LOGGER.warning("[%s] Soft reconnect requested", sanitize_for_log(camera_id))
         urls = [
             f"{self.config.go2rtc_api}/api/streams?dst={camera_id}",
             f"{self.config.go2rtc_api}/api/streams?src={camera_id}",
