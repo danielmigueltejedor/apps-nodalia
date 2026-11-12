@@ -1,6 +1,7 @@
 ARG BUILD_FROM=ghcr.io/hassio-addons/base/amd64:19.0.0
 # hadolint ignore=DL3006
-FROM ${BUILD_FROM} # NOSONAR - HA add-ons require root for s6-overlay
+# NOSONAR - HA add-ons require root for s6-overlay
+FROM ${BUILD_FROM}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
